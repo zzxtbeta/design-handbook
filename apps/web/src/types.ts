@@ -13,6 +13,7 @@ export interface WeekEntry {
   id: string;
   daySlot: DaySlot;
   title: string;
+  promptSummary: string | null;
   imageUrl: string;
   imageWidth: number | null;
   imageHeight: number | null;

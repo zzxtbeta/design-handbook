@@ -22,6 +22,7 @@ export interface Entry {
   id: string;
   daySlot: DaySlot;
   title: string;
+  promptSummary: string | null;
   imageUrl: string;
   imageWidth: number | null;
   imageHeight: number | null;
@@ -69,6 +70,7 @@ export async function createEntry(input: {
       imageUrl: input.imageUrl,
       imageWidth: input.imageWidth ?? null,
       imageHeight: input.imageHeight ?? null,
+      promptSummary: null,
       status: "processing",
       errorMessage: null,
       decorationStyle:
@@ -126,12 +128,19 @@ export async function updateWeekNote(weekKey: string, content: string) {
   return getWeek(normalized);
 }
 
-export async function markEntryReady(entryId: string, terms: string[]) {
+export async function markEntryReady(
+  entryId: string,
+  payload: {
+    terms: string[];
+    promptSummary: string | null;
+  },
+) {
   const timestamp = new Date();
 
   const [updated] = await db
     .update(entries)
     .set({
+      promptSummary: payload.promptSummary,
       status: "ready",
       errorMessage: null,
       updatedAt: timestamp,
@@ -145,9 +154,9 @@ export async function markEntryReady(entryId: string, terms: string[]) {
 
   await db.delete(entryTerms).where(eq(entryTerms.entryId, entryId));
 
-  if (terms.length > 0) {
+  if (payload.terms.length > 0) {
     await db.insert(entryTerms).values(
-      terms.map((term, index) => ({
+      payload.terms.map((term, index) => ({
         entryId,
         term,
         position: index,
@@ -201,6 +210,23 @@ export async function deleteEntryTerm(termId: string) {
   return {
     entryId: updated.entryId,
     termId,
+  };
+}
+
+export async function deleteEntry(entryId: string) {
+  await db.delete(entryTerms).where(eq(entryTerms.entryId, entryId));
+
+  const [deleted] = await db
+    .delete(entries)
+    .where(eq(entries.id, entryId))
+    .returning();
+
+  if (!deleted) {
+    return null;
+  }
+
+  return {
+    entryId,
   };
 }
 
@@ -276,6 +302,7 @@ async function seedWeekEntries(weekId: string, offset: number) {
           ),
         imageWidth: 400,
         imageHeight: 300,
+        promptSummary: "warm editorial board with paper texture",
         status: "ready",
         errorMessage: null,
         decorationStyle: "amber",
@@ -293,6 +320,7 @@ async function seedWeekEntries(weekId: string, offset: number) {
           ),
         imageWidth: 320,
         imageHeight: 420,
+        promptSummary: "soft glass note card with airy spacing",
         status: "ready",
         errorMessage: null,
         decorationStyle: "sage",
@@ -382,6 +410,7 @@ function mapEntry(
     id: entry.id,
     daySlot: entry.daySlot,
     title: visibleTerms[0]?.term ?? "New inspiration",
+    promptSummary: entry.promptSummary,
     imageUrl: entry.imageUrl,
     imageWidth: entry.imageWidth,
     imageHeight: entry.imageHeight,

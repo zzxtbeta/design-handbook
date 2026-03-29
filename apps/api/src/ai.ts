@@ -4,10 +4,16 @@ export interface GenerateTermsInput {
   imageUrl: string;
 }
 
+export interface DesignInsight {
+  terms: string[];
+  promptSummary: string | null;
+}
+
 const prompt =
-  "请基于这张截图的具体使用场景和界面语境，从专业UI/视觉设计角度，提炼5到10个最关键的设计关键词。" +
-  "重点解析布局结构、组件形态、字体、颜色、材质、层级关系、交互定义。" +
-  "避免抽象评价。输出 JSON 数组，每项是一个短关键词。";
+  "请基于这张截图的具体使用场景和界面语境，从专业UI/视觉设计角度，提炼5-10个最关键的设计关键词。" +
+  "关键解析设计中的布局结构、组件形态、字体、颜色、材质、层级关系、交互的定义，避免抽象评价，需直接可用于复刻或检索类似设计。" +
+  '另外再生成一句非常简短的检索型 prompt 描述，用于以后快速回忆这张图的感觉，控制在 14 个词以内。' +
+  '输出 JSON：{"terms":["..."],"promptSummary":"..."}。每个关键词保持简短具体，避免句子。';
 
 export async function generateDesignTerms(input: GenerateTermsInput) {
   try {
@@ -50,7 +56,7 @@ async function generateViaOpenAiCompatible(input: GenerateTermsInput) {
         {
           role: "user",
           content: [
-            { type: "text", text: `${prompt} 输出格式：{"terms":["..."]}` },
+            { type: "text", text: prompt },
             { type: "image_url", image_url: { url: input.imageUrl } },
           ],
         },
@@ -90,7 +96,7 @@ async function generateViaAnthropic(input: GenerateTermsInput) {
             },
             {
               type: "text",
-              text: `${prompt} 输出 JSON：{"terms":["..."]}`,
+              text: prompt,
             },
           ],
         },
@@ -106,6 +112,36 @@ async function generateViaAnthropic(input: GenerateTermsInput) {
 async function generateViaGemini(input: GenerateTermsInput) {
   const apiKey = config.ai.geminiApiKey || config.ai.apiKey;
   const model = config.ai.geminiModel;
+  const baseUrl = config.ai.geminiBaseUrl;
+
+  if (baseUrl) {
+    const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
+    const response = await fetch(`${normalizedBaseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: input.imageUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const data = await response.json();
+    const raw = data?.choices?.[0]?.message?.content ?? "{}";
+    return parseTermsFromUnknownPayload(raw);
+  }
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -117,7 +153,7 @@ async function generateViaGemini(input: GenerateTermsInput) {
         contents: [
           {
             parts: [
-              { text: `${prompt} 输出 JSON：{"terms":["..."]}` },
+              { text: prompt },
               {
                 inlineData: {
                   mimeType: extractMediaType(input.imageUrl),
@@ -158,7 +194,7 @@ async function generateViaLiteLlm(input: GenerateTermsInput) {
         {
           role: "user",
           content: [
-            { type: "text", text: `${prompt} 输出格式：{"terms":["..."]}` },
+            { type: "text", text: prompt },
             { type: "image_url", image_url: { url: input.imageUrl } },
           ],
         },
@@ -171,10 +207,18 @@ async function generateViaLiteLlm(input: GenerateTermsInput) {
   return parseTermsFromUnknownPayload(raw);
 }
 
-function parseTermsFromUnknownPayload(raw: string) {
-  const parsed = JSON.parse(raw);
+function parseTermsFromUnknownPayload(raw: string): DesignInsight {
+  const cleaned = String(raw).trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "");
+  const parsed = JSON.parse(cleaned);
   const terms = Array.isArray(parsed?.terms) ? parsed.terms : [];
-  return sanitizeTerms(terms);
+  const promptSummary =
+    typeof parsed?.promptSummary === "string"
+      ? parsed.promptSummary.trim().slice(0, 180)
+      : null;
+  return {
+    terms: sanitizeTerms(terms),
+    promptSummary: promptSummary || null,
+  };
 }
 
 function sanitizeTerms(input: string[]) {
@@ -184,12 +228,24 @@ function sanitizeTerms(input: string[]) {
     .slice(0, 10);
 }
 
-function generateMockTerms(seed: string) {
+function generateMockTerms(seed: string): DesignInsight {
   const pools = [
-    ["editorial layout", "paper texture", "soft shadow", "warm neutral palette"],
-    ["glassmorphism", "frosted layer", "cool blur", "translucent panel"],
-    ["poster composition", "oversized type", "calm negative space", "soft gradient"],
-    ["polaroid framing", "tape accent", "scrapbook feel", "gentle depth"],
+    {
+      terms: ["editorial layout", "paper texture", "soft shadow", "warm neutral palette"],
+      promptSummary: "warm editorial board with paper texture",
+    },
+    {
+      terms: ["glassmorphism", "frosted layer", "cool blur", "translucent panel"],
+      promptSummary: "soft glass card with translucent layers",
+    },
+    {
+      terms: ["poster composition", "oversized type", "calm negative space", "soft gradient"],
+      promptSummary: "minimal poster layout with large type",
+    },
+    {
+      terms: ["polaroid framing", "tape accent", "scrapbook feel", "gentle depth"],
+      promptSummary: "scrapbook polaroid card pinned on board",
+    },
   ];
 
   const index = seed.length % pools.length;

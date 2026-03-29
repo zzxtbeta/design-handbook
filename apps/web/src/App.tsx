@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DaySlot, WeekData, WeekEntry } from "./types";
 
 const dayGroups = [
@@ -11,12 +11,34 @@ const dayGroups = [
   ["weekend", "周末"],
 ] as const;
 
+type ViewMode = "week" | "day";
+
+interface BoardLayout {
+  x: number;
+  y: number;
+  width: number;
+  z: number;
+}
+
+type WeekCardSizes = Record<string, number>;
+
 export function App() {
   const [week, setWeek] = useState<WeekData | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [activeDay, setActiveDay] = useState<DaySlot>("mon");
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [appearance, setAppearance] = useState<"light" | "dark">("light");
   const [isPasting, setIsPasting] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+  const [dayNoteDraft, setDayNoteDraft] = useState("");
+  const [notesHeight, setNotesHeight] = useState(250);
+  const [boardLayouts, setBoardLayouts] = useState<Record<string, BoardLayout>>({});
+  const [weekCardSizes, setWeekCardSizes] = useState<WeekCardSizes>({});
+  const [copiedTerm, setCopiedTerm] = useState<string | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+  const [processingStage, setProcessingStage] = useState("Preparing image...");
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     void loadWeek();
@@ -28,7 +50,56 @@ export function App() {
     }
 
     setNoteDraft(week.note);
+    setDayNoteDraft(window.localStorage.getItem(dayNoteStorageKey(week.weekKey, activeDay)) ?? "");
   }, [week]);
+
+  useEffect(() => {
+    if (!week) {
+      return;
+    }
+
+    const storageKey = layoutStorageKey(week.weekKey, activeDay);
+    const raw = window.localStorage.getItem(storageKey);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, BoardLayout>) : {};
+    const entries = week.entries.filter((entry) => entry.daySlot === activeDay);
+    const merged = { ...parsed };
+
+    entries.forEach((entry, index) => {
+      if (!merged[entry.id]) {
+        merged[entry.id] = defaultBoardLayout(entry, index);
+      }
+    });
+
+    setBoardLayouts(merged);
+  }, [activeDay, week]);
+
+  useEffect(() => {
+    if (!week) {
+      return;
+    }
+
+    const raw = window.localStorage.getItem(weekCardStorageKey(week.weekKey));
+    setWeekCardSizes(raw ? (JSON.parse(raw) as WeekCardSizes) : {});
+  }, [week]);
+
+  useEffect(() => {
+    if (!week || Object.keys(boardLayouts).length === 0) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      layoutStorageKey(week.weekKey, activeDay),
+      JSON.stringify(boardLayouts),
+    );
+  }, [activeDay, boardLayouts, week]);
+
+  useEffect(() => {
+    if (!week) {
+      return;
+    }
+
+    window.localStorage.setItem(weekCardStorageKey(week.weekKey), JSON.stringify(weekCardSizes));
+  }, [week, weekCardSizes]);
 
   useEffect(() => {
     function handlePaste(event: ClipboardEvent) {
@@ -55,24 +126,7 @@ export function App() {
       const reader = new FileReader();
       reader.onload = async () => {
         const imageDataUrl = String(reader.result ?? "");
-        const dimensions = await readImageSize(imageDataUrl);
-
-        await fetch("/api/entries", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            weekKey: week.weekKey,
-            daySlot: activeDay,
-            imageDataUrl,
-            imageWidth: dimensions.width,
-            imageHeight: dimensions.height,
-          }),
-        });
-
-        setIsPasting(false);
-        await loadWeek();
+        await submitImage(imageDataUrl);
       };
 
       reader.readAsDataURL(file);
@@ -81,6 +135,40 @@ export function App() {
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
   }, [activeDay, week]);
+
+  useEffect(() => {
+    const activeProcessingCount = week
+      ? week.entries.filter((entry) => entry.status === "processing").length
+      : 0;
+
+    if (!isPasting && activeProcessingCount === 0) {
+      return;
+    }
+
+    const stages = [
+      "Preparing image...",
+      "Uploading snapshot...",
+      "Reading layout cues...",
+      "Extracting design language...",
+    ];
+    let index = 0;
+    setProcessingStage(stages[0]);
+
+    const interval = window.setInterval(() => {
+      index = Math.min(index + 1, stages.length - 1);
+      setProcessingStage(stages[index]);
+    }, 900);
+
+    return () => window.clearInterval(interval);
+  }, [isPasting, week]);
+
+  useEffect(() => {
+    if (!week) {
+      return;
+    }
+
+    window.localStorage.setItem(dayNoteStorageKey(week.weekKey, activeDay), dayNoteDraft);
+  }, [activeDay, dayNoteDraft, week]);
 
   useEffect(() => {
     if (!week) {
@@ -108,6 +196,28 @@ export function App() {
     return () => window.clearInterval(interval);
   }, [week]);
 
+  useEffect(() => {
+    if (!copiedTerm) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setCopiedTerm(null), 1400);
+    return () => window.clearTimeout(timeout);
+  }, [copiedTerm]);
+
+  useEffect(() => {
+    function closeExpandedTerms() {
+      setExpandedEntryId(null);
+    }
+
+    window.addEventListener("click", closeExpandedTerms);
+    return () => window.removeEventListener("click", closeExpandedTerms);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = appearance;
+  }, [appearance]);
+
   const entriesByDay = useMemo(() => {
     if (!week) {
       return new Map<DaySlot, WeekEntry[]>();
@@ -120,6 +230,12 @@ export function App() {
       ]),
     );
   }, [week]);
+
+  const activeEntries = week
+    ? week.entries.filter((entry) => entry.daySlot === activeDay)
+    : [];
+  const processingCount = week ? week.entries.filter((entry) => entry.status === "processing").length : 0;
+  const weeklySummary = useMemo(() => buildWeeklySummary(week), [week]);
 
   async function loadWeek() {
     const response = await fetch(`/api/weeks/offset-${weekOffset}`);
@@ -134,6 +250,20 @@ export function App() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ action: "delete" }),
+    });
+
+    await loadWeek();
+  }
+
+  async function handleDeleteEntry(entryId: string) {
+    await fetch(`/api/entries/${entryId}`, {
+      method: "DELETE",
+    });
+
+    setBoardLayouts((current) => {
+      const next = { ...current };
+      delete next[entryId];
+      return next;
     });
 
     await loadWeek();
@@ -156,6 +286,85 @@ export function App() {
     setWeek(updated);
   }
 
+  async function handleCopyTerm(term: string) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(term);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = term;
+        textarea.setAttribute("readonly", "true");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = term;
+      textarea.setAttribute("readonly", "true");
+      textarea.style.position = "absolute";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+
+    setCopiedTerm(term);
+  }
+
+  async function submitImage(imageDataUrl: string) {
+    if (!week) {
+      return;
+    }
+
+    setIsPasting(true);
+    const dimensions = await readImageSize(imageDataUrl);
+
+    await fetch("/api/entries", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        weekKey: week.weekKey,
+        daySlot: activeDay,
+        imageDataUrl,
+        imageWidth: dimensions.width,
+        imageHeight: dimensions.height,
+      }),
+    });
+
+    setIsPasting(false);
+    await loadWeek();
+  }
+
+  function handleUpdateLayout(entryId: string, next: Partial<BoardLayout>) {
+    setBoardLayouts((current) => ({
+      ...current,
+      [entryId]: {
+        ...(current[entryId] ?? defaultBoardLayout(activeEntries[0], 0)),
+        ...next,
+      },
+    }));
+  }
+
+  function handleUpdateWeekCardSize(entryId: string, width: number) {
+    setWeekCardSizes((current) => ({
+      ...current,
+      [entryId]: width,
+    }));
+  }
+
+  function handleFocusTodayBoard() {
+    setWeekOffset(0);
+    setActiveDay(todaySlot());
+    setViewMode("day");
+  }
+
   if (!week) {
     return (
       <main className="app-shell">
@@ -165,106 +374,290 @@ export function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell app-shell-${appearance}`}>
       <div className="ambient ambient-left" />
       <div className="ambient ambient-right" />
       <section className="board">
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (!file) {
+              return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async () => {
+              await submitImage(String(reader.result ?? ""));
+              event.target.value = "";
+            };
+            reader.readAsDataURL(file);
+          }}
+        />
         <header className="topbar">
           <div className="title-block">
             <h1>Week {week.weekNumber}</h1>
             <p className="date-range">{week.label}</p>
           </div>
           <div className="week-actions">
-            <button
-              className="nav-button"
-              onClick={() => setWeekOffset((value) => value - 1)}
-            >
-              上一周
-            </button>
-            <button
-              className="today-button"
-              onClick={() => setWeekOffset(0)}
-            >
-              Today
-            </button>
-            <button
-              className="nav-button"
-              onClick={() => setWeekOffset((value) => value + 1)}
-            >
-              下一周
-            </button>
+            <div className="week-actions-top">
+              <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value - 1)}>
+                ‹
+              </button>
+              <button className="today-button" onClick={handleFocusTodayBoard}>
+                Week {week.weekNumber}
+              </button>
+              <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value + 1)}>
+                ›
+              </button>
+              <button className="top-tool active" onClick={() => setShowSummary(true)}>
+                <span className="top-tool-icon">◫</span>
+                <span>Weekly Summary</span>
+              </button>
+              <button
+                className="top-tool icon-tool"
+                onClick={() => setAppearance((current) => (current === "light" ? "dark" : "light"))}
+                aria-label="切换明暗主题"
+              >
+                ☾
+              </button>
+            </div>
           </div>
         </header>
 
-        <section className="canvas-shell">
-          <aside className="canvas-sidebar">
-            <p className="sidebar-label">当前模式</p>
-            <strong>关键词手帐</strong>
-            <p className="sidebar-copy">
-              直接在页面里粘贴截图。当前贴图目标是
-              <span> {labelForDay(activeDay)}</span>。
-            </p>
-            <div className="sidebar-pills">
-              <span>{isPasting ? "正在贴图" : "等待粘贴"}</span>
-              <span>长图视图</span>
-            </div>
-          </aside>
-
-          <section className="week-grid">
-            <div className="week-row">
-              {dayGroups.slice(0, 3).map(([slot, label]) => (
-                <DayColumn
-                  key={slot}
-                  dayLabel={label}
-                  daySlot={slot}
-                  dayNumber={week.dayNumbers[slot]}
-                  isActive={activeDay === slot}
-                  onActivate={setActiveDay}
-                  onDeleteTerm={handleDeleteTerm}
-                  entries={entriesByDay.get(slot) ?? []}
-                />
-              ))}
-            </div>
-
-            <div className="week-row">
-              {dayGroups.slice(3).map(([slot, label]) => (
-                <DayColumn
-                  key={slot}
-                  dayLabel={label}
-                  daySlot={slot}
-                  dayNumber={week.dayNumbers[slot]}
-                  isActive={activeDay === slot}
-                  onActivate={setActiveDay}
-                  onDeleteTerm={handleDeleteTerm}
-                  entries={entriesByDay.get(slot) ?? []}
-                  isWeekend={slot === "weekend"}
-                />
-              ))}
-            </div>
-          </section>
+        <section className="view-switcher">
+          <span className="view-copy">{viewMode === "week" ? "Weekly Board" : `Focused ${labelForDay(activeDay)}`}</span>
+          {copiedTerm ? <span className="copied-inline">已复制</span> : null}
         </section>
 
-        <section className="notes-panel">
-          <div className="notes-header">
-            <span>NOTES</span>
-            <span className="notes-meta">
-              {isPasting ? "正在贴图..." : `当前贴图列: ${labelForDay(activeDay)}`}
-            </span>
-          </div>
-          <textarea
-            className="notes-textarea"
-            value={noteDraft}
-            onChange={(event) => setNoteDraft(event.target.value)}
-          />
-          <div className="notes-actions">
-            <button
-              className="today-button"
-              onClick={() => void handleSaveNote()}
+        <motion.section
+          className="paper-sheet"
+          animate={{
+            filter: showSummary || processingCount > 0 ? "blur(8px)" : "blur(0px)",
+          }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+        >
+          <AnimatePresence mode="wait">
+            {viewMode === "week" ? (
+              <motion.div
+                key="week-view"
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.03 }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+                style={{ transformOrigin: focusOrigin(activeDay) }}
+              >
+              <section className="week-grid">
+                <div className="week-row">
+                  {dayGroups.slice(0, 3).map(([slot, label]) => (
+                    <DayColumn
+                      key={slot}
+                      dayLabel={label}
+                      daySlot={slot}
+                      dayNumber={week.dayNumbers[slot]}
+                      isActive={activeDay === slot}
+                      onActivate={(day) => {
+                        setActiveDay(day);
+                        setViewMode("day");
+                      }}
+                      onDeleteTerm={handleDeleteTerm}
+                      onDeleteEntry={handleDeleteEntry}
+                      onCopyTerm={handleCopyTerm}
+                      weekCardSizes={weekCardSizes}
+                      onResizeCard={handleUpdateWeekCardSize}
+                      expandedEntryId={expandedEntryId}
+                      onToggleExpandedEntry={setExpandedEntryId}
+                      entries={entriesByDay.get(slot) ?? []}
+                    />
+                  ))}
+                </div>
+
+                <div className="week-row">
+                  {dayGroups.slice(3).map(([slot, label]) => (
+                    <DayColumn
+                      key={slot}
+                      dayLabel={label}
+                      daySlot={slot}
+                      dayNumber={week.dayNumbers[slot]}
+                      isActive={activeDay === slot}
+                      onActivate={(day) => {
+                        setActiveDay(day);
+                        setViewMode("day");
+                      }}
+                      onDeleteTerm={handleDeleteTerm}
+                      onDeleteEntry={handleDeleteEntry}
+                      onCopyTerm={handleCopyTerm}
+                      weekCardSizes={weekCardSizes}
+                      onResizeCard={handleUpdateWeekCardSize}
+                      expandedEntryId={expandedEntryId}
+                      onToggleExpandedEntry={setExpandedEntryId}
+                      entries={entriesByDay.get(slot) ?? []}
+                      isWeekend={slot === "weekend"}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              <section className="notes-panel">
+                <div className="notes-header">
+                  <span>NOTES</span>
+                  <span className="notes-meta">
+                    {isPasting ? "正在贴图..." : `当前贴图列: ${labelForDay(activeDay)}`}
+                  </span>
+                </div>
+                <button
+                  className="notes-resize-handle"
+                  aria-label="调整笔记高度"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    const startY = event.clientY;
+                    const startHeight = notesHeight;
+
+                    const handleMove = (moveEvent: MouseEvent) => {
+                      const nextHeight = Math.max(
+                        180,
+                        Math.min(520, startHeight + (moveEvent.clientY - startY)),
+                      );
+                      setNotesHeight(nextHeight);
+                    };
+
+                    const handleUp = () => {
+                      window.removeEventListener("mousemove", handleMove);
+                      window.removeEventListener("mouseup", handleUp);
+                    };
+
+                    window.addEventListener("mousemove", handleMove);
+                    window.addEventListener("mouseup", handleUp);
+                  }}
+                >
+                  <span />
+                </button>
+                <textarea
+                  className="notes-textarea"
+                  style={{ minHeight: `${notesHeight}px` }}
+                  value={noteDraft}
+                  onChange={(event) => setNoteDraft(event.target.value)}
+                />
+                <div className="notes-actions">
+                  <div className="notes-inline-actions">
+                    <button className="ghost-action" onClick={() => setShowSummary(true)}>周总结</button>
+                  </div>
+                  <button className="today-button" onClick={() => void handleSaveNote()}>
+                    保存本周笔记
+                  </button>
+                </div>
+              </section>
+              </motion.div>
+            ) : (
+            <motion.div
+              key="day-view"
+              initial={{ opacity: 0, scale: 1.04 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              style={{ transformOrigin: focusOrigin(activeDay) }}
             >
-              保存本周笔记
-            </button>
-          </div>
-        </section>
+            <DayCanvas
+              dayLabel={labelForDay(activeDay)}
+              dayNumber={week.dayNumbers[activeDay]}
+              entries={activeEntries}
+              layouts={boardLayouts}
+              onBack={() => setViewMode("week")}
+              dayNoteDraft={dayNoteDraft}
+              onDayNoteChange={setDayNoteDraft}
+              onDeleteTerm={handleDeleteTerm}
+              onDeleteEntry={handleDeleteEntry}
+              onCopyTerm={handleCopyTerm}
+              expandedEntryId={expandedEntryId}
+              onToggleExpandedEntry={setExpandedEntryId}
+              onUpdateLayout={handleUpdateLayout}
+            />
+            </motion.div>
+          )}
+          </AnimatePresence>
+        </motion.section>
+
+        <AnimatePresence>
+          {(isPasting || processingCount > 0) && (
+            <motion.div
+              className="processing-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="processing-modal"
+                initial={{ scale: 0.92, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.96, y: 10 }}
+              >
+                <div className="processing-orb">✦</div>
+                <strong>{processingStage}</strong>
+                <div className="processing-bar">
+                  <motion.span
+                    animate={{ x: ["-30%", "110%"] }}
+                    transition={{ repeat: Infinity, duration: 1.3, ease: "easeInOut" }}
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showSummary && week ? (
+            <motion.div
+              className="summary-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSummary(false)}
+            >
+              <motion.section
+                className="summary-card"
+                initial={{ scale: 0.9, y: 28 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 10 }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button className="summary-close" onClick={() => setShowSummary(false)}>
+                  ×
+                </button>
+                <h2>Week {week.weekNumber} Summary</h2>
+                <p>{week.label}</p>
+                <div className="summary-stats">
+                  <div>
+                    <span>Total Items</span>
+                    <strong>{weeklySummary.totalItems}</strong>
+                  </div>
+                  <div>
+                    <span>Terms Found</span>
+                    <strong>{weeklySummary.totalTerms}</strong>
+                  </div>
+                </div>
+                <div className="summary-list">
+                  {weeklySummary.topTerms.map((item, index) => (
+                    <button
+                      key={item.term}
+                      className="summary-row"
+                      onClick={() => void handleCopyTerm(item.term)}
+                    >
+                      <span className="summary-rank">{index + 1}</span>
+                      <span className="summary-term">{item.term}</span>
+                      <span className="summary-row-tail">
+                        <span className="summary-count">{item.count}x</span>
+                        <span className="summary-copy">⧉</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.section>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </section>
     </main>
   );
@@ -278,6 +671,12 @@ function DayColumn({
   isActive,
   onActivate,
   onDeleteTerm,
+  onDeleteEntry,
+  onCopyTerm,
+  weekCardSizes,
+  onResizeCard,
+  expandedEntryId,
+  onToggleExpandedEntry,
   isWeekend = false,
 }: {
   daySlot: DaySlot;
@@ -287,97 +686,348 @@ function DayColumn({
   isActive: boolean;
   onActivate: (day: DaySlot) => void;
   onDeleteTerm: (termId: string) => void;
+  onDeleteEntry: (entryId: string) => void;
+  onCopyTerm: (term: string) => void;
+  weekCardSizes: WeekCardSizes;
+  onResizeCard: (entryId: string, width: number) => void;
+  expandedEntryId: string | null;
+  onToggleExpandedEntry: (entryId: string | null) => void;
   isWeekend?: boolean;
 }) {
   return (
     <section
       className={`day-column ${isWeekend ? "day-column-weekend" : ""} ${
         isActive ? "day-column-active" : ""
-      }`}
-      onClick={() => onActivate(daySlot)}
+      } day-column-${daySlot}`}
     >
       <header className="day-header">
-        <div>
+        <button
+          className="day-jump-target"
+          onClick={(event) => {
+            event.stopPropagation();
+            onActivate(daySlot);
+          }}
+        >
           <div className="day-number">{dayNumber}</div>
           <div className="day-name">{dayLabel}</div>
-        </div>
-        {isActive ? <span className="day-active-chip">贴图目标</span> : null}
+        </button>
       </header>
       <div className="entry-stack">
         {entries.map((entry, index) => (
-          <motion.article
+          <JournalCard
             key={entry.id}
-            className={`entry-card entry-card-${entry.status}`}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.06 }}
-            style={{ rotate: entryRotation(index) }}
-          >
-            <div className={`tape tape-${entry.decorationStyle}`} />
-            <div className={`pin pin-${entry.decorationStyle}`} />
-            <div className="image-frame">
-              <img
-                className="entry-image"
-                src={entry.imageUrl}
-                alt={entry.title}
-              />
-            </div>
-            <div className="entry-caption">
-              <strong>{entry.title}</strong>
-              <span>{statusLabel(entry)}</span>
-            </div>
-            <div className="term-cluster">
-              {visibleTerms(entry).length > 0 ? (
-                <div className="term-summary">
-                  <button
-                    className="term-pill primary"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void navigator.clipboard.writeText(visibleTerms(entry)[0].term);
-                    }}
-                  >
-                    {visibleTerms(entry)[0].term}
-                    {visibleTerms(entry).length > 1 ? (
-                      <span className="term-count">+{visibleTerms(entry).length - 1}</span>
-                    ) : null}
-                  </button>
-                  <div className="term-hover-list">
-                    {visibleTerms(entry).map((term) => (
-                      <button
-                        key={term.id}
-                        className="term-pill floating"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void navigator.clipboard.writeText(term.term);
-                        }}
-                      >
-                        <span>{term.term}</span>
-                        <span
-                          className="term-delete"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            void onDeleteTerm(term.id);
-                          }}
-                        >
-                          ×
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <span className="processing-copy">
-                  {entry.status === "failed"
-                    ? entry.errorMessage ?? "处理失败"
-                    : "正在把感觉翻译成设计语言..."}
-                </span>
-              )}
-            </div>
-          </motion.article>
+            entry={entry}
+            index={index}
+            daySlot={daySlot}
+            onDeleteTerm={onDeleteTerm}
+            onDeleteEntry={onDeleteEntry}
+            onCopyTerm={onCopyTerm}
+            resizedWidth={weekCardSizes[entry.id]}
+            onResizeWidth={onResizeCard}
+            isExpanded={expandedEntryId === entry.id}
+            onToggleExpanded={onToggleExpandedEntry}
+          />
         ))}
       </div>
     </section>
+  );
+}
+
+function DayCanvas({
+  dayLabel,
+  dayNumber,
+  entries,
+  layouts,
+  onBack,
+  dayNoteDraft,
+  onDayNoteChange,
+  onDeleteTerm,
+  onDeleteEntry,
+  onCopyTerm,
+  expandedEntryId,
+  onToggleExpandedEntry,
+  onUpdateLayout,
+}: {
+  dayLabel: string;
+  dayNumber: string;
+  entries: WeekEntry[];
+  layouts: Record<string, BoardLayout>;
+  onBack: () => void;
+  dayNoteDraft: string;
+  onDayNoteChange: (value: string) => void;
+  onDeleteTerm: (termId: string) => void;
+  onDeleteEntry: (entryId: string) => void;
+  onCopyTerm: (term: string) => void;
+  expandedEntryId: string | null;
+  onToggleExpandedEntry: (entryId: string | null) => void;
+  onUpdateLayout: (entryId: string, next: Partial<BoardLayout>) => void;
+}) {
+  return (
+    <section className="day-canvas">
+      <header className="day-canvas-header">
+        <div>
+          <p className="day-canvas-kicker">Focused Day</p>
+          <h2>
+            {dayNumber} · {dayLabel}
+          </h2>
+        </div>
+        <div className="day-canvas-actions">
+          <button className="nav-button" onClick={onBack}>
+            Back to Week
+          </button>
+        </div>
+      </header>
+      <div className="day-canvas-board">
+        {entries.map((entry, index) => {
+          const layout = layouts[entry.id] ?? defaultBoardLayout(entry, index);
+          const ratio = imageRatio(entry);
+          const cardHeight = Math.max(190, layout.width / ratio + 88);
+
+          return (
+            <motion.article
+              key={entry.id}
+              className="day-board-card"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              style={{
+                left: `${layout.x}px`,
+                top: `${layout.y}px`,
+                width: `${layout.width}px`,
+                height: `${cardHeight}px`,
+                zIndex: layout.z,
+                rotate: entryRotation(index),
+              }}
+              onMouseDown={(event) => {
+                if ((event.target as HTMLElement).closest(".resize-handle")) {
+                  return;
+                }
+
+                const startX = event.clientX;
+                const startY = event.clientY;
+                const startLeft = layout.x;
+                const startTop = layout.y;
+                onUpdateLayout(entry.id, { z: Date.now() });
+
+                const handleMove = (moveEvent: MouseEvent) => {
+                  onUpdateLayout(entry.id, {
+                    x: Math.max(0, startLeft + (moveEvent.clientX - startX)),
+                    y: Math.max(0, startTop + (moveEvent.clientY - startY)),
+                  });
+                };
+
+                const handleUp = () => {
+                  window.removeEventListener("mousemove", handleMove);
+                  window.removeEventListener("mouseup", handleUp);
+                };
+
+                window.addEventListener("mousemove", handleMove);
+                window.addEventListener("mouseup", handleUp);
+              }}
+            >
+              <JournalCard
+                entry={entry}
+                index={index}
+                daySlot="mon"
+                onDeleteTerm={onDeleteTerm}
+                onDeleteEntry={onDeleteEntry}
+                onCopyTerm={onCopyTerm}
+                isExpanded={expandedEntryId === entry.id}
+                onToggleExpanded={onToggleExpandedEntry}
+                canvasMode
+              />
+              <button
+                className="resize-handle resize-handle-corner"
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  const startX = event.clientX;
+                  const startWidth = layout.width;
+                  onUpdateLayout(entry.id, { z: Date.now() });
+
+                  const handleMove = (moveEvent: MouseEvent) => {
+                    onUpdateLayout(entry.id, {
+                      width: Math.max(180, Math.min(420, startWidth + (moveEvent.clientX - startX))),
+                    });
+                  };
+
+                  const handleUp = () => {
+                    window.removeEventListener("mousemove", handleMove);
+                    window.removeEventListener("mouseup", handleUp);
+                  };
+
+                  window.addEventListener("mousemove", handleMove);
+                  window.addEventListener("mouseup", handleUp);
+                }}
+              />
+              <button
+                className="resize-handle resize-handle-edge"
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  const startX = event.clientX;
+                  const startWidth = layout.width;
+                  onUpdateLayout(entry.id, { z: Date.now() });
+
+                  const handleMove = (moveEvent: MouseEvent) => {
+                    onUpdateLayout(entry.id, {
+                      width: Math.max(180, Math.min(420, startWidth + (moveEvent.clientX - startX))),
+                    });
+                  };
+
+                  const handleUp = () => {
+                    window.removeEventListener("mousemove", handleMove);
+                    window.removeEventListener("mouseup", handleUp);
+                  };
+
+                  window.addEventListener("mousemove", handleMove);
+                  window.addEventListener("mouseup", handleUp);
+                }}
+              />
+            </motion.article>
+          );
+        })}
+      </div>
+      <section className="day-note-panel">
+        <div className="day-note-header">Day Notes</div>
+        <textarea
+          className="day-note-textarea"
+          value={dayNoteDraft}
+          onChange={(event) => onDayNoteChange(event.target.value)}
+          placeholder="记下今天这组灵感的感觉..."
+        />
+      </section>
+    </section>
+  );
+}
+
+function JournalCard({
+  entry,
+  index,
+  daySlot,
+  onDeleteTerm,
+  onDeleteEntry,
+  onCopyTerm,
+  resizedWidth,
+  onResizeWidth,
+  isExpanded,
+  onToggleExpanded,
+  canvasMode = false,
+}: {
+  entry: WeekEntry;
+  index: number;
+  daySlot: DaySlot;
+  onDeleteTerm: (termId: string) => void;
+  onDeleteEntry: (entryId: string) => void;
+  onCopyTerm: (term: string) => void;
+  resizedWidth?: number;
+  onResizeWidth?: (entryId: string, width: number) => void;
+  isExpanded: boolean;
+  onToggleExpanded: (entryId: string | null) => void;
+  canvasMode?: boolean;
+}) {
+  return (
+    <article
+      className={`entry-card entry-card-${entry.status} ${canvasMode ? "entry-card-canvas" : ""} ${
+        isExpanded ? "entry-card-expanded" : ""
+      }`}
+      style={canvasMode ? undefined : entryStyle(index, daySlot, entry, resizedWidth)}
+    >
+      <div className={`tape tape-${entry.decorationStyle}`} />
+      <div className={`pin pin-${entry.decorationStyle}`} />
+      <div className={`paper-clip paper-clip-${entry.decorationStyle}`} />
+      <button
+        className="entry-delete"
+        onClick={(event) => {
+          event.stopPropagation();
+          void onDeleteEntry(entry.id);
+        }}
+      >
+        ×
+      </button>
+      <div className="image-frame">
+        <img className="entry-image" src={entry.imageUrl} alt={entry.title} />
+      </div>
+      <div className="term-cluster">
+        {visibleTerms(entry).length > 0 ? (
+          <div className="term-summary">
+            {isExpanded ? (
+              <div className="term-hover-list is-open">
+                {visibleTerms(entry).map((term, termIndex) => (
+                  <div key={term.id} className="term-pill-row">
+                    <button
+                      className="term-pill floating"
+                      style={{
+                        width: `${Math.max(68, 100 - termIndex * 5)}%`,
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onCopyTerm(term.term);
+                      }}
+                    >
+                      <span>{term.term}</span>
+                      <span className="term-copy">⧉</span>
+                    </button>
+                    <button
+                      className="term-delete"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onDeleteTerm(term.id);
+                      }}
+                      aria-label={`删除术语 ${term.term}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <button
+                className="term-pill primary"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleExpanded(isExpanded ? null : entry.id);
+                }}
+              >
+                <span>{visibleTerms(entry)[0].term}</span>
+                {visibleTerms(entry).length > 1 ? (
+                  <span className="term-count">+{visibleTerms(entry).length - 1}</span>
+                ) : null}
+              </button>
+            )}
+          </div>
+        ) : (
+          <span className="processing-copy">
+            {entry.status === "failed"
+              ? entry.errorMessage ?? "处理失败"
+              : "正在把感觉翻译成设计语言..."}
+          </span>
+        )}
+      </div>
+      {!canvasMode && onResizeWidth ? (
+        <button
+          className="resize-handle resize-handle-week"
+          onMouseDown={(event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            const startX = event.clientX;
+            const startWidth = resizedWidth ?? defaultCardWidth(entry);
+
+            const handleMove = (moveEvent: MouseEvent) => {
+              onResizeWidth(entry.id, Math.max(118, Math.min(220, startWidth + (moveEvent.clientX - startX))));
+            };
+
+            const handleUp = () => {
+              window.removeEventListener("mousemove", handleMove);
+              window.removeEventListener("mouseup", handleUp);
+            };
+
+            window.addEventListener("mousemove", handleMove);
+            window.addEventListener("mouseup", handleUp);
+          }}
+          aria-label="调整周视图卡片宽度"
+        />
+      ) : null}
+    </article>
   );
 }
 
@@ -392,16 +1042,30 @@ function labelForDay(day: DaySlot) {
   }[day];
 }
 
-function statusLabel(entry: WeekEntry) {
-  if (entry.status === "processing") {
-    return "AI 正在提词";
+function todaySlot(): DaySlot {
+  const day = new Date().getDay();
+
+  if (day === 1) {
+    return "mon";
   }
 
-  if (entry.status === "failed") {
-    return "生成失败";
+  if (day === 2) {
+    return "tue";
   }
 
-  return "术语已生成";
+  if (day === 3) {
+    return "wed";
+  }
+
+  if (day === 4) {
+    return "thu";
+  }
+
+  if (day === 5) {
+    return "fri";
+  }
+
+  return "weekend";
 }
 
 function visibleTerms(entry: WeekEntry) {
@@ -411,6 +1075,91 @@ function visibleTerms(entry: WeekEntry) {
 function entryRotation(index: number) {
   const angles = [-3, 2, -1, 3, -2];
   return angles[index % angles.length];
+}
+
+function entryStyle(index: number, daySlot: DaySlot, entry: WeekEntry, resizedWidth?: number) {
+  const width = resizedWidth ?? defaultCardWidth(entry);
+
+  return {
+    transform: `rotate(${[-1.4, 0.6, -0.8, 0.8][index % 4]}deg)`,
+    width: `min(100%, ${width}px)`,
+  };
+}
+
+function defaultCardWidth(entry: WeekEntry) {
+  const ratio = imageRatio(entry);
+  return ratio > 1.25 ? 168 : ratio < 0.9 ? 150 : 160;
+}
+
+function imageRatio(entry: WeekEntry) {
+  const width = entry.imageWidth ?? 280;
+  const height = entry.imageHeight ?? 220;
+  return width / height;
+}
+
+function defaultBoardLayout(entry: WeekEntry | undefined, index: number): BoardLayout {
+  const baseWidth = entry ? Math.max(200, Math.min(340, (entry.imageWidth ?? 260) * 0.78)) : 240;
+  const col = index % 3;
+  const row = Math.floor(index / 3);
+
+  return {
+    x: 44 + col * 250 + (index % 2 === 0 ? 18 : -12),
+    y: 72 + row * 220 + (index % 3) * 18,
+    width: baseWidth,
+    z: index + 1,
+  };
+}
+
+function layoutStorageKey(weekKey: string, day: DaySlot) {
+  return `ai-journal-layout:${weekKey}:${day}`;
+}
+
+function dayNoteStorageKey(weekKey: string, day: DaySlot) {
+  return `ai-journal-day-note:${weekKey}:${day}`;
+}
+
+function weekCardStorageKey(weekKey: string) {
+  return `ai-journal-week-card:${weekKey}`;
+}
+
+function focusOrigin(day: DaySlot) {
+  return {
+    mon: "17% 24%",
+    tue: "50% 24%",
+    wed: "83% 24%",
+    thu: "17% 64%",
+    fri: "50% 64%",
+    weekend: "83% 64%",
+  }[day];
+}
+
+function buildWeeklySummary(week: WeekData | null) {
+  if (!week) {
+    return {
+      totalItems: 0,
+      totalTerms: 0,
+      topTerms: [] as Array<{ term: string; count: number }>,
+    };
+  }
+
+  const counter = new Map<string, number>();
+  let totalTerms = 0;
+
+  week.entries.forEach((entry) => {
+    visibleTerms(entry).forEach((term) => {
+      totalTerms += 1;
+      counter.set(term.term, (counter.get(term.term) ?? 0) + 1);
+    });
+  });
+
+  return {
+    totalItems: week.entries.length,
+    totalTerms,
+    topTerms: [...counter.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([term, count]) => ({ term, count })),
+  };
 }
 
 async function readImageSize(imageDataUrl: string) {

@@ -54,6 +54,7 @@ export const entries = pgTable("entries", {
   imageUrl: text("image_url").notNull(),
   imageWidth: integer("image_width"),
   imageHeight: integer("image_height"),
+  promptSummary: varchar("prompt_summary", { length: 180 }),
   status: entryStatusEnum("status").notNull().default("processing"),
   errorMessage: text("error_message"),
   decorationStyle: varchar("decoration_style", { length: 32 }).notNull(),

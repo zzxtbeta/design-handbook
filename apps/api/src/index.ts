@@ -8,6 +8,7 @@ import { config } from "./config";
 import { saveImageDataUrl } from "./image-storage";
 import {
   createEntry,
+  deleteEntry,
   deleteEntryTerm,
   getEntry,
   getWeek,
@@ -102,6 +103,17 @@ app.patch("/api/entry-terms/:id", async (request, response) => {
   response.json(result);
 });
 
+app.delete("/api/entries/:id", async (request, response) => {
+  const result = await deleteEntry(request.params.id);
+
+  if (!result) {
+    response.status(404).json({ error: "Entry not found." });
+    return;
+  }
+
+  response.json(result);
+});
+
 async function processEntry(
   entryId: string,
   imageDataUrl: string,
@@ -116,16 +128,16 @@ async function processEntry(
   }
 
   try {
-    const terms = await generateDesignTerms({
+    const insight = await generateDesignTerms({
       imageUrl: imageDataUrl,
     });
 
-    if (terms.length === 0) {
+    if (insight.terms.length === 0) {
       await markEntryFailed(entryId, "模型返回了空术语结果。");
       return;
     }
 
-    await markEntryReady(entryId, terms);
+    await markEntryReady(entryId, insight);
   } catch (error) {
     console.error("[api] processEntry failed", error);
     await markEntryFailed(entryId, "术语生成失败，请稍后重试。");

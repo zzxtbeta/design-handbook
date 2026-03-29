@@ -1,0 +1,1 @@
+ALTER TABLE "entries" ADD COLUMN "prompt_summary" varchar(180);

@@ -21,6 +21,7 @@ export interface AppConfig {
     anthropicApiKey: string;
     anthropicModel: string;
     geminiApiKey: string;
+    geminiBaseUrl: string | null;
     geminiModel: string;
     litellmApiKey: string;
     litellmBaseUrl: string | null;
@@ -47,7 +48,11 @@ export const config: AppConfig = {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
     anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-3-7-sonnet-latest",
     geminiApiKey: process.env.GEMINI_API_KEY ?? "",
-    geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+    geminiBaseUrl: process.env.GEMINI_BASE_URL ?? null,
+    geminiModel:
+      process.env.GEMINI_MODEL_NAME ??
+      process.env.GEMINI_MODEL ??
+      "gemini-2.5-flash",
     litellmApiKey: process.env.LITELLM_API_KEY ?? "",
     litellmBaseUrl: process.env.LITELLM_BASE_URL ?? null,
     litellmModel: process.env.LITELLM_MODEL ?? "gpt-4.1-mini",
