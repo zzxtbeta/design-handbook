@@ -13,3 +13,4 @@ tmp
 ARTIFACTS/runtime/
 ARTIFACTS/screenshots/
 ARTIFACTS/exports/
+.agents/skills/gstack-*
