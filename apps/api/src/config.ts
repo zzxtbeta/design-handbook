@@ -10,6 +10,7 @@ export type AiProvider =
 export interface AppConfig {
   port: number;
   uploadDir: string;
+  databaseUrl: string;
   ai: {
     provider: AiProvider;
     model: string;
@@ -29,6 +30,9 @@ export interface AppConfig {
 
 export const config: AppConfig = {
   port: Number(process.env.PORT ?? 8787),
+  databaseUrl:
+    process.env.DATABASE_URL ??
+    "postgres://handbook:handbook@127.0.0.1:54329/handbook",
   uploadDir: path.resolve(
     process.cwd(),
     process.env.UPLOAD_DIR ?? "../../ARTIFACTS/runtime/uploads",

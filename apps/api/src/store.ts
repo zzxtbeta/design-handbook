@@ -1,4 +1,14 @@
-export type DaySlot = "mon" | "tue" | "wed" | "thu" | "fri" | "weekend";
+import { asc, eq, inArray } from "drizzle-orm";
+import {
+  entries,
+  entryTerms,
+  weekNotes,
+  weeks,
+  type daySlotEnum,
+} from "@handbook/db";
+import { db } from "./db";
+
+export type DaySlot = (typeof daySlotEnum.enumValues)[number];
 export type EntryStatus = "processing" | "ready" | "failed";
 
 export interface EntryTerm {
@@ -34,38 +44,231 @@ export interface WeekRecord {
 
 const decorationStyles = ["amber", "pink", "sage", "blue"] as const;
 
-const weeks = new Map<string, WeekRecord>();
-
-function now() {
-  return new Date().toISOString();
+export async function getWeek(weekKey: string) {
+  const normalized = normalizedWeekKey(weekKey);
+  const record = await ensureWeekRecord(normalized);
+  return buildWeekRecord(record, normalized);
 }
 
-export function createTerm(term: string, position: number): EntryTerm {
+export async function createEntry(input: {
+  weekKey: string;
+  daySlot: DaySlot;
+  imageUrl: string;
+  imageWidth?: number | null;
+  imageHeight?: number | null;
+}) {
+  const normalized = normalizedWeekKey(input.weekKey);
+  const week = await ensureWeekRecord(normalized);
+  const now = new Date();
+
+  const [entry] = await db
+    .insert(entries)
+    .values({
+      weekId: week.id,
+      daySlot: input.daySlot,
+      imageUrl: input.imageUrl,
+      imageWidth: input.imageWidth ?? null,
+      imageHeight: input.imageHeight ?? null,
+      status: "processing",
+      errorMessage: null,
+      decorationStyle:
+        decorationStyles[Math.floor(Math.random() * decorationStyles.length)],
+      sourceType: "paste",
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  return mapEntry(entry, []);
+}
+
+export async function getEntry(entryId: string) {
+  const [entry] = await db.select().from(entries).where(eq(entries.id, entryId));
+
+  if (!entry) {
+    return null;
+  }
+
+  const terms = await db
+    .select()
+    .from(entryTerms)
+    .where(eq(entryTerms.entryId, entry.id))
+    .orderBy(asc(entryTerms.position));
+
+  return mapEntry(entry, terms);
+}
+
+export async function updateWeekNote(weekKey: string, content: string) {
+  const normalized = normalizedWeekKey(weekKey);
+  const week = await ensureWeekRecord(normalized);
+  const existing = await db
+    .select()
+    .from(weekNotes)
+    .where(eq(weekNotes.weekId, week.id));
+
+  if (existing[0]) {
+    await db
+      .update(weekNotes)
+      .set({
+        content,
+        updatedAt: new Date(),
+      })
+      .where(eq(weekNotes.id, existing[0].id));
+  } else {
+    await db.insert(weekNotes).values({
+      weekId: week.id,
+      content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  return getWeek(normalized);
+}
+
+export async function markEntryReady(entryId: string, terms: string[]) {
+  const timestamp = new Date();
+
+  const [updated] = await db
+    .update(entries)
+    .set({
+      status: "ready",
+      errorMessage: null,
+      updatedAt: timestamp,
+    })
+    .where(eq(entries.id, entryId))
+    .returning();
+
+  if (!updated) {
+    return null;
+  }
+
+  await db.delete(entryTerms).where(eq(entryTerms.entryId, entryId));
+
+  if (terms.length > 0) {
+    await db.insert(entryTerms).values(
+      terms.map((term, index) => ({
+        entryId,
+        term,
+        position: index,
+        source: "gemini" as const,
+        createdAt: timestamp,
+      })),
+    );
+  }
+
+  return getEntry(entryId);
+}
+
+export async function markEntryFailed(entryId: string, message: string) {
+  const [updated] = await db
+    .update(entries)
+    .set({
+      status: "failed",
+      errorMessage: message,
+      updatedAt: new Date(),
+    })
+    .where(eq(entries.id, entryId))
+    .returning();
+
+  if (!updated) {
+    return null;
+  }
+
+  return getEntry(entryId);
+}
+
+export async function deleteEntryTerm(termId: string) {
+  const [updated] = await db
+    .update(entryTerms)
+    .set({
+      deletedAt: new Date(),
+    })
+    .where(eq(entryTerms.id, termId))
+    .returning();
+
+  if (!updated) {
+    return null;
+  }
+
+  await db
+    .update(entries)
+    .set({
+      updatedAt: new Date(),
+    })
+    .where(eq(entries.id, updated.entryId));
+
   return {
-    id: crypto.randomUUID(),
-    term,
-    position,
-    deletedAt: null,
+    entryId: updated.entryId,
+    termId,
   };
 }
 
-function seedWeek(weekKey: string): WeekRecord {
+async function ensureWeekRecord(weekKey: string) {
   const offset = parseWeekOffset(weekKey);
   const metadata = weekMetadata(offset);
-  const record: WeekRecord = {
-    weekKey: normalizedWeekKey(weekKey),
-    weekNumber: metadata.weekNumber,
-    label: metadata.label,
-    dayNumbers: metadata.dayNumbers,
-    note:
-      offset === 0
-        ? "这一周先把贴图 -> 提词 -> 回看闭环做顺，不急着上分析面板。"
-        : `这是第 ${metadata.weekNumber} 周的视觉手帐。重点看时间感和回看体验。`,
-    entries: [
+
+  const existing = await db
+    .select()
+    .from(weeks)
+    .where(eq(weeks.weekKey, metadata.storageKey));
+
+  if (existing[0]) {
+    await ensureWeekNote(existing[0].id, defaultWeekNote(offset, metadata.weekNumber));
+    await seedWeekEntries(existing[0].id, offset);
+    return existing[0];
+  }
+
+  const [created] = await db
+    .insert(weeks)
+    .values({
+      weekKey: metadata.storageKey,
+      weekStart: metadata.weekStart,
+      weekEnd: metadata.weekEnd,
+      weekLabel: metadata.label,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  await ensureWeekNote(created.id, defaultWeekNote(offset, metadata.weekNumber));
+  await seedWeekEntries(created.id, offset);
+  return created;
+}
+
+async function ensureWeekNote(weekId: string, content: string) {
+  const existing = await db
+    .select()
+    .from(weekNotes)
+    .where(eq(weekNotes.weekId, weekId));
+
+  if (!existing[0]) {
+    await db.insert(weekNotes).values({
+      weekId,
+      content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+}
+
+async function seedWeekEntries(weekId: string, offset: number) {
+  const existing = await db
+    .select()
+    .from(entries)
+    .where(eq(entries.weekId, weekId));
+
+  if (existing.length > 0) {
+    return;
+  }
+
+  const now = new Date();
+  const [warm, glass] = await db
+    .insert(entries)
+    .values([
       {
-        id: crypto.randomUUID(),
+        weekId,
         daySlot: "mon",
-        title: offset === 0 ? "Warm editorial" : "Editorial memory",
         imageUrl:
           "/seed/warm-editorial.svg?data=" +
           encodeURIComponent(
@@ -76,19 +279,13 @@ function seedWeek(weekKey: string): WeekRecord {
         status: "ready",
         errorMessage: null,
         decorationStyle: "amber",
-        createdAt: now(),
-        updatedAt: now(),
-        terms: [
-          "editorial layout",
-          "paper texture",
-          "soft shadow",
-          "warm neutral palette",
-        ].map(createTerm),
+        sourceType: "upload",
+        createdAt: now,
+        updatedAt: now,
       },
       {
-        id: crypto.randomUUID(),
+        weekId,
         daySlot: "wed",
-        title: "Soft glass note",
         imageUrl:
           "/seed/soft-glass.svg?data=" +
           encodeURIComponent(
@@ -99,127 +296,107 @@ function seedWeek(weekKey: string): WeekRecord {
         status: "ready",
         errorMessage: null,
         decorationStyle: "sage",
-        createdAt: now(),
-        updatedAt: now(),
-        terms: [
-          "glassmorphism",
-          "soft blur",
-          "airy spacing",
-          "translucent layer",
-        ].map(createTerm),
+        sourceType: "upload",
+        createdAt: now,
+        updatedAt: now,
       },
-    ],
+    ])
+    .returning();
+
+  await db.insert(entryTerms).values([
+    ...["editorial layout", "paper texture", "soft shadow", "warm neutral palette"].map(
+      (term, index) => ({
+        entryId: warm.id,
+        term,
+        position: index,
+        source: "manual" as const,
+        createdAt: now,
+      }),
+    ),
+    ...["glassmorphism", "soft blur", "airy spacing", "translucent layer"].map(
+      (term, index) => ({
+        entryId: glass.id,
+        term,
+        position: index,
+        source: "manual" as const,
+        createdAt: now,
+      }),
+    ),
+  ]);
+}
+
+async function buildWeekRecord(
+  week: typeof weeks.$inferSelect,
+  responseWeekKey: string,
+): Promise<WeekRecord> {
+  const metadata = weekMetadata(offsetFromWeekStart(week.weekStart));
+  const noteRows = await db
+    .select()
+    .from(weekNotes)
+    .where(eq(weekNotes.weekId, week.id));
+
+  const entryRows = await db
+    .select()
+    .from(entries)
+    .where(eq(entries.weekId, week.id))
+    .orderBy(entries.createdAt);
+
+  const entryIds = entryRows.map((entry) => entry.id);
+  const termRows =
+    entryIds.length === 0
+      ? []
+      : await db
+          .select()
+          .from(entryTerms)
+          .where(inArray(entryTerms.entryId, entryIds))
+          .orderBy(asc(entryTerms.position));
+
+  const termsByEntry = new Map<string, typeof termRows>();
+  for (const termRow of termRows) {
+    const list = termsByEntry.get(termRow.entryId) ?? [];
+    list.push(termRow);
+    termsByEntry.set(termRow.entryId, list);
+  }
+
+  return {
+    weekKey: responseWeekKey,
+    weekNumber: metadata.weekNumber,
+    label: week.weekLabel,
+    dayNumbers: metadata.dayNumbers,
+    note: noteRows[0]?.content ?? "",
+    entries: entryRows
+      .map((entry) => mapEntry(entry, termsByEntry.get(entry.id) ?? []))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
   };
-
-  weeks.set(record.weekKey, record);
-  return record;
 }
 
-export function getWeek(weekKey: string) {
-  const normalized = normalizedWeekKey(weekKey);
-  return structuredClone(weeks.get(normalized) ?? seedWeek(normalized));
-}
+function mapEntry(
+  entry: typeof entries.$inferSelect,
+  terms: (typeof entryTerms.$inferSelect)[],
+): Entry {
+  const visibleTerms = terms
+    .filter((term) => term.deletedAt === null)
+    .sort((a, b) => a.position - b.position);
 
-export function createEntry(input: {
-  weekKey: string;
-  daySlot: DaySlot;
-  imageUrl: string;
-  imageWidth?: number | null;
-  imageHeight?: number | null;
-}) {
-  const normalized = normalizedWeekKey(input.weekKey);
-  const record = weeks.get(normalized) ?? seedWeek(normalized);
-  const entry: Entry = {
-    id: crypto.randomUUID(),
-    daySlot: input.daySlot,
-    title: "New inspiration",
-    imageUrl: input.imageUrl,
-    imageWidth: input.imageWidth ?? null,
-    imageHeight: input.imageHeight ?? null,
-    status: "processing",
-    errorMessage: null,
-    decorationStyle:
-      decorationStyles[Math.floor(Math.random() * decorationStyles.length)],
-    createdAt: now(),
-    updatedAt: now(),
-    terms: [],
+  return {
+    id: entry.id,
+    daySlot: entry.daySlot,
+    title: visibleTerms[0]?.term ?? "New inspiration",
+    imageUrl: entry.imageUrl,
+    imageWidth: entry.imageWidth,
+    imageHeight: entry.imageHeight,
+    status: entry.status,
+    errorMessage: entry.errorMessage,
+    decorationStyle: entry.decorationStyle as Entry["decorationStyle"],
+    createdAt: entry.createdAt.toISOString(),
+    updatedAt: entry.updatedAt.toISOString(),
+    terms: visibleTerms.map((term) => ({
+      id: term.id,
+      term: term.term,
+      position: term.position,
+      deletedAt: term.deletedAt?.toISOString() ?? null,
+    })),
   };
-
-  record.entries.unshift(entry);
-  weeks.set(normalized, record);
-
-  return structuredClone(entry);
-}
-
-export function getEntry(entryId: string) {
-  for (const week of weeks.values()) {
-    const entry = week.entries.find((candidate) => candidate.id === entryId);
-    if (entry) {
-      return structuredClone(entry);
-    }
-  }
-
-  return null;
-}
-
-export function updateWeekNote(weekKey: string, content: string) {
-  const normalized = normalizedWeekKey(weekKey);
-  const record = weeks.get(normalized) ?? seedWeek(normalized);
-  record.note = content;
-  weeks.set(normalized, record);
-  return structuredClone(record);
-}
-
-export function markEntryReady(entryId: string, terms: string[]) {
-  for (const week of weeks.values()) {
-    const entry = week.entries.find((candidate) => candidate.id === entryId);
-    if (!entry) {
-      continue;
-    }
-
-    entry.status = "ready";
-    entry.errorMessage = null;
-    entry.title = terms[0] ?? "Untitled entry";
-    entry.terms = terms.map(createTerm);
-    entry.updatedAt = now();
-    return structuredClone(entry);
-  }
-
-  return null;
-}
-
-export function markEntryFailed(entryId: string, message: string) {
-  for (const week of weeks.values()) {
-    const entry = week.entries.find((candidate) => candidate.id === entryId);
-    if (!entry) {
-      continue;
-    }
-
-    entry.status = "failed";
-    entry.errorMessage = message;
-    entry.updatedAt = now();
-    return structuredClone(entry);
-  }
-
-  return null;
-}
-
-export function deleteEntryTerm(termId: string) {
-  for (const week of weeks.values()) {
-    for (const entry of week.entries) {
-      const target = entry.terms.find((term) => term.id === termId);
-      if (target) {
-        target.deletedAt = now();
-        entry.updatedAt = now();
-        return {
-          entryId: entry.id,
-          termId,
-        };
-      }
-    }
-  }
-
-  return null;
 }
 
 function normalizedWeekKey(input: string) {
@@ -227,9 +404,14 @@ function normalizedWeekKey(input: string) {
 }
 
 function parseWeekOffset(weekKey: string) {
-  const normalized = normalizedWeekKey(weekKey);
-  const match = normalized.match(/^offset-(-?\d+)$/);
+  const match = weekKey.match(/^offset-(-?\d+)$/);
   return match ? Number(match[1]) : 0;
+}
+
+function defaultWeekNote(offset: number, weekNumber: number) {
+  return offset === 0
+    ? "这一周先把贴图 -> 提词 -> 回看闭环做顺，不急着上分析面板。"
+    : `这是第 ${weekNumber} 周的视觉手帐。重点看时间感和回看体验。`;
 }
 
 function weekMetadata(offset: number) {
@@ -241,6 +423,9 @@ function weekMetadata(offset: number) {
   weekEnd.setDate(weekEnd.getDate() + 6);
 
   return {
+    weekStart,
+    weekEnd,
+    storageKey: isoDateKey(weekStart),
     weekNumber: isoWeekNumber(weekStart),
     label: `${monthDayLabel(weekStart)} - ${monthDayLabel(weekEnd)}`,
     dayNumbers: {
@@ -254,6 +439,12 @@ function weekMetadata(offset: number) {
   };
 }
 
+function offsetFromWeekStart(weekStart: Date) {
+  const currentWeekStart = startOfWeek(new Date());
+  const diffMs = weekStart.getTime() - currentWeekStart.getTime();
+  return Math.round(diffMs / (1000 * 60 * 60 * 24 * 7));
+}
+
 function startOfWeek(date: Date) {
   const copy = new Date(date);
   const day = copy.getDay();
@@ -263,9 +454,9 @@ function startOfWeek(date: Date) {
   return copy;
 }
 
-function addDays(date: Date, days: number) {
+function addDays(date: Date, value: number) {
   const copy = new Date(date);
-  copy.setDate(copy.getDate() + days);
+  copy.setDate(copy.getDate() + value);
   return copy;
 }
 
@@ -275,15 +466,29 @@ function padDay(date: Date) {
 
 function monthDayLabel(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
-    month: "short",
+    month: "long",
     day: "numeric",
   }).format(date);
 }
 
+function isoDateKey(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 function isoWeekNumber(date: Date) {
-  const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const day = copy.getUTCDay() || 7;
-  copy.setUTCDate(copy.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1));
-  return Math.ceil((((copy.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const target = new Date(date.valueOf());
+  const dayNr = (date.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+  }
+
+  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
 }

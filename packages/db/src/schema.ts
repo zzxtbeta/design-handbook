@@ -4,6 +4,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -35,12 +36,16 @@ export const entryTermSourceEnum = pgEnum("entry_term_source", [
 
 export const weeks = pgTable("weeks", {
   id: uuid("id").defaultRandom().primaryKey(),
+  weekKey: varchar("week_key", { length: 32 }).notNull(),
   weekStart: timestamp("week_start", { withTimezone: true }).notNull(),
   weekEnd: timestamp("week_end", { withTimezone: true }).notNull(),
   weekLabel: varchar("week_label", { length: 64 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  weekKeyUnique: uniqueIndex("weeks_week_key_unique").on(table.weekKey),
+  weekStartUnique: uniqueIndex("weeks_week_start_unique").on(table.weekStart),
+}));
 
 export const entries = pgTable("entries", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -73,4 +78,6 @@ export const weekNotes = pgTable("week_notes", {
   content: text("content").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  weekIdUnique: uniqueIndex("week_notes_week_id_unique").on(table.weekId),
+}));

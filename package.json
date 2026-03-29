@@ -15,7 +15,14 @@
     "typecheck:web": "cd apps/web && bun run typecheck",
     "typecheck:api": "cd apps/api && bun run typecheck",
     "db:check": "cd packages/db && bun run check",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run packages/db/src/migrate.ts",
     "lint": "echo \"lint scripts not wired yet\"",
     "test": "echo \"test scripts not wired yet\""
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.4"
   }
 }

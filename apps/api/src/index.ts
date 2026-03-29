@@ -1,3 +1,4 @@
+import "dotenv/config";
 import fs from "node:fs/promises";
 import path from "node:path";
 import express from "express";
@@ -41,8 +42,8 @@ app.get("/api/health", (_request, response) => {
   });
 });
 
-app.get("/api/weeks/:weekKey", (request, response) => {
-  response.json(getWeek(request.params.weekKey));
+app.get("/api/weeks/:weekKey", async (request, response) => {
+  response.json(await getWeek(request.params.weekKey));
 });
 
 app.post("/api/entries", async (request, response) => {
@@ -56,7 +57,7 @@ app.post("/api/entries", async (request, response) => {
   }
 
   const image = await saveImageDataUrl({ imageDataUrl });
-  const entry = createEntry({
+  const entry = await createEntry({
     weekKey,
     daySlot,
     imageUrl: image.publicUrl,
@@ -68,14 +69,14 @@ app.post("/api/entries", async (request, response) => {
   response.status(202).json(entry);
 });
 
-app.put("/api/weeks/:weekKey/note", (request, response) => {
+app.put("/api/weeks/:weekKey/note", async (request, response) => {
   response.json(
-    updateWeekNote(request.params.weekKey, String(request.body.content ?? "")),
+    await updateWeekNote(request.params.weekKey, String(request.body.content ?? "")),
   );
 });
 
-app.get("/api/entries/:id", (request, response) => {
-  const entry = getEntry(request.params.id);
+app.get("/api/entries/:id", async (request, response) => {
+  const entry = await getEntry(request.params.id);
 
   if (!entry) {
     response.status(404).json({ error: "Entry not found." });
@@ -85,13 +86,13 @@ app.get("/api/entries/:id", (request, response) => {
   response.json(entry);
 });
 
-app.patch("/api/entry-terms/:id", (request, response) => {
+app.patch("/api/entry-terms/:id", async (request, response) => {
   if (request.body.action !== "delete") {
     response.status(400).json({ error: "Only delete action is supported." });
     return;
   }
 
-  const result = deleteEntryTerm(request.params.id);
+  const result = await deleteEntryTerm(request.params.id);
 
   if (!result) {
     response.status(404).json({ error: "Term not found." });
@@ -110,7 +111,7 @@ async function processEntry(
   await new Promise((resolve) => setTimeout(resolve, 900));
 
   if ((imageWidth ?? 0) < 40 || (imageHeight ?? 0) < 40) {
-    markEntryFailed(entryId, "图片过小，无法可靠提取术语。");
+    await markEntryFailed(entryId, "图片过小，无法可靠提取术语。");
     return;
   }
 
@@ -120,14 +121,14 @@ async function processEntry(
     });
 
     if (terms.length === 0) {
-      markEntryFailed(entryId, "模型返回了空术语结果。");
+      await markEntryFailed(entryId, "模型返回了空术语结果。");
       return;
     }
 
-    markEntryReady(entryId, terms);
+    await markEntryReady(entryId, terms);
   } catch (error) {
     console.error("[api] processEntry failed", error);
-    markEntryFailed(entryId, "术语生成失败，请稍后重试。");
+    await markEntryFailed(entryId, "术语生成失败，请稍后重试。");
   }
 }
 
