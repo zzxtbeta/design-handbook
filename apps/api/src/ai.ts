@@ -10,10 +10,12 @@ export interface DesignInsight {
 }
 
 const prompt =
-  "请基于这张截图的具体使用场景和界面语境，从专业UI/视觉设计角度，提炼5-10个最关键的设计关键词。" +
-  "关键解析设计中的布局结构、组件形态、字体、颜色、材质、层级关系、交互的定义，避免抽象评价，需直接可用于复刻或检索类似设计。" +
-  '另外再生成一句非常简短的检索型 prompt 描述，用于以后快速回忆这张图的感觉，控制在 14 个词以内。' +
-  '输出 JSON：{"terms":["..."],"promptSummary":"..."}。每个关键词保持简短具体，避免句子。';
+  "请基于这张截图的具体使用场景和界面语境，从专业UI/视觉设计角度，提炼 6-8 个最关键的设计关键词。" +
+  "关键词必须具体、可检索、可复刻，避免空泛词、常见套话和同义重复。" +
+  "请尽量覆盖至少 4 类信息：布局结构、组件形态、字体/排版、颜色/光影、材质/质感、交互暗示。" +
+  "优先输出这张图真正显著的视觉特征，而不是安全但泛化的描述。" +
+  '另外再生成一句非常简短的检索型 prompt 描述，用于以后快速回忆这张图的感觉，控制在 18 个词以内。' +
+  '输出 JSON：{"terms":["..."],"promptSummary":"..."}。每个关键词保持短语，不要写句子，不要重复。';
 
 export async function generateDesignTerms(input: GenerateTermsInput) {
   try {
@@ -31,8 +33,13 @@ export async function generateDesignTerms(input: GenerateTermsInput) {
         return generateMockTerms(input.imageUrl);
     }
   } catch (error) {
-    console.warn("[ai] provider failed, falling back to mock", error);
-    return generateMockTerms(input.imageUrl);
+    if (config.ai.provider === "mock") {
+      console.warn("[ai] mock provider generation failed", error);
+      return generateMockTerms(input.imageUrl);
+    }
+
+    console.error("[ai] provider failed", error);
+    throw error;
   }
 }
 
@@ -64,6 +71,7 @@ async function generateViaOpenAiCompatible(input: GenerateTermsInput) {
     }),
   });
 
+  await ensureOk(response, "openai-compatible");
   const data = await response.json();
   const raw = data?.choices?.[0]?.message?.content ?? "{}";
   return parseTermsFromUnknownPayload(raw);
@@ -104,6 +112,7 @@ async function generateViaAnthropic(input: GenerateTermsInput) {
     }),
   });
 
+  await ensureOk(response, "anthropic");
   const data = await response.json();
   const raw = data?.content?.find?.((item: { type?: string }) => item.type === "text")?.text ?? "{}";
   return parseTermsFromUnknownPayload(raw);
@@ -115,31 +124,13 @@ async function generateViaGemini(input: GenerateTermsInput) {
   const baseUrl = config.ai.geminiBaseUrl;
 
   if (baseUrl) {
-    const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
-    const response = await fetch(`${normalizedBaseUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: input.imageUrl } },
-            ],
-          },
-        ],
-      }),
+    return generateViaOpenAiLikeBaseUrl({
+      baseUrl,
+      apiKey,
+      model,
+      input,
+      providerName: "gemini-baseurl",
     });
-
-    const data = await response.json();
-    const raw = data?.choices?.[0]?.message?.content ?? "{}";
-    return parseTermsFromUnknownPayload(raw);
   }
 
   const response = await fetch(
@@ -167,6 +158,7 @@ async function generateViaGemini(input: GenerateTermsInput) {
     },
   );
 
+  await ensureOk(response, "gemini");
   const data = await response.json();
   const raw =
     data?.candidates?.[0]?.content?.parts?.[0]?.text ??
@@ -181,14 +173,37 @@ async function generateViaLiteLlm(input: GenerateTermsInput) {
     config.ai.baseUrl ||
     "http://localhost:4000";
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  return generateViaOpenAiLikeBaseUrl({
+    baseUrl,
+    apiKey,
+    model: config.ai.litellmModel,
+    input,
+    providerName: "litellm",
+  });
+}
+
+async function generateViaOpenAiLikeBaseUrl({
+  baseUrl,
+  apiKey,
+  model,
+  input,
+  providerName,
+}: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  input: GenerateTermsInput;
+  providerName: string;
+}) {
+  const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
+  const response = await fetch(`${normalizedBaseUrl}/v1/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: config.ai.litellmModel,
+      model,
       response_format: { type: "json_object" },
       messages: [
         {
@@ -202,9 +217,19 @@ async function generateViaLiteLlm(input: GenerateTermsInput) {
     }),
   });
 
+  await ensureOk(response, providerName);
   const data = await response.json();
   const raw = data?.choices?.[0]?.message?.content ?? "{}";
   return parseTermsFromUnknownPayload(raw);
+}
+
+async function ensureOk(response: Response, providerName: string) {
+  if (response.ok) {
+    return;
+  }
+
+  const body = await response.text();
+  throw new Error(`[${providerName}] ${response.status} ${response.statusText}: ${body}`);
 }
 
 function parseTermsFromUnknownPayload(raw: string): DesignInsight {

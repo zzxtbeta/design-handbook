@@ -1,5 +1,6 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import {
+  dayNotes,
   entries,
   entryTerms,
   weekNotes,
@@ -40,6 +41,7 @@ export interface WeekRecord {
   label: string;
   dayNumbers: Record<DaySlot, string>;
   note: string;
+  dayNotes: Record<DaySlot, string>;
   entries: Entry[];
 }
 
@@ -119,6 +121,36 @@ export async function updateWeekNote(weekKey: string, content: string) {
   } else {
     await db.insert(weekNotes).values({
       weekId: week.id,
+      content,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  return getWeek(normalized);
+}
+
+export async function updateDayNote(weekKey: string, daySlot: DaySlot, content: string) {
+  const normalized = normalizedWeekKey(weekKey);
+  const week = await ensureWeekRecord(normalized);
+  const existing = await db
+    .select()
+    .from(dayNotes)
+    .where(eq(dayNotes.weekId, week.id))
+    .then((rows) => rows.find((row) => row.daySlot === daySlot));
+
+  if (existing) {
+    await db
+      .update(dayNotes)
+      .set({
+        content,
+        updatedAt: new Date(),
+      })
+      .where(eq(dayNotes.id, existing.id));
+  } else {
+    await db.insert(dayNotes).values({
+      weekId: week.id,
+      daySlot,
       content,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -228,6 +260,23 @@ export async function deleteEntry(entryId: string) {
   return {
     entryId,
   };
+}
+
+export async function moveEntryToDay(entryId: string, daySlot: DaySlot) {
+  const [updated] = await db
+    .update(entries)
+    .set({
+      daySlot,
+      updatedAt: new Date(),
+    })
+    .where(eq(entries.id, entryId))
+    .returning();
+
+  if (!updated) {
+    return null;
+  }
+
+  return getEntry(entryId);
 }
 
 async function ensureWeekRecord(weekKey: string) {
@@ -362,6 +411,10 @@ async function buildWeekRecord(
     .select()
     .from(weekNotes)
     .where(eq(weekNotes.weekId, week.id));
+  const dayNoteRows = await db
+    .select()
+    .from(dayNotes)
+    .where(eq(dayNotes.weekId, week.id));
 
   const entryRows = await db
     .select()
@@ -392,6 +445,14 @@ async function buildWeekRecord(
     label: week.weekLabel,
     dayNumbers: metadata.dayNumbers,
     note: noteRows[0]?.content ?? "",
+    dayNotes: {
+      mon: dayNoteRows.find((row) => row.daySlot === "mon")?.content ?? "",
+      tue: dayNoteRows.find((row) => row.daySlot === "tue")?.content ?? "",
+      wed: dayNoteRows.find((row) => row.daySlot === "wed")?.content ?? "",
+      thu: dayNoteRows.find((row) => row.daySlot === "thu")?.content ?? "",
+      fri: dayNoteRows.find((row) => row.daySlot === "fri")?.content ?? "",
+      weekend: dayNoteRows.find((row) => row.daySlot === "weekend")?.content ?? "",
+    },
     entries: entryRows
       .map((entry) => mapEntry(entry, termsByEntry.get(entry.id) ?? []))
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),

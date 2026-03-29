@@ -14,6 +14,8 @@ import {
   getWeek,
   markEntryFailed,
   markEntryReady,
+  moveEntryToDay,
+  updateDayNote,
   updateWeekNote,
 } from "./store";
 
@@ -76,6 +78,16 @@ app.put("/api/weeks/:weekKey/note", async (request, response) => {
   );
 });
 
+app.put("/api/weeks/:weekKey/day-notes/:daySlot", async (request, response) => {
+  response.json(
+    await updateDayNote(
+      request.params.weekKey,
+      request.params.daySlot as Parameters<typeof updateDayNote>[1],
+      String(request.body.content ?? ""),
+    ),
+  );
+});
+
 app.get("/api/entries/:id", async (request, response) => {
   const entry = await getEntry(request.params.id);
 
@@ -97,6 +109,24 @@ app.patch("/api/entry-terms/:id", async (request, response) => {
 
   if (!result) {
     response.status(404).json({ error: "Term not found." });
+    return;
+  }
+
+  response.json(result);
+});
+
+app.patch("/api/entries/:id/day-slot", async (request, response) => {
+  const { daySlot } = request.body;
+
+  if (!daySlot) {
+    response.status(400).json({ error: "daySlot is required." });
+    return;
+  }
+
+  const result = await moveEntryToDay(request.params.id, daySlot);
+
+  if (!result) {
+    response.status(404).json({ error: "Entry not found." });
     return;
   }
 

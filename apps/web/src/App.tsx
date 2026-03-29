@@ -50,7 +50,7 @@ export function App() {
     }
 
     setNoteDraft(week.note);
-    setDayNoteDraft(window.localStorage.getItem(dayNoteStorageKey(week.weekKey, activeDay)) ?? "");
+    setDayNoteDraft(week.dayNotes[activeDay] ?? "");
   }, [week]);
 
   useEffect(() => {
@@ -167,8 +167,8 @@ export function App() {
       return;
     }
 
-    window.localStorage.setItem(dayNoteStorageKey(week.weekKey, activeDay), dayNoteDraft);
-  }, [activeDay, dayNoteDraft, week]);
+    setDayNoteDraft(week.dayNotes[activeDay] ?? "");
+  }, [activeDay, week]);
 
   useEffect(() => {
     if (!week) {
@@ -269,6 +269,19 @@ export function App() {
     await loadWeek();
   }
 
+  async function handleMoveEntryToDay(entryId: string, daySlot: DaySlot) {
+    await fetch(`/api/entries/${entryId}/day-slot`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ daySlot }),
+    });
+
+    setActiveDay(daySlot);
+    await loadWeek();
+  }
+
   async function handleSaveNote() {
     if (!week) {
       return;
@@ -280,6 +293,23 @@ export function App() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ content: noteDraft }),
+    });
+
+    const updated = (await response.json()) as WeekData;
+    setWeek(updated);
+  }
+
+  async function handleSaveDayNote() {
+    if (!week) {
+      return;
+    }
+
+    const response = await fetch(`/api/weeks/${week.weekKey}/day-notes/${activeDay}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content: dayNoteDraft }),
     });
 
     const updated = (await response.json()) as WeekData;
@@ -459,12 +489,14 @@ export function App() {
                       daySlot={slot}
                       dayNumber={week.dayNumbers[slot]}
                       isActive={activeDay === slot}
-                      onActivate={(day) => {
+                      onOpenDay={(day) => {
                         setActiveDay(day);
                         setViewMode("day");
                       }}
+                      onSelectDay={setActiveDay}
                       onDeleteTerm={handleDeleteTerm}
                       onDeleteEntry={handleDeleteEntry}
+                      onMoveEntry={handleMoveEntryToDay}
                       onCopyTerm={handleCopyTerm}
                       weekCardSizes={weekCardSizes}
                       onResizeCard={handleUpdateWeekCardSize}
@@ -483,12 +515,14 @@ export function App() {
                       daySlot={slot}
                       dayNumber={week.dayNumbers[slot]}
                       isActive={activeDay === slot}
-                      onActivate={(day) => {
+                      onOpenDay={(day) => {
                         setActiveDay(day);
                         setViewMode("day");
                       }}
+                      onSelectDay={setActiveDay}
                       onDeleteTerm={handleDeleteTerm}
                       onDeleteEntry={handleDeleteEntry}
+                      onMoveEntry={handleMoveEntryToDay}
                       onCopyTerm={handleCopyTerm}
                       weekCardSizes={weekCardSizes}
                       onResizeCard={handleUpdateWeekCardSize}
@@ -568,6 +602,7 @@ export function App() {
               onBack={() => setViewMode("week")}
               dayNoteDraft={dayNoteDraft}
               onDayNoteChange={setDayNoteDraft}
+              onSaveDayNote={() => void handleSaveDayNote()}
               onDeleteTerm={handleDeleteTerm}
               onDeleteEntry={handleDeleteEntry}
               onCopyTerm={handleCopyTerm}
@@ -669,9 +704,11 @@ function DayColumn({
   dayLabel,
   entries,
   isActive,
-  onActivate,
+  onOpenDay,
+  onSelectDay,
   onDeleteTerm,
   onDeleteEntry,
+  onMoveEntry,
   onCopyTerm,
   weekCardSizes,
   onResizeCard,
@@ -684,9 +721,11 @@ function DayColumn({
   dayLabel: string;
   entries: WeekEntry[];
   isActive: boolean;
-  onActivate: (day: DaySlot) => void;
+  onOpenDay: (day: DaySlot) => void;
+  onSelectDay: (day: DaySlot) => void;
   onDeleteTerm: (termId: string) => void;
   onDeleteEntry: (entryId: string) => void;
+  onMoveEntry: (entryId: string, day: DaySlot) => void;
   onCopyTerm: (term: string) => void;
   weekCardSizes: WeekCardSizes;
   onResizeCard: (entryId: string, width: number) => void;
@@ -694,18 +733,47 @@ function DayColumn({
   onToggleExpandedEntry: (entryId: string | null) => void;
   isWeekend?: boolean;
 }) {
+  const [isDropTarget, setIsDropTarget] = useState(false);
+
   return (
     <section
       className={`day-column ${isWeekend ? "day-column-weekend" : ""} ${
         isActive ? "day-column-active" : ""
-      } day-column-${daySlot}`}
+      } ${isDropTarget ? "day-column-drop-target" : ""} day-column-${daySlot}`}
+      onClick={() => onSelectDay(daySlot)}
+      onDragEnter={(event) => {
+        event.preventDefault();
+        setIsDropTarget(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        if (!isDropTarget) {
+          setIsDropTarget(true);
+        }
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsDropTarget(false);
+        }
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setIsDropTarget(false);
+        const entryId = event.dataTransfer.getData("text/entry-id");
+        if (!entryId) {
+          return;
+        }
+
+        onSelectDay(daySlot);
+        void onMoveEntry(entryId, daySlot);
+      }}
     >
       <header className="day-header">
         <button
           className="day-jump-target"
           onClick={(event) => {
             event.stopPropagation();
-            onActivate(daySlot);
+            onOpenDay(daySlot);
           }}
         >
           <div className="day-number">{dayNumber}</div>
@@ -722,6 +790,7 @@ function DayColumn({
             onDeleteTerm={onDeleteTerm}
             onDeleteEntry={onDeleteEntry}
             onCopyTerm={onCopyTerm}
+            draggableInWeek
             resizedWidth={weekCardSizes[entry.id]}
             onResizeWidth={onResizeCard}
             isExpanded={expandedEntryId === entry.id}
@@ -741,6 +810,7 @@ function DayCanvas({
   onBack,
   dayNoteDraft,
   onDayNoteChange,
+  onSaveDayNote,
   onDeleteTerm,
   onDeleteEntry,
   onCopyTerm,
@@ -755,6 +825,7 @@ function DayCanvas({
   onBack: () => void;
   dayNoteDraft: string;
   onDayNoteChange: (value: string) => void;
+  onSaveDayNote: () => void;
   onDeleteTerm: (termId: string) => void;
   onDeleteEntry: (entryId: string) => void;
   onCopyTerm: (term: string) => void;
@@ -888,7 +959,12 @@ function DayCanvas({
         })}
       </div>
       <section className="day-note-panel">
-        <div className="day-note-header">Day Notes</div>
+        <div className="day-note-header">
+          <span>Day Notes</span>
+          <button className="ghost-action" onClick={onSaveDayNote}>
+            保存当日笔记
+          </button>
+        </div>
         <textarea
           className="day-note-textarea"
           value={dayNoteDraft}
@@ -907,6 +983,7 @@ function JournalCard({
   onDeleteTerm,
   onDeleteEntry,
   onCopyTerm,
+  draggableInWeek = false,
   resizedWidth,
   onResizeWidth,
   isExpanded,
@@ -919,6 +996,7 @@ function JournalCard({
   onDeleteTerm: (termId: string) => void;
   onDeleteEntry: (entryId: string) => void;
   onCopyTerm: (term: string) => void;
+  draggableInWeek?: boolean;
   resizedWidth?: number;
   onResizeWidth?: (entryId: string, width: number) => void;
   isExpanded: boolean;
@@ -931,6 +1009,15 @@ function JournalCard({
         isExpanded ? "entry-card-expanded" : ""
       }`}
       style={canvasMode ? undefined : entryStyle(index, daySlot, entry, resizedWidth)}
+      draggable={draggableInWeek}
+      onDragStart={(event) => {
+        if (!draggableInWeek) {
+          return;
+        }
+
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/entry-id", entry.id);
+      }}
     >
       <div className={`tape tape-${entry.decorationStyle}`} />
       <div className={`pin pin-${entry.decorationStyle}`} />
@@ -947,6 +1034,11 @@ function JournalCard({
       <div className="image-frame">
         <img className="entry-image" src={entry.imageUrl} alt={entry.title} />
       </div>
+      {entry.promptSummary ? (
+        <div className="entry-summary-chip" title={entry.promptSummary}>
+          {entry.promptSummary}
+        </div>
+      ) : null}
       <div className="term-cluster">
         {visibleTerms(entry).length > 0 ? (
           <div className="term-summary">
@@ -1112,10 +1204,6 @@ function defaultBoardLayout(entry: WeekEntry | undefined, index: number): BoardL
 
 function layoutStorageKey(weekKey: string, day: DaySlot) {
   return `ai-journal-layout:${weekKey}:${day}`;
-}
-
-function dayNoteStorageKey(weekKey: string, day: DaySlot) {
-  return `ai-journal-day-note:${weekKey}:${day}`;
 }
 
 function weekCardStorageKey(weekKey: string) {

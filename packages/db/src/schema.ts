@@ -82,3 +82,14 @@ export const weekNotes = pgTable("week_notes", {
 }, (table) => ({
   weekIdUnique: uniqueIndex("week_notes_week_id_unique").on(table.weekId),
 }));
+
+export const dayNotes = pgTable("day_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  weekId: uuid("week_id").notNull().references(() => weeks.id),
+  daySlot: daySlotEnum("day_slot").notNull(),
+  content: text("content").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  weekDayUnique: uniqueIndex("day_notes_week_id_day_slot_unique").on(table.weekId, table.daySlot),
+}));

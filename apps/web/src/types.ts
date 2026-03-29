@@ -31,5 +31,6 @@ export interface WeekData {
   label: string;
   dayNumbers: Record<DaySlot, string>;
   note: string;
+  dayNotes: Record<DaySlot, string>;
   entries: WeekEntry[];
 }
