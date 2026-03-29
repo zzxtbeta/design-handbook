@@ -1,0 +1,15 @@
+node_modules
+.DS_Store
+.env
+.env.*
+!.env.example
+dist
+build
+.turbo
+coverage
+tmp
+*.log
+*.tsbuildinfo
+ARTIFACTS/runtime/
+ARTIFACTS/screenshots/
+ARTIFACTS/exports/

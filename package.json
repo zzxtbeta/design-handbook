@@ -1,0 +1,21 @@
+{
+  "name": "handbook",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "bun@1.3.11",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "cd apps/web && bun run dev",
+    "dev:api": "cd apps/api && bun run dev",
+    "build:web": "cd apps/web && bun run build",
+    "build:api": "cd apps/api && bun run build",
+    "typecheck:web": "cd apps/web && bun run typecheck",
+    "typecheck:api": "cd apps/api && bun run typecheck",
+    "db:check": "cd packages/db && bun run check",
+    "lint": "echo \"lint scripts not wired yet\"",
+    "test": "echo \"test scripts not wired yet\""
+  }
+}
