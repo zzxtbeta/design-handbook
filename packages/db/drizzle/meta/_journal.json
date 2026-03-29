@@ -22,6 +22,13 @@
       "when": 1774784949011,
       "tag": "0002_closed_vampiro",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774799130549,
+      "tag": "0003_exotic_sasquatch",
+      "breakpoints": true
     }
   ]
 }

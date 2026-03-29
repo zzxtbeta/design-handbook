@@ -1,1 +1,1 @@
-ALTER TABLE "entries" ADD COLUMN "prompt_summary" varchar(180);
+ALTER TABLE "entries" ADD COLUMN IF NOT EXISTS "prompt_summary" varchar(180);
