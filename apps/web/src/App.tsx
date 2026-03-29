@@ -37,6 +37,7 @@ export function App() {
   const [copiedTerm, setCopiedTerm] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+  const [zoomedEntry, setZoomedEntry] = useState<WeekEntry | null>(null);
   const [processingStage, setProcessingStage] = useState("Preparing image...");
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -498,6 +499,7 @@ export function App() {
                       onDeleteEntry={handleDeleteEntry}
                       onMoveEntry={handleMoveEntryToDay}
                       onCopyTerm={handleCopyTerm}
+                      onOpenImage={setZoomedEntry}
                       weekCardSizes={weekCardSizes}
                       onResizeCard={handleUpdateWeekCardSize}
                       expandedEntryId={expandedEntryId}
@@ -524,6 +526,7 @@ export function App() {
                       onDeleteEntry={handleDeleteEntry}
                       onMoveEntry={handleMoveEntryToDay}
                       onCopyTerm={handleCopyTerm}
+                      onOpenImage={setZoomedEntry}
                       weekCardSizes={weekCardSizes}
                       onResizeCard={handleUpdateWeekCardSize}
                       expandedEntryId={expandedEntryId}
@@ -606,6 +609,7 @@ export function App() {
               onDeleteTerm={handleDeleteTerm}
               onDeleteEntry={handleDeleteEntry}
               onCopyTerm={handleCopyTerm}
+              onOpenImage={setZoomedEntry}
               expandedEntryId={expandedEntryId}
               onToggleExpandedEntry={setExpandedEntryId}
               onUpdateLayout={handleUpdateLayout}
@@ -640,6 +644,44 @@ export function App() {
               </motion.div>
             </motion.div>
           )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {zoomedEntry ? (
+            <motion.div
+              className="image-lightbox"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setZoomedEntry(null)}
+            >
+              <motion.section
+                className="image-lightbox-card"
+                initial={{ scale: 0.94, y: 18 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.98, y: 10 }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button className="image-lightbox-close" onClick={() => setZoomedEntry(null)}>
+                  ×
+                </button>
+                <img className="image-lightbox-img" src={zoomedEntry.imageUrl} alt={zoomedEntry.title} />
+                <div className="image-lightbox-meta">
+                  <div className="image-lightbox-title">{zoomedEntry.title}</div>
+                  {zoomedEntry.promptSummary ? (
+                    <button
+                      className="image-lightbox-prompt"
+                      onClick={() => void handleCopyTerm(zoomedEntry.promptSummary ?? "")}
+                      title="点击复制描述"
+                    >
+                      <span>{zoomedEntry.promptSummary}</span>
+                      <span className="summary-copy">⧉</span>
+                    </button>
+                  ) : null}
+                </div>
+              </motion.section>
+            </motion.div>
+          ) : null}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -710,6 +752,7 @@ function DayColumn({
   onDeleteEntry,
   onMoveEntry,
   onCopyTerm,
+  onOpenImage,
   weekCardSizes,
   onResizeCard,
   expandedEntryId,
@@ -727,6 +770,7 @@ function DayColumn({
   onDeleteEntry: (entryId: string) => void;
   onMoveEntry: (entryId: string, day: DaySlot) => void;
   onCopyTerm: (term: string) => void;
+  onOpenImage: (entry: WeekEntry) => void;
   weekCardSizes: WeekCardSizes;
   onResizeCard: (entryId: string, width: number) => void;
   expandedEntryId: string | null;
@@ -790,6 +834,7 @@ function DayColumn({
             onDeleteTerm={onDeleteTerm}
             onDeleteEntry={onDeleteEntry}
             onCopyTerm={onCopyTerm}
+            onOpenImage={onOpenImage}
             draggableInWeek
             resizedWidth={weekCardSizes[entry.id]}
             onResizeWidth={onResizeCard}
@@ -814,6 +859,7 @@ function DayCanvas({
   onDeleteTerm,
   onDeleteEntry,
   onCopyTerm,
+  onOpenImage,
   expandedEntryId,
   onToggleExpandedEntry,
   onUpdateLayout,
@@ -829,6 +875,7 @@ function DayCanvas({
   onDeleteTerm: (termId: string) => void;
   onDeleteEntry: (entryId: string) => void;
   onCopyTerm: (term: string) => void;
+  onOpenImage: (entry: WeekEntry) => void;
   expandedEntryId: string | null;
   onToggleExpandedEntry: (entryId: string | null) => void;
   onUpdateLayout: (entryId: string, next: Partial<BoardLayout>) => void;
@@ -902,6 +949,7 @@ function DayCanvas({
                 onDeleteTerm={onDeleteTerm}
                 onDeleteEntry={onDeleteEntry}
                 onCopyTerm={onCopyTerm}
+                onOpenImage={onOpenImage}
                 isExpanded={expandedEntryId === entry.id}
                 onToggleExpanded={onToggleExpandedEntry}
                 canvasMode
@@ -983,6 +1031,7 @@ function JournalCard({
   onDeleteTerm,
   onDeleteEntry,
   onCopyTerm,
+  onOpenImage,
   draggableInWeek = false,
   resizedWidth,
   onResizeWidth,
@@ -996,6 +1045,7 @@ function JournalCard({
   onDeleteTerm: (termId: string) => void;
   onDeleteEntry: (entryId: string) => void;
   onCopyTerm: (term: string) => void;
+  onOpenImage: (entry: WeekEntry) => void;
   draggableInWeek?: boolean;
   resizedWidth?: number;
   onResizeWidth?: (entryId: string, width: number) => void;
@@ -1003,6 +1053,9 @@ function JournalCard({
   onToggleExpanded: (entryId: string | null) => void;
   canvasMode?: boolean;
 }) {
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+  const canExpandSummary = (entry.promptSummary?.length ?? 0) > 58;
+
   return (
     <article
       className={`entry-card entry-card-${entry.status} ${canvasMode ? "entry-card-canvas" : ""} ${
@@ -1031,12 +1084,49 @@ function JournalCard({
       >
         ×
       </button>
-      <div className="image-frame">
+      <button
+        className="image-frame image-frame-button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenImage(entry);
+        }}
+        aria-label={`放大查看 ${entry.title}`}
+      >
         <img className="entry-image" src={entry.imageUrl} alt={entry.title} />
-      </div>
+      </button>
       {entry.promptSummary ? (
-        <div className="entry-summary-chip" title={entry.promptSummary}>
-          {entry.promptSummary}
+        <div className={`entry-summary-chip ${isSummaryExpanded ? "entry-summary-chip-expanded" : ""}`}>
+          <button
+            className="entry-summary-button"
+            title={entry.promptSummary}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (canExpandSummary) {
+                setIsSummaryExpanded((current) => !current);
+              } else {
+                void onCopyTerm(entry.promptSummary ?? "");
+              }
+            }}
+          >
+            <span>{entry.promptSummary}</span>
+            <span className="entry-summary-actions">
+              {canExpandSummary ? (
+                <span className="entry-summary-toggle">{isSummaryExpanded ? "收起" : "展开"}</span>
+              ) : null}
+              <span className="term-copy">⧉</span>
+            </span>
+          </button>
+          {isSummaryExpanded ? (
+            <button
+              className="entry-summary-copy"
+              onClick={(event) => {
+                event.stopPropagation();
+                void onCopyTerm(entry.promptSummary ?? "");
+              }}
+            >
+              复制描述
+            </button>
+          ) : null}
         </div>
       ) : null}
       <div className="term-cluster">

@@ -328,78 +328,10 @@ async function ensureWeekNote(weekId: string, content: string) {
 }
 
 async function seedWeekEntries(weekId: string, offset: number) {
-  const existing = await db
-    .select()
-    .from(entries)
-    .where(eq(entries.weekId, weekId));
-
-  if (existing.length > 0) {
+  const existing = await db.select().from(entries).where(eq(entries.weekId, weekId));
+  if (existing.length > 0 || offset !== 0) {
     return;
   }
-
-  const now = new Date();
-  const [warm, glass] = await db
-    .insert(entries)
-    .values([
-      {
-        weekId,
-        daySlot: "mon",
-        imageUrl:
-          "/seed/warm-editorial.svg?data=" +
-          encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#f3d1a7"/><stop offset="1" stop-color="#f8efe1"/></linearGradient></defs><rect width="400" height="300" fill="url(#g)"/><text x="40" y="160" font-size="32" fill="#6b4424">${offset === 0 ? "Warm editorial" : "Editorial memory"}</text></svg>`,
-          ),
-        imageWidth: 400,
-        imageHeight: 300,
-        promptSummary: "warm editorial board with paper texture",
-        status: "ready",
-        errorMessage: null,
-        decorationStyle: "amber",
-        sourceType: "upload",
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        weekId,
-        daySlot: "wed",
-        imageUrl:
-          "/seed/soft-glass.svg?data=" +
-          encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#d5ece9"/><stop offset="1" stop-color="#f9f5ef"/></linearGradient></defs><rect width="320" height="420" fill="url(#g)"/><circle cx="160" cy="170" r="100" fill="#ffffff88"/><text x="70" y="350" font-size="26" fill="#425458">soft glass</text></svg>`,
-          ),
-        imageWidth: 320,
-        imageHeight: 420,
-        promptSummary: "soft glass note card with airy spacing",
-        status: "ready",
-        errorMessage: null,
-        decorationStyle: "sage",
-        sourceType: "upload",
-        createdAt: now,
-        updatedAt: now,
-      },
-    ])
-    .returning();
-
-  await db.insert(entryTerms).values([
-    ...["editorial layout", "paper texture", "soft shadow", "warm neutral palette"].map(
-      (term, index) => ({
-        entryId: warm.id,
-        term,
-        position: index,
-        source: "manual" as const,
-        createdAt: now,
-      }),
-    ),
-    ...["glassmorphism", "soft blur", "airy spacing", "translucent layer"].map(
-      (term, index) => ({
-        entryId: glass.id,
-        term,
-        position: index,
-        source: "manual" as const,
-        createdAt: now,
-      }),
-    ),
-  ]);
 }
 
 async function buildWeekRecord(

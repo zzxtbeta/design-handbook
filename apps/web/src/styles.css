@@ -454,7 +454,7 @@ img {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 7px 10px;
+  padding: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.76);
   backdrop-filter: blur(10px);
@@ -467,7 +467,7 @@ img {
   transition:
     opacity 140ms ease,
     transform 140ms ease;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .entry-card:hover .entry-summary-chip,
@@ -475,6 +475,68 @@ img {
 .entry-card-expanded .entry-summary-chip {
   opacity: 1;
   transform: translateY(0);
+}
+
+.entry-summary-chip-expanded {
+  border-radius: 18px;
+  white-space: normal;
+}
+
+.entry-summary-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.entry-summary-chip-expanded .entry-summary-button {
+  align-items: flex-start;
+}
+
+.entry-summary-button span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-summary-chip-expanded .entry-summary-button span:first-child {
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.entry-summary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.entry-summary-toggle {
+  color: rgba(82, 64, 49, 0.62);
+  font-size: 0.72rem;
+}
+
+.entry-summary-copy {
+  width: calc(100% - 18px);
+  margin: 0 9px 9px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.74);
+  color: rgba(66, 50, 38, 0.78);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.74rem;
+  cursor: pointer;
+  text-align: center;
 }
 
 .entry-card-processing {
@@ -556,6 +618,14 @@ img {
   background: rgba(255, 255, 255, 0.86);
   border: 1px solid rgba(82, 61, 46, 0.05);
   border-radius: 2px;
+}
+
+.image-frame-button {
+  display: block;
+  width: 100%;
+  border: 0;
+  cursor: zoom-in;
+  text-align: left;
 }
 
 .entry-card:not(.entry-card-canvas) .image-frame {
@@ -981,6 +1051,80 @@ img {
   backdrop-filter: blur(18px);
 }
 
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(245, 245, 242, 0.74);
+  backdrop-filter: blur(16px);
+}
+
+.image-lightbox-card {
+  position: relative;
+  width: min(92vw, 980px);
+  max-height: 88vh;
+  overflow: auto;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(112, 84, 59, 0.08);
+  box-shadow: 0 26px 68px rgba(56, 41, 29, 0.14);
+  padding: 18px 18px 16px;
+}
+
+.image-lightbox-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 20px rgba(71, 49, 35, 0.08);
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+
+.image-lightbox-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 72vh;
+  object-fit: contain;
+  border-radius: 16px;
+  background: rgba(246, 246, 244, 0.8);
+}
+
+.image-lightbox-meta {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.image-lightbox-title {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1rem;
+  color: rgba(57, 43, 33, 0.9);
+}
+
+.image-lightbox-prompt {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(247, 247, 244, 0.96);
+  text-align: left;
+  cursor: pointer;
+  color: rgba(62, 49, 39, 0.82);
+}
+
 .processing-modal,
 .summary-card {
   width: min(100%, 420px);
@@ -1170,6 +1314,18 @@ img {
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
 }
 
+:root[data-theme="dark"] .entry-summary-copy,
+:root[data-theme="dark"] .image-lightbox-prompt,
+:root[data-theme="dark"] .image-lightbox-close {
+  background: rgba(24, 24, 24, 0.94);
+  color: rgba(244, 244, 240, 0.82);
+}
+
+:root[data-theme="dark"] .entry-summary-toggle,
+:root[data-theme="dark"] .image-lightbox-title {
+  color: rgba(244, 244, 240, 0.72);
+}
+
 :root[data-theme="dark"] .topbar h1,
 :root[data-theme="dark"] .day-number,
 :root[data-theme="dark"] .term-pill,
@@ -1223,6 +1379,15 @@ img {
 :root[data-theme="dark"] .processing-overlay,
 :root[data-theme="dark"] .summary-overlay {
   background: rgba(0, 0, 0, 0.52);
+}
+
+:root[data-theme="dark"] .image-lightbox {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+:root[data-theme="dark"] .image-lightbox-card {
+  background: rgba(12, 12, 12, 0.96);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 :root[data-theme="dark"] .day-note-header {
