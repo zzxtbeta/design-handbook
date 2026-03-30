@@ -246,6 +246,12 @@ export async function deleteEntryTerm(termId: string) {
 }
 
 export async function deleteEntry(entryId: string) {
+  const [existing] = await db.select().from(entries).where(eq(entries.id, entryId));
+
+  if (!existing) {
+    return null;
+  }
+
   await db.delete(entryTerms).where(eq(entryTerms.entryId, entryId));
 
   const [deleted] = await db
@@ -259,6 +265,7 @@ export async function deleteEntry(entryId: string) {
 
   return {
     entryId,
+    imageUrl: existing.imageUrl,
   };
 }
 

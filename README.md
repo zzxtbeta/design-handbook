@@ -149,7 +149,8 @@ bun run db:migrate
 
 当前本地文件存储：
 
-- 上传图片会写入 `ARTIFACTS/runtime/uploads/`
+- 上传图片会写入 `ARTIFACTS/runtime/uploads/YYYY/MM/DD/`
+- 删除 entry 时，会同步删除对应磁盘文件，避免上传目录持续堆积
 
 ## AI 输出原则
 

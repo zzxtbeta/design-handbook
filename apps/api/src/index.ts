@@ -5,7 +5,7 @@ import express from "express";
 import cors from "cors";
 import { generateDesignTerms } from "./ai";
 import { config } from "./config";
-import { saveImageDataUrl } from "./image-storage";
+import { deleteStoredImage, saveImageDataUrl } from "./image-storage";
 import {
   createEntry,
   deleteEntry,
@@ -139,6 +139,10 @@ app.delete("/api/entries/:id", async (request, response) => {
   if (!result) {
     response.status(404).json({ error: "Entry not found." });
     return;
+  }
+
+  if (result.imageUrl) {
+    await deleteStoredImage(result.imageUrl);
   }
 
   response.json(result);
