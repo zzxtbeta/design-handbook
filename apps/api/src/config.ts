@@ -38,10 +38,7 @@ export const config: AppConfig = {
   databaseUrl:
     process.env.DATABASE_URL ??
     "postgres://handbook:handbook@127.0.0.1:54329/handbook",
-  uploadDir: path.resolve(
-    process.cwd(),
-    process.env.UPLOAD_DIR ?? "../../ARTIFACTS/runtime/uploads",
-  ),
+  uploadDir: resolveUploadDir(),
   ai: {
     provider: (process.env.AI_PROVIDER ?? "mock") as AiProvider,
     model: process.env.AI_MODEL ?? "gpt-4.1-mini",
@@ -81,4 +78,19 @@ function loadEnv() {
       override: false,
     });
   }
+}
+
+function resolveUploadDir() {
+  const repoRoot = path.resolve(process.cwd(), "../..");
+  const configured = process.env.UPLOAD_DIR;
+
+  if (!configured) {
+    return path.resolve(repoRoot, "ARTIFACTS/runtime/uploads");
+  }
+
+  if (path.isAbsolute(configured)) {
+    return configured;
+  }
+
+  return path.resolve(repoRoot, configured);
 }

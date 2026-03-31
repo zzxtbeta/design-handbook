@@ -1592,6 +1592,19 @@ img {
   color: rgba(62, 49, 39, 0.82);
 }
 
+.image-lightbox-prompt-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.image-lightbox-prompt-copy strong {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.76rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(94, 76, 61, 0.56);
+}
+
 .processing-modal,
 .summary-card {
   width: min(100%, 420px);

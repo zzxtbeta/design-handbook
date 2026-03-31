@@ -14,7 +14,8 @@ const prompt =
   "关键词必须具体、可检索、可复刻，避免空泛词、常见套话和同义重复。" +
   "请尽量覆盖至少 4 类信息：布局结构、组件形态、字体/排版、颜色/光影、材质/质感、交互暗示。" +
   "优先输出这张图真正显著的视觉特征，而不是安全但泛化的描述。" +
-  '另外再生成一句非常简短的检索型 prompt 描述，用于以后快速回忆这张图的感觉，控制在 18 个词以内。' +
+  '另外再生成一句非常简短的中文风格备注，用于以后快速回忆这张图的感觉，控制在 12 到 20 个中文字符以内。' +
+  '这句备注必须是中文，不要英文，不要句号，不要过度抽象。' +
   '输出 JSON：{"terms":["..."],"promptSummary":"..."}。每个关键词保持短语，不要写句子，不要重复。';
 
 export async function generateDesignTerms(input: GenerateTermsInput) {
@@ -257,19 +258,19 @@ function generateMockTerms(seed: string): DesignInsight {
   const pools = [
     {
       terms: ["editorial layout", "paper texture", "soft shadow", "warm neutral palette"],
-      promptSummary: "warm editorial board with paper texture",
+      promptSummary: "暖调纸感编辑墙",
     },
     {
       terms: ["glassmorphism", "frosted layer", "cool blur", "translucent panel"],
-      promptSummary: "soft glass card with translucent layers",
+      promptSummary: "冷调毛玻璃叠层卡片",
     },
     {
       terms: ["poster composition", "oversized type", "calm negative space", "soft gradient"],
-      promptSummary: "minimal poster layout with large type",
+      promptSummary: "大字留白海报构图",
     },
     {
       terms: ["polaroid framing", "tape accent", "scrapbook feel", "gentle depth"],
-      promptSummary: "scrapbook polaroid card pinned on board",
+      promptSummary: "拍立得拼贴手帐感",
     },
   ];
 

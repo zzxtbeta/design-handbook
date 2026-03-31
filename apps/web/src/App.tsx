@@ -923,9 +923,12 @@ export function App() {
                     <button
                       className="image-lightbox-prompt"
                       onClick={() => void handleCopyTerm(zoomedEntry.promptSummary ?? "")}
-                      title="点击复制描述"
+                      title="点击复制风格备注"
                     >
-                      <span>{zoomedEntry.promptSummary}</span>
+                      <span className="image-lightbox-prompt-copy">
+                        <strong>风格备注</strong>
+                        <span>{zoomedEntry.promptSummary}</span>
+                      </span>
                       <span className="summary-copy">⧉</span>
                     </button>
                   ) : null}
