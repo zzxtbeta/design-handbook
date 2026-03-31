@@ -30,6 +30,34 @@ interface BoardLayout {
 
 type WeekCardSizes = Record<string, number>;
 
+interface ReactorPet {
+  id: string;
+  rarity: "common" | "rare" | "legendary";
+  bubble: "cloud" | "notch" | "soft" | "ticket" | "star";
+  mode: "peek" | "perch" | "float";
+}
+
+const reactorPets: ReactorPet[] = [
+  { id: "mochi", rarity: "common", bubble: "cloud", mode: "peek" },
+  { id: "mint", rarity: "common", bubble: "soft", mode: "perch" },
+  { id: "pebble", rarity: "common", bubble: "ticket", mode: "peek" },
+  { id: "pip", rarity: "common", bubble: "notch", mode: "float" },
+  { id: "lulu", rarity: "common", bubble: "cloud", mode: "perch" },
+  { id: "bobo", rarity: "common", bubble: "soft", mode: "peek" },
+  { id: "pico", rarity: "common", bubble: "ticket", mode: "float" },
+  { id: "toto", rarity: "common", bubble: "star", mode: "peek" },
+  { id: "nori", rarity: "common", bubble: "cloud", mode: "float" },
+  { id: "mugi", rarity: "common", bubble: "notch", mode: "perch" },
+  { id: "yuzu", rarity: "common", bubble: "soft", mode: "float" },
+  { id: "kiki", rarity: "common", bubble: "star", mode: "perch" },
+  { id: "momo", rarity: "rare", bubble: "cloud", mode: "float" },
+  { id: "sumi", rarity: "rare", bubble: "ticket", mode: "perch" },
+  { id: "puff", rarity: "rare", bubble: "soft", mode: "peek" },
+  { id: "beta", rarity: "rare", bubble: "star", mode: "float" },
+  { id: "nova", rarity: "legendary", bubble: "notch", mode: "float" },
+  { id: "gigi", rarity: "legendary", bubble: "cloud", mode: "perch" },
+];
+
 export function App() {
   const [week, setWeek] = useState<WeekData | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -1400,6 +1428,7 @@ function ReactorDayColumn({
             key={material.id}
             material={material}
             index={index}
+            weekMode
             onDelete={() => onDeleteMaterial(material.id)}
           />
         ))}
@@ -1533,7 +1562,11 @@ function ReactorDayCanvas({
                 window.addEventListener("mouseup", handleUp);
               }}
             >
-              <ReactorMaterialCard material={material} index={index} onDelete={() => onDeleteMaterial(material.id)} />
+              <ReactorMaterialCard
+                material={material}
+                index={index}
+                onDelete={() => onDeleteMaterial(material.id)}
+              />
               <button
                 className="resize-handle resize-handle-corner"
                 onMouseDown={(event) => {
@@ -1566,17 +1599,33 @@ function ReactorDayCanvas({
 function ReactorMaterialCard({
   material,
   index,
+  weekMode = false,
   onDelete,
 }: {
   material: ReactorDay["materials"][number];
   index: number;
+  weekMode?: boolean;
   onDelete: () => void;
 }) {
+  const pet = petForMaterial(material);
+  const weekCardStyle = weekMode ? reactorWeekCardStyle(material, index) : undefined;
+
   return (
-    <article className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)}`}>
+    <article
+      className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)} ${
+        weekMode ? "reactor-card-week" : "reactor-card-canvas"
+      } reactor-pet-${pet.id} reactor-bubble-${pet.bubble}`}
+      style={weekCardStyle}
+    >
       <div className={`tape tape-${entryDecoration(index)}`} />
       <div className={`pin pin-${entryDecoration(index)}`} />
       <div className="paper-clip" />
+      <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
+      <div className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity}`} aria-hidden="true">
+        <span className="reactor-pet-body" />
+        <span className="reactor-pet-eye reactor-pet-eye-left" />
+        <span className="reactor-pet-eye reactor-pet-eye-right" />
+      </div>
       <button className="entry-delete" onClick={onDelete}>×</button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
       <p className="reactor-card-title">{material.content}</p>
@@ -2172,6 +2221,45 @@ function defaultReactorLayout(index: number): BoardLayout {
 function entryDecoration(index: number) {
   const styles = ["amber", "pink", "sage", "blue"] as const;
   return styles[index % styles.length];
+}
+
+function petForMaterial(material: ReactorDay["materials"][number]) {
+  const value = hashString(`${material.id}:${material.type}`);
+  const bucket = value % 1000;
+  const legendary = reactorPets.filter((pet) => pet.rarity === "legendary");
+  const rare = reactorPets.filter((pet) => pet.rarity === "rare");
+  const common = reactorPets.filter((pet) => pet.rarity === "common");
+
+  if (bucket < 10) {
+    return legendary[value % legendary.length];
+  }
+
+  if (bucket < 200) {
+    return rare[value % rare.length];
+  }
+
+  return common[value % common.length];
+}
+
+function reactorWeekCardStyle(material: ReactorDay["materials"][number], index: number) {
+  const contentLength = material.content.trim().length + material.note.trim().length * 0.65;
+  const width = Math.max(54, Math.min(86, 60 + Math.min(contentLength, 72) * 0.26));
+  const align = ["start", "center", "end"][index % 3] as "start" | "center" | "end";
+
+  return {
+    ["--reactor-card-width" as string]: `${width}%`,
+    ["--reactor-card-align" as string]: align,
+  };
+}
+
+function hashString(value: string) {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash;
 }
 
 function formatDayKey(dayKey: string) {

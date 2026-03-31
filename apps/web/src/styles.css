@@ -1274,23 +1274,29 @@ img {
   padding: 14px 8px 8px;
 }
 
+.reactor-day-stack > .reactor-card,
+.reactor-day-stack > .reactor-compose-panel,
+.reactor-day-stack > .reactor-more-card {
+  max-width: 100%;
+}
+
 .reactor-day-stack > .reactor-card:nth-child(3n + 1),
-.reactor-day-stack > .reactor-compose-panel:nth-child(3n + 1) {
-  width: 88%;
+.reactor-day-stack > .reactor-compose-panel:nth-child(3n + 1),
+.reactor-day-stack > .reactor-more-card:nth-child(3n + 1) {
   justify-self: start;
   transform: rotate(-2.2deg);
 }
 
 .reactor-day-stack > .reactor-card:nth-child(3n + 2),
-.reactor-day-stack > .reactor-compose-panel:nth-child(3n + 2) {
-  width: 82%;
+.reactor-day-stack > .reactor-compose-panel:nth-child(3n + 2),
+.reactor-day-stack > .reactor-more-card:nth-child(3n + 2) {
   justify-self: center;
   transform: rotate(1.6deg);
 }
 
 .reactor-day-stack > .reactor-card:nth-child(3n),
-.reactor-day-stack > .reactor-compose-panel:nth-child(3n) {
-  width: 86%;
+.reactor-day-stack > .reactor-compose-panel:nth-child(3n),
+.reactor-day-stack > .reactor-more-card:nth-child(3n) {
   justify-self: end;
   transform: rotate(-0.9deg);
 }
@@ -1298,9 +1304,15 @@ img {
 .reactor-card-material {
   position: relative;
   min-height: 124px;
+  overflow: visible;
 }
 
-.reactor-card-material::after {
+.reactor-card-week {
+  width: var(--reactor-card-width, 76%);
+  justify-self: var(--reactor-card-align, center);
+}
+
+.reactor-card-material::before {
   content: "";
   position: absolute;
   inset: 10px;
@@ -1308,6 +1320,143 @@ img {
   border: 1px solid rgba(120, 90, 64, 0.05);
   pointer-events: none;
 }
+
+.reactor-bubble-cloud::after,
+.reactor-bubble-soft::after,
+.reactor-bubble-ticket::after,
+.reactor-bubble-star::after,
+.reactor-bubble-notch::after {
+  content: "";
+  position: absolute;
+  inset: auto auto -10px 22px;
+  width: 24px;
+  height: 18px;
+  background: inherit;
+  border-left: 1px solid rgba(120, 90, 64, 0.07);
+  border-bottom: 1px solid rgba(120, 90, 64, 0.07);
+  transform: rotate(-16deg);
+  border-bottom-left-radius: 10px;
+}
+
+.reactor-bubble-soft {
+  border-radius: 22px 22px 22px 14px;
+}
+
+.reactor-bubble-ticket {
+  border-radius: 14px;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+}
+
+.reactor-bubble-star {
+  border-radius: 20px 18px 24px 16px;
+}
+
+.reactor-bubble-notch {
+  border-radius: 18px;
+}
+
+.reactor-bubble-notch::after {
+  left: auto;
+  right: 26px;
+  transform: rotate(14deg);
+}
+
+.reactor-bubble-tail {
+  position: absolute;
+  bottom: -9px;
+  left: 22px;
+  width: 18px;
+  height: 12px;
+  background: inherit;
+  border-left: 1px solid rgba(120, 90, 64, 0.07);
+  border-bottom: 1px solid rgba(120, 90, 64, 0.07);
+  border-bottom-left-radius: 8px;
+  rotate: -12deg;
+}
+
+.reactor-bubble-tail-ticket,
+.reactor-bubble-tail-star {
+  left: auto;
+  right: 24px;
+  rotate: 12deg;
+}
+
+.reactor-pet {
+  position: absolute;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.reactor-pet-body {
+  display: block;
+  position: relative;
+  width: 24px;
+  height: 18px;
+  background: var(--pet-tone, #d7d0c2);
+  box-shadow:
+    0 -6px 0 0 var(--pet-tone),
+    18px -4px 0 -4px var(--pet-tone),
+    4px 12px 0 -6px rgba(86, 61, 45, 0.32),
+    14px 12px 0 -6px rgba(86, 61, 45, 0.32);
+}
+
+.reactor-pet-eye {
+  position: absolute;
+  top: 5px;
+  width: 3px;
+  height: 3px;
+  background: rgba(72, 53, 40, 0.82);
+}
+
+.reactor-pet-eye-left {
+  left: 7px;
+}
+
+.reactor-pet-eye-right {
+  left: 15px;
+}
+
+.reactor-pet-peek {
+  right: 10px;
+  bottom: 10px;
+}
+
+.reactor-pet-perch {
+  right: 14px;
+  top: -10px;
+}
+
+.reactor-pet-float {
+  right: -8px;
+  bottom: 16px;
+}
+
+.reactor-pet-rarity-legendary {
+  filter: drop-shadow(0 0 12px rgba(252, 208, 126, 0.34));
+}
+
+.reactor-pet-rarity-rare {
+  filter: drop-shadow(0 0 8px rgba(180, 206, 255, 0.24));
+}
+
+.reactor-pet-mochi { --pet-tone: #d8cfbe; }
+.reactor-pet-mint { --pet-tone: #c7dfd2; }
+.reactor-pet-pebble { --pet-tone: #d5c8bb; }
+.reactor-pet-pip { --pet-tone: #e5d6b4; }
+.reactor-pet-lulu { --pet-tone: #e7c9cf; }
+.reactor-pet-bobo { --pet-tone: #d8d9ef; }
+.reactor-pet-pico { --pet-tone: #d0d9cc; }
+.reactor-pet-toto { --pet-tone: #e6d7c6; }
+.reactor-pet-nori { --pet-tone: #c7d6d0; }
+.reactor-pet-mugi { --pet-tone: #e0d4a7; }
+.reactor-pet-yuzu { --pet-tone: #e7d9b6; }
+.reactor-pet-kiki { --pet-tone: #d7cfe5; }
+.reactor-pet-momo { --pet-tone: #f0c8d4; }
+.reactor-pet-sumi { --pet-tone: #c8d0db; }
+.reactor-pet-puff { --pet-tone: #ddd9f3; }
+.reactor-pet-beta { --pet-tone: #d8f0dd; }
+.reactor-pet-nova { --pet-tone: #f1d18c; }
+.reactor-pet-gigi { --pet-tone: #f3dfa0; }
 
 .reactor-card-material .entry-delete {
   opacity: 0;
@@ -1371,7 +1520,7 @@ img {
 
 .reactor-more-card {
   position: relative;
-  width: 74%;
+  width: 62%;
   min-height: 84px;
   justify-self: center;
   border: 0;
