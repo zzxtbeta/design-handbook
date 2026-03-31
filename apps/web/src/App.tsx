@@ -1,6 +1,13 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DaySlot, WeekData, WeekEntry } from "./types";
+import type {
+  DaySlot,
+  ReactorBoard,
+  ReactorDay,
+  ReactorMaterialType,
+  WeekData,
+  WeekEntry,
+} from "./types";
 
 const dayGroups = [
   ["mon", "周一"],
@@ -12,6 +19,7 @@ const dayGroups = [
 ] as const;
 
 type ViewMode = "week" | "day";
+type BoardMode = "aesthetic" | "reactor";
 
 interface BoardLayout {
   x: number;
@@ -27,7 +35,22 @@ export function App() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [activeDay, setActiveDay] = useState<DaySlot>("mon");
   const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [boardMode, setBoardMode] = useState<BoardMode>("aesthetic");
   const [appearance, setAppearance] = useState<"light" | "dark">("light");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reactorBoard, setReactorBoard] = useState<ReactorBoard | null>(null);
+  const [reactorLoading, setReactorLoading] = useState(false);
+  const [reactorError, setReactorError] = useState<string | null>(null);
+  const [reactorViewMode, setReactorViewMode] = useState<ViewMode>("week");
+  const [activeReactorDayKey, setActiveReactorDayKey] = useState(todayDateKey());
+  const [reactorLayouts, setReactorLayouts] = useState<Record<string, BoardLayout>>({});
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [composerType, setComposerType] = useState<ReactorMaterialType>("diary");
+  const [composerDayKey, setComposerDayKey] = useState(todayDateKey());
+  const [composerContent, setComposerContent] = useState("");
+  const [composerNote, setComposerNote] = useState("");
+  const [composerTagsDraft, setComposerTagsDraft] = useState("");
+  const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [isPasting, setIsPasting] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [dayNoteDraft, setDayNoteDraft] = useState("");
@@ -44,6 +67,18 @@ export function App() {
   useEffect(() => {
     void loadWeek();
   }, [weekOffset]);
+
+  useEffect(() => {
+    if (boardMode !== "reactor") {
+      return;
+    }
+
+    if (reactorBoard) {
+      return;
+    }
+
+    void loadReactorBoard();
+  }, [boardMode, reactorBoard]);
 
   useEffect(() => {
     if (!week) {
@@ -101,6 +136,38 @@ export function App() {
 
     window.localStorage.setItem(weekCardStorageKey(week.weekKey), JSON.stringify(weekCardSizes));
   }, [week, weekCardSizes]);
+
+  useEffect(() => {
+    const activeMaterials =
+      reactorBoard?.days.find((day) => day.dayKey === activeReactorDayKey)?.materials ?? [];
+    if (activeMaterials.length === 0) {
+      setReactorLayouts({});
+      return;
+    }
+
+    const raw = window.localStorage.getItem(reactorLayoutStorageKey(activeReactorDayKey));
+    const parsed = raw ? (JSON.parse(raw) as Record<string, BoardLayout>) : {};
+    const merged = { ...parsed };
+
+    activeMaterials.forEach((material, index) => {
+      if (!merged[material.id]) {
+        merged[material.id] = defaultReactorLayout(index);
+      }
+    });
+
+    setReactorLayouts(merged);
+  }, [activeReactorDayKey, reactorBoard]);
+
+  useEffect(() => {
+    if (Object.keys(reactorLayouts).length === 0) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      reactorLayoutStorageKey(activeReactorDayKey),
+      JSON.stringify(reactorLayouts),
+    );
+  }, [activeReactorDayKey, reactorLayouts]);
 
   useEffect(() => {
     function handlePaste(event: ClipboardEvent) {
@@ -232,6 +299,14 @@ export function App() {
     );
   }, [week]);
 
+  const reactorWeek = useMemo(
+    () => buildReactorWeek(reactorBoard?.days ?? []),
+    [reactorBoard],
+  );
+  const activeReactorDay = reactorWeek.get(reactorSlotForDate(activeReactorDayKey));
+  const activeReactorMaterials =
+    reactorBoard?.days.find((day) => day.dayKey === activeReactorDayKey)?.materials ?? [];
+
   const activeEntries = week
     ? week.entries.filter((entry) => entry.daySlot === activeDay)
     : [];
@@ -239,9 +314,100 @@ export function App() {
   const weeklySummary = useMemo(() => buildWeeklySummary(week), [week]);
 
   async function loadWeek() {
-    const response = await fetch(`/api/weeks/offset-${weekOffset}`);
-    const data = (await response.json()) as WeekData;
-    setWeek(data);
+    try {
+      const response = await fetch(`/api/weeks/offset-${weekOffset}`);
+
+      if (!response.ok) {
+        throw new Error(`Week load failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as WeekData;
+      setWeek(data);
+      setLoadError(null);
+    } catch (error) {
+      console.error("[web] loadWeek failed", error);
+      setLoadError("Aesthetic Board 暂时读不到数据，Reactor 仍然可以先看方向。");
+      setWeek(null);
+    }
+  }
+
+  async function loadReactorBoard() {
+    try {
+      setReactorLoading(true);
+      const response = await fetch("/api/reactor/days?days=7");
+
+      if (!response.ok) {
+        throw new Error(`Reactor load failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as ReactorBoard;
+      setReactorBoard(data);
+      setReactorError(null);
+    } catch (error) {
+      console.error("[web] loadReactorBoard failed", error);
+      setReactorError("Creator Reactor 暂时读不到数据。");
+    } finally {
+      setReactorLoading(false);
+    }
+  }
+
+  function openComposer(type: ReactorMaterialType, dayKey = activeReactorDayKey) {
+    setComposerType(type);
+    setComposerDayKey(dayKey);
+    setIsComposerOpen(true);
+  }
+
+  async function handleSaveMaterial() {
+    if (composerContent.trim() === "") {
+      return;
+    }
+
+    try {
+      setIsSavingMaterial(true);
+      const response = await fetch("/api/reactor/materials", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dayKey: composerDayKey,
+          type: composerType,
+          content: composerContent,
+          note: composerNote,
+          manualTags: composerTagsDraft
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Reactor create failed with status ${response.status}`);
+      }
+
+      setComposerContent("");
+      setComposerNote("");
+      setComposerTagsDraft("");
+      setIsComposerOpen(false);
+      await loadReactorBoard();
+    } catch (error) {
+      console.error("[web] handleSaveMaterial failed", error);
+      setReactorError("保存素材失败，请稍后重试。");
+    } finally {
+      setIsSavingMaterial(false);
+    }
+  }
+
+  async function handleDeleteMaterial(materialId: string) {
+    try {
+      await fetch(`/api/reactor/materials/${materialId}`, {
+        method: "DELETE",
+      });
+      await loadReactorBoard();
+    } catch (error) {
+      console.error("[web] handleDeleteMaterial failed", error);
+      setReactorError("删除素材失败，请稍后重试。");
+    }
   }
 
   async function handleDeleteTerm(termId: string) {
@@ -396,14 +562,6 @@ export function App() {
     setViewMode("day");
   }
 
-  if (!week) {
-    return (
-      <main className="app-shell">
-        <section className="board board-loading">正在加载本周手帐...</section>
-      </main>
-    );
-  }
-
   return (
     <main className={`app-shell app-shell-${appearance}`}>
       <div className="ambient ambient-left" />
@@ -430,24 +588,54 @@ export function App() {
         />
         <header className="topbar">
           <div className="title-block">
-            <h1>Week {week.weekNumber}</h1>
-            <p className="date-range">{week.label}</p>
+            <h1>
+              {boardMode === "aesthetic"
+                ? week
+                  ? `Week ${week.weekNumber}`
+                  : "Aesthetic Board"
+                : "Creator Reactor"}
+            </h1>
+            <p className="date-range">
+              {boardMode === "aesthetic"
+                ? week?.label ?? "Visual references, mood, and interface language."
+                : "A daily whiteboard for loose notes, links, prompts, and unfinished thoughts."}
+            </p>
           </div>
           <div className="week-actions">
             <div className="week-actions-top">
-              <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value - 1)}>
-                ‹
-              </button>
-              <button className="today-button" onClick={handleFocusTodayBoard}>
-                Week {week.weekNumber}
-              </button>
-              <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value + 1)}>
-                ›
-              </button>
-              <button className="top-tool active" onClick={() => setShowSummary(true)}>
-                <span className="top-tool-icon">◫</span>
-                <span>Weekly Summary</span>
-              </button>
+              <div className="board-mode-switch">
+                <button
+                  className={`top-tool ${boardMode === "aesthetic" ? "active" : ""}`}
+                  onClick={() => setBoardMode("aesthetic")}
+                >
+                  <span className="top-tool-icon">◫</span>
+                  <span>Aesthetic Board</span>
+                </button>
+                <button
+                  className={`top-tool ${boardMode === "reactor" ? "active" : ""}`}
+                  onClick={() => setBoardMode("reactor")}
+                >
+                  <span className="top-tool-icon">✎</span>
+                  <span>Reactor</span>
+                </button>
+              </div>
+              {boardMode === "aesthetic" ? (
+                <>
+                  <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value - 1)}>
+                    ‹
+                  </button>
+                  <button className="today-button" onClick={handleFocusTodayBoard}>
+                    {week ? `Week ${week.weekNumber}` : "Open Board"}
+                  </button>
+                  <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value + 1)}>
+                    ›
+                  </button>
+                  <button className="top-tool active" onClick={() => setShowSummary(true)}>
+                    <span className="top-tool-icon">◫</span>
+                    <span>Weekly Summary</span>
+                  </button>
+                </>
+              ) : null}
               <button
                 className="top-tool icon-tool"
                 onClick={() => setAppearance((current) => (current === "light" ? "dark" : "light"))}
@@ -460,7 +648,13 @@ export function App() {
         </header>
 
         <section className="view-switcher">
-          <span className="view-copy">{viewMode === "week" ? "Weekly Board" : `Focused ${labelForDay(activeDay)}`}</span>
+          <span className="view-copy">
+            {boardMode === "aesthetic"
+              ? viewMode === "week"
+                ? "Weekly Board"
+                : `Focused ${labelForDay(activeDay)}`
+              : "Daily whiteboards for unfinished thoughts"}
+          </span>
           {copiedTerm ? <span className="copied-inline">已复制</span> : null}
         </section>
 
@@ -472,15 +666,22 @@ export function App() {
           transition={{ duration: 0.28, ease: "easeOut" }}
         >
           <AnimatePresence mode="wait">
-            {viewMode === "week" ? (
-              <motion.div
-                key="week-view"
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.03 }}
-                transition={{ duration: 0.24, ease: "easeOut" }}
-                style={{ transformOrigin: focusOrigin(activeDay) }}
-              >
+            {boardMode === "aesthetic" ? (
+              !week ? (
+                <BoardUnavailable
+                  message={loadError ?? "正在加载本周手帐..."}
+                  onOpenReactor={() => setBoardMode("reactor")}
+                  onRetry={() => void loadWeek()}
+                />
+              ) : viewMode === "week" ? (
+                <motion.div
+                  key="week-view"
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.03 }}
+                  transition={{ duration: 0.24, ease: "easeOut" }}
+                  style={{ transformOrigin: focusOrigin(activeDay) }}
+                >
               <section className="week-grid">
                 <div className="week-row">
                   {dayGroups.slice(0, 3).map(([slot, label]) => (
@@ -587,35 +788,85 @@ export function App() {
                   </button>
                 </div>
               </section>
-              </motion.div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="day-view"
+                  initial={{ opacity: 0, scale: 1.04 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  transition={{ duration: 0.24, ease: "easeOut" }}
+                  style={{ transformOrigin: focusOrigin(activeDay) }}
+                >
+                  <DayCanvas
+                    dayLabel={labelForDay(activeDay)}
+                    dayNumber={week.dayNumbers[activeDay]}
+                    entries={activeEntries}
+                    layouts={boardLayouts}
+                    onBack={() => setViewMode("week")}
+                    dayNoteDraft={dayNoteDraft}
+                    onDayNoteChange={setDayNoteDraft}
+                    onSaveDayNote={() => void handleSaveDayNote()}
+                    onDeleteTerm={handleDeleteTerm}
+                    onDeleteEntry={handleDeleteEntry}
+                    onCopyTerm={handleCopyTerm}
+                    onOpenImage={setZoomedEntry}
+                    expandedEntryId={expandedEntryId}
+                    onToggleExpandedEntry={setExpandedEntryId}
+                    onUpdateLayout={handleUpdateLayout}
+                  />
+                </motion.div>
+              )
             ) : (
-            <motion.div
-              key="day-view"
-              initial={{ opacity: 0, scale: 1.04 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              transition={{ duration: 0.24, ease: "easeOut" }}
-              style={{ transformOrigin: focusOrigin(activeDay) }}
-            >
-            <DayCanvas
-              dayLabel={labelForDay(activeDay)}
-              dayNumber={week.dayNumbers[activeDay]}
-              entries={activeEntries}
-              layouts={boardLayouts}
-              onBack={() => setViewMode("week")}
-              dayNoteDraft={dayNoteDraft}
-              onDayNoteChange={setDayNoteDraft}
-              onSaveDayNote={() => void handleSaveDayNote()}
-              onDeleteTerm={handleDeleteTerm}
-              onDeleteEntry={handleDeleteEntry}
-              onCopyTerm={handleCopyTerm}
-              onOpenImage={setZoomedEntry}
-              expandedEntryId={expandedEntryId}
-              onToggleExpandedEntry={setExpandedEntryId}
-              onUpdateLayout={handleUpdateLayout}
-            />
-            </motion.div>
-          )}
+              <motion.div
+                key="reactor-view"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+              >
+                <ReactorBoardView
+                  week={reactorWeek}
+                  activeDayKey={activeReactorDayKey}
+                  activeDay={activeReactorDay}
+                  activeMaterials={activeReactorMaterials}
+                  viewMode={reactorViewMode}
+                  layouts={reactorLayouts}
+                  isLoading={reactorLoading}
+                  error={reactorError}
+                  isComposerOpen={isComposerOpen}
+                  composerDayKey={composerDayKey}
+                  composerType={composerType}
+                  composerContent={composerContent}
+                  composerNote={composerNote}
+                  composerTagsDraft={composerTagsDraft}
+                  isSavingMaterial={isSavingMaterial}
+                  onRetry={() => void loadReactorBoard()}
+                  onOpenComposer={openComposer}
+                  onDeleteMaterial={(id) => void handleDeleteMaterial(id)}
+                  onOpenDay={(dayKey) => {
+                    setActiveReactorDayKey(dayKey);
+                    setReactorViewMode("day");
+                  }}
+                  onBackToWeek={() => setReactorViewMode("week")}
+                  onCloseComposer={() => setIsComposerOpen(false)}
+                  onComposerTypeChange={setComposerType}
+                  onComposerContentChange={setComposerContent}
+                  onComposerNoteChange={setComposerNote}
+                  onComposerTagsChange={setComposerTagsDraft}
+                  onSaveMaterial={() => void handleSaveMaterial()}
+                  onUpdateLayout={(materialId, next) =>
+                    setReactorLayouts((current) => ({
+                      ...current,
+                      [materialId]: {
+                        ...(current[materialId] ?? defaultReactorLayout(0)),
+                        ...next,
+                      },
+                    }))
+                  }
+                />
+              </motion.div>
+            )}
           </AnimatePresence>
         </motion.section>
 
@@ -842,6 +1093,503 @@ function DayColumn({
             onToggleExpanded={onToggleExpandedEntry}
           />
         ))}
+      </div>
+    </section>
+  );
+}
+
+function ReactorBoardView({
+  week,
+  activeDayKey,
+  activeDay,
+  activeMaterials,
+  viewMode,
+  layouts,
+  isLoading,
+  error,
+  isComposerOpen,
+  composerDayKey,
+  composerType,
+  composerContent,
+  composerNote,
+  composerTagsDraft,
+  isSavingMaterial,
+  onRetry,
+  onOpenComposer,
+  onDeleteMaterial,
+  onOpenDay,
+  onBackToWeek,
+  onCloseComposer,
+  onComposerTypeChange,
+  onComposerContentChange,
+  onComposerNoteChange,
+  onComposerTagsChange,
+  onSaveMaterial,
+  onUpdateLayout,
+}: {
+  week: Map<DaySlot, ReactorDay>;
+  activeDayKey: string;
+  activeDay: ReactorDay | undefined;
+  activeMaterials: ReactorDay["materials"];
+  viewMode: ViewMode;
+  layouts: Record<string, BoardLayout>;
+  isLoading: boolean;
+  error: string | null;
+  isComposerOpen: boolean;
+  composerDayKey: string;
+  composerType: ReactorMaterialType;
+  composerContent: string;
+  composerNote: string;
+  composerTagsDraft: string;
+  isSavingMaterial: boolean;
+  onRetry: () => void;
+  onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
+  onDeleteMaterial: (materialId: string) => void;
+  onOpenDay: (dayKey: string) => void;
+  onBackToWeek: () => void;
+  onCloseComposer: () => void;
+  onComposerTypeChange: (type: ReactorMaterialType) => void;
+  onComposerContentChange: (value: string) => void;
+  onComposerNoteChange: (value: string) => void;
+  onComposerTagsChange: (value: string) => void;
+  onSaveMaterial: () => void;
+  onUpdateLayout: (materialId: string, next: Partial<BoardLayout>) => void;
+}) {
+  return viewMode === "week" ? (
+    <section className="reactor-shell">
+      <header className="reactor-header">
+        <div>
+          <p className="reactor-kicker">Weekly Reactor</p>
+          <h2>Loose notes settle into the week.</h2>
+        </div>
+      </header>
+
+      <section className="week-grid reactor-week-grid">
+        <div className="week-row">
+          {dayGroups.slice(0, 3).map(([slot, label]) => (
+            <ReactorDayColumn
+              key={slot}
+              day={week.get(slot) ?? emptyReactorDay(slot)}
+              dayLabel={label}
+              onOpenDay={onOpenDay}
+              onOpenComposer={onOpenComposer}
+              onDeleteMaterial={onDeleteMaterial}
+              isComposerOpen={
+                isComposerOpen &&
+                composerDayKey === (week.get(slot)?.dayKey ?? emptyReactorDay(slot).dayKey)
+              }
+              composerType={composerType}
+              composerContent={composerContent}
+              composerNote={composerNote}
+              composerTagsDraft={composerTagsDraft}
+              isSavingMaterial={isSavingMaterial}
+              onCloseComposer={onCloseComposer}
+              onComposerTypeChange={onComposerTypeChange}
+              onComposerContentChange={onComposerContentChange}
+              onComposerNoteChange={onComposerNoteChange}
+              onComposerTagsChange={onComposerTagsChange}
+              onSaveMaterial={onSaveMaterial}
+            />
+          ))}
+        </div>
+        <div className="week-row">
+          {dayGroups.slice(3).map(([slot, label]) => (
+            <ReactorDayColumn
+              key={slot}
+              day={week.get(slot) ?? emptyReactorDay(slot)}
+              dayLabel={label}
+              onOpenDay={onOpenDay}
+              onOpenComposer={onOpenComposer}
+              onDeleteMaterial={onDeleteMaterial}
+              isComposerOpen={
+                isComposerOpen &&
+                composerDayKey === (week.get(slot)?.dayKey ?? emptyReactorDay(slot).dayKey)
+              }
+              composerType={composerType}
+              composerContent={composerContent}
+              composerNote={composerNote}
+              composerTagsDraft={composerTagsDraft}
+              isSavingMaterial={isSavingMaterial}
+              onCloseComposer={onCloseComposer}
+              onComposerTypeChange={onComposerTypeChange}
+              onComposerContentChange={onComposerContentChange}
+              onComposerNoteChange={onComposerNoteChange}
+              onComposerTagsChange={onComposerTagsChange}
+              onSaveMaterial={onSaveMaterial}
+            />
+          ))}
+        </div>
+      </section>
+
+      {isLoading ? <p className="reactor-status">Loading daily board...</p> : null}
+      {error ? (
+        <div className="reactor-status reactor-status-error">
+          <span>{error}</span>
+          <button className="ghost-action" onClick={onRetry}>Retry</button>
+        </div>
+      ) : null}
+    </section>
+  ) : (
+    <ReactorDayCanvas
+      day={activeDay}
+      materials={activeMaterials}
+      layouts={layouts}
+      isComposerOpen={isComposerOpen}
+      composerType={composerType}
+      composerContent={composerContent}
+      composerNote={composerNote}
+      composerTagsDraft={composerTagsDraft}
+      isSavingMaterial={isSavingMaterial}
+      onBack={onBackToWeek}
+      onOpenComposer={onOpenComposer}
+      onDeleteMaterial={onDeleteMaterial}
+      onUpdateLayout={onUpdateLayout}
+      onCloseComposer={onCloseComposer}
+      onComposerTypeChange={onComposerTypeChange}
+      onComposerContentChange={onComposerContentChange}
+      onComposerNoteChange={onComposerNoteChange}
+      onComposerTagsChange={onComposerTagsChange}
+      onSaveMaterial={onSaveMaterial}
+    />
+  );
+}
+
+function ReactorComposer({
+  compact = false,
+  composerType,
+  composerContent,
+  composerNote,
+  composerTagsDraft,
+  isSavingMaterial,
+  onCloseComposer,
+  onComposerTypeChange,
+  onComposerContentChange,
+  onComposerNoteChange,
+  onComposerTagsChange,
+  onSaveMaterial,
+}: {
+  compact?: boolean;
+  composerType: ReactorMaterialType;
+  composerContent: string;
+  composerNote: string;
+  composerTagsDraft: string;
+  isSavingMaterial: boolean;
+  onCloseComposer: () => void;
+  onComposerTypeChange: (type: ReactorMaterialType) => void;
+  onComposerContentChange: (value: string) => void;
+  onComposerNoteChange: (value: string) => void;
+  onComposerTagsChange: (value: string) => void;
+  onSaveMaterial: () => void;
+}) {
+  return (
+    <section className={`reactor-compose-panel ${compact ? "reactor-compose-panel-compact" : ""}`}>
+      <div className="reactor-compose-header">
+        <strong>{labelForMaterialType(composerType)}</strong>
+        <button className="ghost-action" onClick={onCloseComposer}>Close</button>
+      </div>
+      <div className="reactor-compose-types">
+        {(["diary", "idea", "prompt", "link", "sample"] as ReactorMaterialType[]).map((type) => (
+          <button
+            key={type}
+            className={`top-tool ${composerType === type ? "active" : ""}`}
+            onClick={() => onComposerTypeChange(type)}
+          >
+            {labelForMaterialType(type)}
+          </button>
+        ))}
+      </div>
+      <textarea
+        className="reactor-compose-textarea"
+        value={composerContent}
+        onChange={(event) => onComposerContentChange(event.target.value)}
+        placeholder="Write the line you don't want to lose..."
+      />
+      <input
+        className="reactor-compose-input"
+        value={composerNote}
+        onChange={(event) => onComposerNoteChange(event.target.value)}
+        placeholder="Why keep it?"
+      />
+      <input
+        className="reactor-compose-input"
+        value={composerTagsDraft}
+        onChange={(event) => onComposerTagsChange(event.target.value)}
+        placeholder="tags, comma separated"
+      />
+      <div className="reactor-compose-actions">
+        <button className="top-tool" onClick={onCloseComposer}>Cancel</button>
+        <button className="today-button" onClick={onSaveMaterial} disabled={isSavingMaterial}>
+          {isSavingMaterial ? "Saving..." : "Save Material"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ReactorDayColumn({
+  day,
+  dayLabel,
+  onOpenDay,
+  onOpenComposer,
+  onDeleteMaterial,
+  isComposerOpen,
+  composerType,
+  composerContent,
+  composerNote,
+  composerTagsDraft,
+  isSavingMaterial,
+  onCloseComposer,
+  onComposerTypeChange,
+  onComposerContentChange,
+  onComposerNoteChange,
+  onComposerTagsChange,
+  onSaveMaterial,
+}: {
+  day: ReactorDay;
+  dayLabel: string;
+  onOpenDay: (dayKey: string) => void;
+  onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
+  onDeleteMaterial: (materialId: string) => void;
+  isComposerOpen: boolean;
+  composerType: ReactorMaterialType;
+  composerContent: string;
+  composerNote: string;
+  composerTagsDraft: string;
+  isSavingMaterial: boolean;
+  onCloseComposer: () => void;
+  onComposerTypeChange: (type: ReactorMaterialType) => void;
+  onComposerContentChange: (value: string) => void;
+  onComposerNoteChange: (value: string) => void;
+  onComposerTagsChange: (value: string) => void;
+  onSaveMaterial: () => void;
+}) {
+  return (
+    <section className="day-column reactor-day-column">
+      <header className="day-header reactor-day-column-header">
+        <button className="day-jump-target" onClick={() => onOpenDay(day.dayKey)}>
+          <div className="day-number">{formatDayKey(day.dayKey).split(" / ")[1] ?? ""}</div>
+          <div className="day-name">{dayLabel}</div>
+        </button>
+        <button className="day-open-button" onClick={() => onOpenComposer("idea", day.dayKey)}>＋</button>
+      </header>
+      <div className="reactor-day-stack">
+        {isComposerOpen ? (
+          <ReactorComposer
+            compact
+            composerType={composerType}
+            composerContent={composerContent}
+            composerNote={composerNote}
+            composerTagsDraft={composerTagsDraft}
+            isSavingMaterial={isSavingMaterial}
+            onCloseComposer={onCloseComposer}
+            onComposerTypeChange={onComposerTypeChange}
+            onComposerContentChange={onComposerContentChange}
+            onComposerNoteChange={onComposerNoteChange}
+            onComposerTagsChange={onComposerTagsChange}
+            onSaveMaterial={onSaveMaterial}
+          />
+        ) : null}
+        {day.materials.map((material, index) => (
+          <ReactorMaterialCard
+            key={material.id}
+            material={material}
+            index={index}
+            onDelete={() => onDeleteMaterial(material.id)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ReactorDayCanvas({
+  day,
+  materials,
+  layouts,
+  isComposerOpen,
+  composerType,
+  composerContent,
+  composerNote,
+  composerTagsDraft,
+  isSavingMaterial,
+  onBack,
+  onOpenComposer,
+  onDeleteMaterial,
+  onUpdateLayout,
+  onCloseComposer,
+  onComposerTypeChange,
+  onComposerContentChange,
+  onComposerNoteChange,
+  onComposerTagsChange,
+  onSaveMaterial,
+}: {
+  day: ReactorDay | undefined;
+  materials: ReactorDay["materials"];
+  layouts: Record<string, BoardLayout>;
+  isComposerOpen: boolean;
+  composerType: ReactorMaterialType;
+  composerContent: string;
+  composerNote: string;
+  composerTagsDraft: string;
+  isSavingMaterial: boolean;
+  onBack: () => void;
+  onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
+  onDeleteMaterial: (materialId: string) => void;
+  onUpdateLayout: (materialId: string, next: Partial<BoardLayout>) => void;
+  onCloseComposer: () => void;
+  onComposerTypeChange: (type: ReactorMaterialType) => void;
+  onComposerContentChange: (value: string) => void;
+  onComposerNoteChange: (value: string) => void;
+  onComposerTagsChange: (value: string) => void;
+  onSaveMaterial: () => void;
+}) {
+  const dayKey = day?.dayKey ?? todayDateKey();
+  return (
+    <section className="day-canvas">
+      <header className="day-canvas-header">
+        <div>
+          <p className="day-canvas-kicker">Focused Day</p>
+          <h2>{formatDayKey(dayKey)} · Creator Reactor</h2>
+        </div>
+        <div className="day-canvas-actions">
+          <button className="nav-button" onClick={onBack}>Back to Week</button>
+          <button className="today-button" onClick={() => onOpenComposer("diary", dayKey)}>New Note</button>
+        </div>
+      </header>
+      <div className="day-canvas-board reactor-canvas-board">
+        {isComposerOpen ? (
+          <div className="reactor-canvas-composer">
+            <ReactorComposer
+              compact
+              composerType={composerType}
+              composerContent={composerContent}
+              composerNote={composerNote}
+              composerTagsDraft={composerTagsDraft}
+              isSavingMaterial={isSavingMaterial}
+              onCloseComposer={onCloseComposer}
+              onComposerTypeChange={onComposerTypeChange}
+              onComposerContentChange={onComposerContentChange}
+              onComposerNoteChange={onComposerNoteChange}
+              onComposerTagsChange={onComposerTagsChange}
+              onSaveMaterial={onSaveMaterial}
+            />
+          </div>
+        ) : null}
+        {materials.map((material, index) => {
+          const layout = layouts[material.id] ?? defaultReactorLayout(index);
+          return (
+            <motion.article
+              key={material.id}
+              className="day-board-card reactor-board-card"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              style={{
+                left: `${layout.x}px`,
+                top: `${layout.y}px`,
+                width: `${layout.width}px`,
+                zIndex: layout.z,
+                rotate: entryRotation(index),
+              }}
+              onMouseDown={(event) => {
+                if ((event.target as HTMLElement).closest(".resize-handle, .entry-delete")) {
+                  return;
+                }
+
+                const startX = event.clientX;
+                const startY = event.clientY;
+                const startLeft = layout.x;
+                const startTop = layout.y;
+                onUpdateLayout(material.id, { z: Date.now() });
+
+                const handleMove = (moveEvent: MouseEvent) => {
+                  onUpdateLayout(material.id, {
+                    x: Math.max(0, startLeft + (moveEvent.clientX - startX)),
+                    y: Math.max(0, startTop + (moveEvent.clientY - startY)),
+                  });
+                };
+
+                const handleUp = () => {
+                  window.removeEventListener("mousemove", handleMove);
+                  window.removeEventListener("mouseup", handleUp);
+                };
+
+                window.addEventListener("mousemove", handleMove);
+                window.addEventListener("mouseup", handleUp);
+              }}
+            >
+              <ReactorMaterialCard material={material} index={index} onDelete={() => onDeleteMaterial(material.id)} />
+              <button
+                className="resize-handle resize-handle-corner"
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  const startX = event.clientX;
+                  const startWidth = layout.width;
+                  onUpdateLayout(material.id, { z: Date.now() });
+                  const handleMove = (moveEvent: MouseEvent) => {
+                    onUpdateLayout(material.id, {
+                      width: Math.max(220, Math.min(420, startWidth + (moveEvent.clientX - startX))),
+                    });
+                  };
+                  const handleUp = () => {
+                    window.removeEventListener("mousemove", handleMove);
+                    window.removeEventListener("mouseup", handleUp);
+                  };
+                  window.addEventListener("mousemove", handleMove);
+                  window.addEventListener("mouseup", handleUp);
+                }}
+              />
+            </motion.article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ReactorMaterialCard({
+  material,
+  index,
+  onDelete,
+}: {
+  material: ReactorDay["materials"][number];
+  index: number;
+  onDelete: () => void;
+}) {
+  return (
+    <article className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)}`}>
+      <div className={`tape tape-${entryDecoration(index)}`} />
+      <div className={`pin pin-${entryDecoration(index)}`} />
+      <div className="paper-clip" />
+      <button className="entry-delete" onClick={onDelete}>×</button>
+      <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
+      <p className="reactor-card-title">{material.content}</p>
+      {material.note ? <p className="reactor-card-meta">{material.note}</p> : null}
+    </article>
+  );
+}
+
+function BoardUnavailable({
+  message,
+  onOpenReactor,
+  onRetry,
+}: {
+  message: string;
+  onOpenReactor: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <section className="board-unavailable">
+      <p className="board-unavailable-kicker">Aesthetic Board</p>
+      <h2>Week data is not ready yet.</h2>
+      <p>{message}</p>
+      <div className="board-unavailable-actions">
+        <button className="today-button" onClick={onOpenReactor}>
+          Open Reactor
+        </button>
+        <button className="top-tool" onClick={onRetry}>
+          Retry
+        </button>
       </div>
     </section>
   );
@@ -1294,6 +2042,125 @@ function defaultBoardLayout(entry: WeekEntry | undefined, index: number): BoardL
 
 function layoutStorageKey(weekKey: string, day: DaySlot) {
   return `ai-journal-layout:${weekKey}:${day}`;
+}
+
+function labelForMaterialType(type: ReactorMaterialType) {
+  return {
+    diary: "Diary",
+    idea: "Idea",
+    prompt: "Prompt",
+    link: "Link",
+    sample: "Sample",
+  }[type];
+}
+
+function todayDateKey() {
+  return localDateKey(new Date());
+}
+
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function startOfCurrentWeek() {
+  const today = new Date();
+  const start = new Date(today);
+  const day = start.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diff);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function buildReactorWeek(days: ReactorDay[]) {
+  const start = startOfCurrentWeek();
+  const byKey = new Map(days.map((day) => [day.dayKey, day]));
+  const week = new Map<DaySlot, ReactorDay>();
+
+  dayGroups.forEach(([slot], index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+
+    if (slot === "weekend") {
+      const sunday = new Date(start);
+      sunday.setDate(start.getDate() + 6);
+      const saturdayKey = localDateKey(date);
+      const sundayKey = localDateKey(sunday);
+      const materials = [
+        ...(byKey.get(saturdayKey)?.materials ?? []),
+        ...(byKey.get(sundayKey)?.materials ?? []),
+      ];
+
+      week.set(slot, {
+        dayKey: saturdayKey,
+        label: "Weekend",
+        itemCount: materials.length,
+        materials,
+      });
+      return;
+    }
+
+    const dayKey = localDateKey(date);
+    week.set(slot, byKey.get(dayKey) ?? emptyReactorDay(slot));
+  });
+
+  return week;
+}
+
+function reactorSlotForDate(dayKey: string): DaySlot {
+  const date = new Date(`${dayKey}T00:00:00`);
+  const day = date.getDay();
+
+  if (day === 1) return "mon";
+  if (day === 2) return "tue";
+  if (day === 3) return "wed";
+  if (day === 4) return "thu";
+  if (day === 5) return "fri";
+
+  return "weekend";
+}
+
+function emptyReactorDay(slot: DaySlot): ReactorDay {
+  const start = startOfCurrentWeek();
+  const offset = slot === "weekend" ? 5 : dayGroups.findIndex(([value]) => value === slot);
+  const date = new Date(start);
+  date.setDate(start.getDate() + Math.max(offset, 0));
+
+  return {
+    dayKey: localDateKey(date),
+    label: labelForDay(slot),
+    itemCount: 0,
+    materials: [],
+  };
+}
+
+function reactorLayoutStorageKey(dayKey: string) {
+  return `creator-reactor-layout:${dayKey}`;
+}
+
+function defaultReactorLayout(index: number): BoardLayout {
+  const col = index % 3;
+  const row = Math.floor(index / 3);
+
+  return {
+    x: 44 + col * 246 + (index % 2 === 0 ? 12 : -8),
+    y: 82 + row * 214 + (index % 3) * 14,
+    width: 258,
+    z: index + 1,
+  };
+}
+
+function entryDecoration(index: number) {
+  const styles = ["amber", "pink", "sage", "blue"] as const;
+  return styles[index % styles.length];
+}
+
+function formatDayKey(dayKey: string) {
+  const [, month = "", day = ""] = dayKey.split("-");
+  return `${month} / ${day}`;
 }
 
 function weekCardStorageKey(weekKey: string) {

@@ -34,3 +34,27 @@ export interface WeekData {
   dayNotes: Record<DaySlot, string>;
   entries: WeekEntry[];
 }
+
+export type ReactorMaterialType = "diary" | "idea" | "prompt" | "link" | "sample";
+
+export interface ReactorMaterial {
+  id: string;
+  dayKey: string;
+  type: ReactorMaterialType;
+  content: string;
+  note: string;
+  manualTags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReactorDay {
+  dayKey: string;
+  label: string;
+  itemCount: number;
+  materials: ReactorMaterial[];
+}
+
+export interface ReactorBoard {
+  days: ReactorDay[];
+}

@@ -7,6 +7,12 @@ import { generateDesignTerms } from "./ai";
 import { config } from "./config";
 import { deleteStoredImage, saveImageDataUrl } from "./image-storage";
 import {
+  createReactorMaterial,
+  deleteReactorMaterial,
+  getReactorBoard,
+  updateReactorMaterial,
+} from "./reactor-store";
+import {
   createEntry,
   deleteEntry,
   deleteEntryTerm,
@@ -47,6 +53,61 @@ app.get("/api/health", (_request, response) => {
 
 app.get("/api/weeks/:weekKey", async (request, response) => {
   response.json(await getWeek(request.params.weekKey));
+});
+
+app.get("/api/reactor/days", async (request, response) => {
+  const rawDays = Number(request.query.days ?? 3);
+  const days = Number.isFinite(rawDays) ? Math.max(1, Math.min(7, rawDays)) : 3;
+  response.json(await getReactorBoard(days));
+});
+
+app.post("/api/reactor/materials", async (request, response) => {
+  const { type, content, note, manualTags, dayKey } = request.body;
+
+  if (typeof type !== "string" || typeof content !== "string" || content.trim() === "") {
+    response.status(400).json({
+      error: "type and non-empty content are required.",
+    });
+    return;
+  }
+
+  response.status(201).json(
+    await createReactorMaterial({
+      type: type as Parameters<typeof createReactorMaterial>[0]["type"],
+      content,
+      note: typeof note === "string" ? note : "",
+      manualTags: Array.isArray(manualTags) ? manualTags.filter((tag) => typeof tag === "string") : [],
+      dayKey: typeof dayKey === "string" ? dayKey : undefined,
+    }),
+  );
+});
+
+app.patch("/api/reactor/materials/:id", async (request, response) => {
+  const updated = await updateReactorMaterial(request.params.id, {
+    content: typeof request.body.content === "string" ? request.body.content : undefined,
+    note: typeof request.body.note === "string" ? request.body.note : undefined,
+    manualTags: Array.isArray(request.body.manualTags)
+      ? request.body.manualTags.filter((tag: unknown) => typeof tag === "string")
+      : undefined,
+  });
+
+  if (!updated) {
+    response.status(404).json({ error: "Material not found." });
+    return;
+  }
+
+  response.json(updated);
+});
+
+app.delete("/api/reactor/materials/:id", async (request, response) => {
+  const deleted = await deleteReactorMaterial(request.params.id);
+
+  if (!deleted) {
+    response.status(404).json({ error: "Material not found." });
+    return;
+  }
+
+  response.json(deleted);
 });
 
 app.post("/api/entries", async (request, response) => {

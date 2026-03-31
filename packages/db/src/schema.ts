@@ -1,13 +1,16 @@
 import {
   integer,
+  jsonb,
   pgEnum,
   pgTable,
+  serial,
   text,
   timestamp,
   uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const daySlotEnum = pgEnum("day_slot", [
   "mon",
@@ -32,6 +35,14 @@ export const entrySourceEnum = pgEnum("entry_source", [
 export const entryTermSourceEnum = pgEnum("entry_term_source", [
   "gemini",
   "manual",
+]);
+
+export const reactorMaterialTypeEnum = pgEnum("reactor_material_type", [
+  "diary",
+  "idea",
+  "prompt",
+  "link",
+  "sample",
 ]);
 
 export const weeks = pgTable("weeks", {
@@ -93,3 +104,15 @@ export const dayNotes = pgTable("day_notes", {
 }, (table) => ({
   weekDayUnique: uniqueIndex("day_notes_week_id_day_slot_unique").on(table.weekId, table.daySlot),
 }));
+
+export const reactorMaterials = pgTable("reactor_materials", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderIndex: serial("order_index").notNull(),
+  dayKey: varchar("day_key", { length: 10 }).notNull(),
+  type: reactorMaterialTypeEnum("type").notNull(),
+  content: text("content").notNull(),
+  note: text("note").notNull().default(""),
+  manualTags: jsonb("manual_tags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
