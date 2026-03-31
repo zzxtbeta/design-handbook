@@ -1559,18 +1559,63 @@ img {
 .reactor-canvas-board {
   min-height: 920px;
   overflow: auto;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.88), transparent 20%),
+    radial-gradient(circle at 82% 18%, rgba(244, 234, 220, 0.28), transparent 18%),
+    radial-gradient(circle at 54% 68%, rgba(255, 255, 255, 0.78), transparent 22%),
+    linear-gradient(rgba(157, 126, 96, 0.04) 1px, transparent 1px) 0 0 / 100% 140px,
+    linear-gradient(90deg, rgba(157, 126, 96, 0.035) 1px, transparent 1px) 0 0 / 140px 100%,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 243, 236, 0.97));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 -36px 80px rgba(169, 144, 118, 0.06);
+}
+
+.reactor-canvas-board::before,
+.reactor-canvas-board::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 28px;
+}
+
+.reactor-canvas-board::before {
+  left: 26px;
+  top: 24px;
+  width: 240px;
+  height: 84px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(255, 255, 255, 0.12));
+  border: 1px solid rgba(112, 84, 59, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.reactor-canvas-board::after {
+  right: 28px;
+  bottom: 30px;
+  width: 180px;
+  height: 120px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(112, 84, 59, 0.04);
 }
 
 .reactor-canvas-composer {
   position: absolute;
   left: 44px;
-  top: 30px;
-  width: min(320px, calc(100% - 88px));
+  top: 34px;
+  width: min(320px, calc(100% - 104px));
   z-index: 4;
+  filter: drop-shadow(0 24px 44px rgba(71, 49, 35, 0.1));
 }
 
 .reactor-board-card {
   max-width: calc(100% - 28px);
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.reactor-board-card:hover {
+  filter: drop-shadow(0 24px 30px rgba(71, 49, 35, 0.08));
 }
 
 .top-tool:disabled {

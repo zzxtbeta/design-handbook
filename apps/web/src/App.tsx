@@ -636,7 +636,7 @@ export function App() {
             <p className="date-range">
               {boardMode === "aesthetic"
                 ? week?.label ?? "Weekly Board"
-                : "Loose notes, kept tidy."}
+                : ""}
             </p>
           </div>
           <div className="week-actions">
@@ -2355,11 +2355,11 @@ function petForMaterial(material: ReactorDay["materials"][number]) {
   const rare = reactorPets.filter((pet) => pet.rarity === "rare");
   const common = reactorPets.filter((pet) => pet.rarity === "common");
 
-  if (bucket < 10) {
+  if (bucket < 30) {
     return legendary[value % legendary.length];
   }
 
-  if (bucket < 200) {
+  if (bucket < 300) {
     return rare[value % rare.length];
   }
 
