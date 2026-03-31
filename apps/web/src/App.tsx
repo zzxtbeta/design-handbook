@@ -1396,11 +1396,11 @@ function ReactorDayColumn({
   onComposerTagsChange: (value: string) => void;
   onSaveMaterial: () => void;
 }) {
-  const visibleMaterials = day.materials.slice(0, 3);
+  const visibleMaterials = day.materials.slice(0, 4);
   const hiddenCount = Math.max(0, day.materials.length - visibleMaterials.length);
-  const colonyPets = visibleMaterials.map((material) => petForMaterial(material));
-  const hasLegendary = colonyPets.some((pet) => pet.rarity === "legendary");
-  const hasRareEvent = hasLegendary || colonyPets.filter((pet) => pet.rarity === "rare").length >= 2;
+  const visiblePets = visibleMaterials.map((material) => petForMaterial(material));
+  const hasLegendary = visiblePets.some((pet) => pet.rarity === "legendary");
+  const hasRareEvent = hasLegendary || visiblePets.filter((pet) => pet.rarity === "rare").length >= 2;
 
   return (
     <section
@@ -1411,21 +1411,6 @@ function ReactorDayColumn({
           <div className="day-number">{formatDayKey(day.dayKey).split(" / ")[1] ?? ""}</div>
           <div className="day-name">{dayLabel}</div>
         </button>
-        {colonyPets.length > 1 ? (
-          <div className="reactor-day-colony" aria-hidden="true">
-            {colonyPets.slice(0, 4).map((pet, index) => (
-              <div
-                key={`${pet.id}-${index}`}
-                className={`reactor-day-colony-member reactor-day-colony-member-${index} ${
-                  hasRareEvent ? "reactor-day-colony-member-event" : ""
-                }`}
-              >
-                <PixelPetSprite pet={pet} size={24} />
-              </div>
-            ))}
-            {hasRareEvent ? <span className="reactor-day-colony-spark" /> : null}
-          </div>
-        ) : null}
         <button className="day-open-button" onClick={() => onOpenComposer("idea", day.dayKey)}>＋</button>
       </header>
       <div className="reactor-day-stack">
@@ -1455,8 +1440,12 @@ function ReactorDayColumn({
           />
         ))}
         {hiddenCount > 0 ? (
-          <button className="reactor-more-card" onClick={() => onOpenDay(day.dayKey)} aria-label="查看更多素材">
-            <span className="reactor-more-stack">
+          <button
+            className={`reactor-more-hint ${hasRareEvent ? "reactor-more-hint-event" : ""}`}
+            onClick={() => onOpenDay(day.dayKey)}
+            aria-label="查看更多素材"
+          >
+            <span className="reactor-more-dots">
               <span />
               <span />
               <span />
@@ -1640,11 +1629,15 @@ function ReactorMaterialCard({
       style={weekCardStyle}
     >
       <div className={`tape tape-${entryDecoration(index)}`} />
-      <div className={`pin pin-${entryDecoration(index)}`} />
       <div className="paper-clip" />
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
-      <div className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity}`} aria-hidden="true">
-        <PixelPetSprite pet={pet} size={weekMode ? 36 : 42} />
+      <div
+        className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
+          weekMode ? "reactor-pet-week" : "reactor-pet-canvas"
+        }`}
+        aria-hidden="true"
+      >
+        <PixelPetSprite pet={pet} size={weekMode ? 42 : 48} />
       </div>
       <button className="entry-delete" onClick={onDelete}>×</button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
