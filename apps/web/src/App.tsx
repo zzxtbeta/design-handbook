@@ -1411,23 +1411,23 @@ function ReactorDayColumn({
           <div className="day-number">{formatDayKey(day.dayKey).split(" / ")[1] ?? ""}</div>
           <div className="day-name">{dayLabel}</div>
         </button>
+        {colonyPets.length > 1 ? (
+          <div className="reactor-day-colony" aria-hidden="true">
+            {colonyPets.slice(0, 4).map((pet, index) => (
+              <div
+                key={`${pet.id}-${index}`}
+                className={`reactor-day-colony-member reactor-day-colony-member-${index} ${
+                  hasRareEvent ? "reactor-day-colony-member-event" : ""
+                }`}
+              >
+                <PixelPetSprite pet={pet} size={24} />
+              </div>
+            ))}
+            {hasRareEvent ? <span className="reactor-day-colony-spark" /> : null}
+          </div>
+        ) : null}
         <button className="day-open-button" onClick={() => onOpenComposer("idea", day.dayKey)}>＋</button>
       </header>
-      {colonyPets.length > 1 ? (
-        <div className="reactor-day-colony" aria-hidden="true">
-          {colonyPets.slice(0, 4).map((pet, index) => (
-            <div
-              key={`${pet.id}-${index}`}
-              className={`reactor-day-colony-member reactor-day-colony-member-${index} ${
-                hasRareEvent ? "reactor-day-colony-member-event" : ""
-              }`}
-            >
-              <PixelPetSprite pet={pet} size={20} />
-            </div>
-          ))}
-          {hasRareEvent ? <span className="reactor-day-colony-spark" /> : null}
-        </div>
-      ) : null}
       <div className="reactor-day-stack">
         {isComposerOpen ? (
           <ReactorComposer
@@ -1644,7 +1644,7 @@ function ReactorMaterialCard({
       <div className="paper-clip" />
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
       <div className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity}`} aria-hidden="true">
-        <PixelPetSprite pet={pet} size={weekMode ? 26 : 30} />
+        <PixelPetSprite pet={pet} size={weekMode ? 36 : 42} />
       </div>
       <button className="entry-delete" onClick={onDelete}>×</button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>

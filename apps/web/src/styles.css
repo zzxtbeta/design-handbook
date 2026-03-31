@@ -1247,6 +1247,7 @@ img {
 
 .reactor-day-column-header {
   align-items: center;
+  gap: 10px;
 }
 
 .reactor-day-column-event::before {
@@ -1280,11 +1281,11 @@ img {
 }
 
 .reactor-day-stack {
-  position: relative;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
   gap: 14px;
-  padding: 14px 8px 8px;
+  padding: 12px 8px 8px;
 }
 
 .reactor-day-colony {
@@ -1293,7 +1294,7 @@ img {
   align-items: flex-end;
   gap: 4px;
   min-height: 28px;
-  padding: 2px 14px 0;
+  margin-left: auto;
 }
 
 .reactor-day-colony-member {
@@ -1333,38 +1334,40 @@ img {
 .reactor-day-stack > .reactor-compose-panel,
 .reactor-day-stack > .reactor-more-card {
   max-width: 100%;
+  width: 100%;
+  justify-self: stretch;
 }
 
-.reactor-day-stack > .reactor-card:nth-child(3n + 1),
-.reactor-day-stack > .reactor-compose-panel:nth-child(3n + 1),
-.reactor-day-stack > .reactor-more-card:nth-child(3n + 1) {
-  justify-self: start;
-  transform: rotate(-2.2deg);
+.reactor-day-stack > .reactor-compose-panel,
+.reactor-day-stack > .reactor-more-card {
+  grid-column: 1 / -1;
 }
 
-.reactor-day-stack > .reactor-card:nth-child(3n + 2),
-.reactor-day-stack > .reactor-compose-panel:nth-child(3n + 2),
-.reactor-day-stack > .reactor-more-card:nth-child(3n + 2) {
-  justify-self: center;
-  transform: rotate(1.6deg);
+.reactor-day-stack > .reactor-card:nth-child(4n + 1) {
+  transform: rotate(-1.1deg) translateY(1px);
 }
 
-.reactor-day-stack > .reactor-card:nth-child(3n),
-.reactor-day-stack > .reactor-compose-panel:nth-child(3n),
-.reactor-day-stack > .reactor-more-card:nth-child(3n) {
-  justify-self: end;
-  transform: rotate(-0.9deg);
+.reactor-day-stack > .reactor-card:nth-child(4n + 2) {
+  transform: rotate(0.8deg);
+}
+
+.reactor-day-stack > .reactor-card:nth-child(4n + 3) {
+  transform: rotate(-0.6deg);
+}
+
+.reactor-day-stack > .reactor-card:nth-child(4n) {
+  transform: rotate(1deg) translateY(-1px);
 }
 
 .reactor-card-material {
   position: relative;
-  min-height: 124px;
+  min-height: 144px;
   overflow: visible;
 }
 
 .reactor-card-week {
-  width: var(--reactor-card-width, 76%);
-  justify-self: var(--reactor-card-align, center);
+  width: 100%;
+  justify-self: stretch;
 }
 
 .reactor-card-material::before {
@@ -1394,20 +1397,20 @@ img {
 }
 
 .reactor-bubble-soft {
-  border-radius: 22px 22px 22px 14px;
+  border-radius: 28px 28px 24px 16px;
 }
 
 .reactor-bubble-ticket {
-  border-radius: 14px;
-  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  border-radius: 18px;
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
 }
 
 .reactor-bubble-star {
-  border-radius: 20px 18px 24px 16px;
+  border-radius: 26px 18px 30px 18px;
 }
 
 .reactor-bubble-notch {
-  border-radius: 18px;
+  border-radius: 20px 20px 20px 8px;
 }
 
 .reactor-bubble-notch::after {
@@ -1443,18 +1446,18 @@ img {
 }
 
 .reactor-pet-peek {
-  right: 10px;
-  bottom: 10px;
+  right: 8px;
+  bottom: 6px;
 }
 
 .reactor-pet-perch {
-  right: 14px;
-  top: -10px;
+  right: 12px;
+  top: -14px;
 }
 
 .reactor-pet-float {
-  right: -8px;
-  bottom: 16px;
+  right: -10px;
+  bottom: 10px;
 }
 
 .reactor-pet-rarity-legendary {
@@ -1536,9 +1539,8 @@ img {
 
 .reactor-more-card {
   position: relative;
-  width: 62%;
+  width: 100%;
   min-height: 84px;
-  justify-self: center;
   border: 0;
   border-radius: 18px;
   background:
@@ -1599,6 +1601,12 @@ img {
   font-family: "Georgia", "Times New Roman", serif;
   font-size: 0.84rem;
   color: rgba(88, 64, 43, 0.7);
+}
+
+@media (max-width: 900px) {
+  .reactor-day-stack {
+    grid-template-columns: 1fr;
+  }
 }
 
 @keyframes reactorColonyBob {
