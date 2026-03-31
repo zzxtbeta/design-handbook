@@ -1441,6 +1441,7 @@ function ReactorComposer({
         dock ? "reactor-compose-panel-dock" : ""
       }`}
     >
+      {dock ? <span className="reactor-dock-handle" aria-hidden="true" /> : null}
       <div className="reactor-compose-header">
         <strong>{labelForMaterialType(composerType)}</strong>
         <button className="ghost-action" onClick={onCloseComposer}>Close</button>
@@ -1627,19 +1628,19 @@ function ReactorDayCanvas({
   const dayKey = day?.dayKey ?? todayDateKey();
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
-  const [dockPosition, setDockPosition] = useState({ x: 620, y: 1110 });
+  const [dockPosition, setDockPosition] = useState({ x: 420, y: 720 });
 
   useEffect(() => {
     const raw = window.localStorage.getItem(`creator-reactor-dock:${dayKey}`);
     if (!raw) {
-      setDockPosition({ x: 620, y: 1110 });
+      setDockPosition({ x: 420, y: 720 });
       return;
     }
 
     try {
       setDockPosition(JSON.parse(raw) as { x: number; y: number });
     } catch {
-      setDockPosition({ x: 620, y: 1110 });
+      setDockPosition({ x: 420, y: 720 });
     }
   }, [dayKey]);
 
@@ -1658,9 +1659,9 @@ function ReactorDayCanvas({
           <button className="nav-button" onClick={onBack}>Back to Week</button>
           <button className="today-button" onClick={() => onOpenComposer("idea", dayKey)}>Capture</button>
           <div className="canvas-zoom-controls">
-            <button className="nav-button" onClick={() => setCanvasScale((value) => Math.max(0.75, value - 0.1))}>－</button>
+            <button className="nav-button" onClick={() => setCanvasScale((value) => Math.max(0.65, value - 0.1))}>－</button>
             <span>{Math.round(canvasScale * 100)}%</span>
-            <button className="nav-button" onClick={() => setCanvasScale((value) => Math.min(1.8, value + 0.1))}>＋</button>
+            <button className="nav-button" onClick={() => setCanvasScale((value) => Math.min(3, value + 0.1))}>＋</button>
           </div>
         </div>
       </header>
@@ -1670,7 +1671,7 @@ function ReactorDayCanvas({
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             const delta = event.deltaY > 0 ? -0.08 : 0.08;
-            setCanvasScale((value) => Math.max(0.75, Math.min(1.8, value + delta)));
+            setCanvasScale((value) => Math.max(0.65, Math.min(3, value + delta)));
             return;
           }
 
@@ -1787,6 +1788,32 @@ function ReactorDayCanvas({
             left: `${dockPosition.x}px`,
             top: `${dockPosition.y}px`,
           }}
+          onMouseDown={(event) => {
+            if (!(event.target as HTMLElement).closest(".reactor-dock-handle")) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            const startX = event.clientX;
+            const startY = event.clientY;
+            const origin = dockPosition;
+
+            const handleMove = (moveEvent: MouseEvent) => {
+              setDockPosition({
+                x: Math.max(24, origin.x + (moveEvent.clientX - startX) / canvasScale),
+                y: Math.max(24, origin.y + (moveEvent.clientY - startY) / canvasScale),
+              });
+            };
+
+            const handleUp = () => {
+              window.removeEventListener("mousemove", handleMove);
+              window.removeEventListener("mouseup", handleUp);
+            };
+
+            window.addEventListener("mousemove", handleMove);
+            window.addEventListener("mouseup", handleUp);
+          }}
         >
           {isComposerOpen ? (
             <ReactorComposer
@@ -1807,32 +1834,6 @@ function ReactorDayCanvas({
             <button
               className="reactor-capture-prompt"
               onClick={() => onOpenComposer("idea", dayKey)}
-              onMouseDown={(event) => {
-                if (!(event.target as HTMLElement).closest(".reactor-capture-handle")) {
-                  return;
-                }
-
-                event.preventDefault();
-                event.stopPropagation();
-                const startX = event.clientX;
-                const startY = event.clientY;
-                const origin = dockPosition;
-
-                const handleMove = (moveEvent: MouseEvent) => {
-                  setDockPosition({
-                    x: Math.max(24, origin.x + (moveEvent.clientX - startX) / canvasScale),
-                    y: Math.max(24, origin.y + (moveEvent.clientY - startY) / canvasScale),
-                  });
-                };
-
-                const handleUp = () => {
-                  window.removeEventListener("mousemove", handleMove);
-                  window.removeEventListener("mouseup", handleUp);
-                };
-
-                window.addEventListener("mousemove", handleMove);
-                window.addEventListener("mouseup", handleUp);
-              }}
             >
               <span className="reactor-capture-handle" />
               <span className="reactor-capture-title">Paste, drop, or write</span>
@@ -1892,6 +1893,19 @@ function ReactorMaterialCard({
       </div>
       <button className="entry-delete" onClick={onDelete}>×</button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
+      {material.type === "link" && material.meta?.sourceUrl ? (
+        <button
+          className="reactor-card-link-copy"
+          onClick={(event) => {
+            event.stopPropagation();
+            void navigator.clipboard.writeText(material.meta?.sourceUrl ?? "");
+          }}
+          aria-label="Copy original link"
+          title="Copy link"
+        >
+          Copy Link
+        </button>
+      ) : null}
       {imageUrl && imageVisible ? (
         <div className={`reactor-card-image ${material.type === "link" ? "reactor-card-image-link" : ""}`}>
           <img src={imageUrl} alt={cardTitle} onError={() => setImageVisible(false)} />
@@ -2513,12 +2527,12 @@ function reactorLayoutStorageKey(dayKey: string) {
 }
 
 function defaultReactorLayout(index: number): BoardLayout {
-  const col = index % 3;
-  const row = Math.floor(index / 3);
+  const col = index % 5;
+  const row = Math.floor(index / 5);
 
   return {
-    x: 44 + col * 246 + (index % 2 === 0 ? 12 : -8),
-    y: 82 + row * 214 + (index % 3) * 14,
+    x: 56 + col * 308 + (index % 2 === 0 ? 8 : -10),
+    y: 88 + row * 232 + (index % 3) * 10,
     width: 258,
     z: index + 1,
   };
@@ -2532,10 +2546,10 @@ function findOpenReactorLayout(
   const width = defaultReactorCardWidth(material);
   const height = defaultReactorCardHeight(material);
   const placements = Object.values(existingLayouts);
-  const columns = [48, 340, 632, 924, 1216];
+  const columns = [56, 372, 688, 1004, 1320, 1636, 1952, 2268, 2584];
 
-  for (let row = 0; row < 8; row += 1) {
-    const y = 72 + row * 220;
+  for (let row = 0; row < 12; row += 1) {
+    const y = 88 + row * 232;
 
     for (const x of columns) {
       const candidate = { x, y, width, z: placements.length + index + 1 };
@@ -2546,8 +2560,8 @@ function findOpenReactorLayout(
   }
 
   return {
-    x: 48 + (index % 4) * 286,
-    y: 72 + Math.floor(index / 4) * 220,
+    x: 56 + (index % 6) * 304,
+    y: 88 + Math.floor(index / 6) * 232,
     width,
     z: placements.length + index + 1,
   };

@@ -1185,11 +1185,25 @@ img {
   margin-bottom: 2px;
 }
 
+.reactor-card-link-copy {
+  justify-self: start;
+  margin-top: -4px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 14px rgba(71, 49, 35, 0.05);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.72rem;
+  color: rgba(76, 56, 42, 0.66);
+  cursor: pointer;
+}
+
 .reactor-card-link-fallback {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 84px;
+  min-height: 72px;
   padding: 14px 16px;
   border-radius: 16px;
   background: rgba(246, 244, 239, 0.82);
@@ -1243,6 +1257,16 @@ img {
   box-shadow:
     0 20px 36px rgba(71, 49, 35, 0.09),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.reactor-dock-handle {
+  width: 72px;
+  height: 7px;
+  border-radius: 999px;
+  justify-self: center;
+  background: rgba(191, 176, 160, 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  cursor: grab;
 }
 
 .reactor-compose-header,
@@ -1672,8 +1696,8 @@ img {
 
 .reactor-canvas-content {
   position: relative;
-  width: 1800px;
-  min-height: 1400px;
+  width: 3200px;
+  min-height: 2400px;
   transform-origin: 0 0;
 }
 
