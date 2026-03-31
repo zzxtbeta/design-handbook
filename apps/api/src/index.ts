@@ -58,6 +58,7 @@ app.get("/api/health", (_request, response) => {
               config.ai.anthropicApiKey ||
               config.ai.litellmApiKey,
           ),
+    uploadDir: config.uploadDir,
     timestamp: new Date().toISOString(),
   });
 });
