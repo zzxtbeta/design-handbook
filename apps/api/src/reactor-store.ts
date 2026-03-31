@@ -26,8 +26,8 @@ export interface ReactorBoardRecord {
   days: ReactorDayRecord[];
 }
 
-export async function getReactorBoard(dayCount = 3) {
-  const keys = recentDayKeys(dayCount);
+export async function getReactorBoard(dayCount = 3, weekOffset = 0) {
+  const keys = weekDayKeys(dayCount, weekOffset);
   const rows = await db
     .select()
     .from(reactorMaterials)
@@ -136,15 +136,23 @@ function normalizeTags(tags: string[]) {
     .slice(0, 8);
 }
 
-function recentDayKeys(dayCount: number) {
-  const base = new Date();
-  base.setHours(0, 0, 0, 0);
+function weekDayKeys(dayCount: number, weekOffset: number) {
+  const start = startOfWeek(weekOffset);
 
   return Array.from({ length: dayCount }, (_, index) => {
-    const day = new Date(base);
-    day.setDate(base.getDate() - index);
+    const day = new Date(start);
+    day.setDate(start.getDate() + index);
     return localDayKey(day);
   });
+}
+
+function startOfWeek(offset: number) {
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  const day = base.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  base.setDate(base.getDate() + diff + offset * 7);
+  return base;
 }
 
 function localDayKey(date: Date) {

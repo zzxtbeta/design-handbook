@@ -99,16 +99,8 @@ export function App() {
   }, [weekOffset]);
 
   useEffect(() => {
-    if (boardMode !== "reactor") {
-      return;
-    }
-
-    if (reactorBoard) {
-      return;
-    }
-
     void loadReactorBoard();
-  }, [boardMode, reactorBoard]);
+  }, [boardMode, weekOffset]);
 
   useEffect(() => {
     if (!week) {
@@ -330,8 +322,8 @@ export function App() {
   }, [week]);
 
   const reactorWeek = useMemo(
-    () => buildReactorWeek(reactorBoard?.days ?? []),
-    [reactorBoard],
+    () => buildReactorWeek(reactorBoard?.days ?? [], weekOffset),
+    [reactorBoard, weekOffset],
   );
   const activeReactorDay = reactorWeek.get(reactorSlotForDate(activeReactorDayKey));
   const activeReactorMaterials =
@@ -342,6 +334,22 @@ export function App() {
     : [];
   const processingCount = week ? week.entries.filter((entry) => entry.status === "processing").length : 0;
   const weeklySummary = useMemo(() => buildWeeklySummary(week), [week]);
+  const reactorWeeklySummary = useMemo(() => buildReactorWeeklySummary(reactorBoard), [reactorBoard]);
+
+  useEffect(() => {
+    if (!reactorBoard) {
+      return;
+    }
+
+    const validDayKeys = new Set(reactorBoard.days.map((day) => day.dayKey));
+    if (validDayKeys.has(activeReactorDayKey)) {
+      return;
+    }
+
+    setActiveReactorDayKey(
+      weekOffset === 0 ? todayDateKey() : (reactorBoard.days[0]?.dayKey ?? todayDateKey()),
+    );
+  }, [activeReactorDayKey, reactorBoard, weekOffset]);
 
   async function loadWeek() {
     try {
@@ -364,7 +372,7 @@ export function App() {
   async function loadReactorBoard() {
     try {
       setReactorLoading(true);
-      const response = await fetch("/api/reactor/days?days=7");
+      const response = await fetch(`/api/reactor/days?days=7&offset=${weekOffset}`);
 
       if (!response.ok) {
         throw new Error(`Reactor load failed with status ${response.status}`);
@@ -375,7 +383,7 @@ export function App() {
       setReactorError(null);
     } catch (error) {
       console.error("[web] loadReactorBoard failed", error);
-      setReactorError("Creator Reactor 暂时读不到数据。");
+      setReactorError("Creator Reactor is unavailable right now.");
     } finally {
       setReactorLoading(false);
     }
@@ -422,7 +430,7 @@ export function App() {
       await loadReactorBoard();
     } catch (error) {
       console.error("[web] handleSaveMaterial failed", error);
-      setReactorError("保存素材失败，请稍后重试。");
+      setReactorError("Could not save this note. Please try again.");
     } finally {
       setIsSavingMaterial(false);
     }
@@ -436,7 +444,7 @@ export function App() {
       await loadReactorBoard();
     } catch (error) {
       console.error("[web] handleDeleteMaterial failed", error);
-      setReactorError("删除素材失败，请稍后重试。");
+      setReactorError("Could not delete this note. Please try again.");
     }
   }
 
@@ -649,23 +657,32 @@ export function App() {
                   <span>Reactor</span>
                 </button>
               </div>
-              {boardMode === "aesthetic" ? (
-                <>
-                  <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value - 1)}>
-                    ‹
-                  </button>
-                  <button className="today-button" onClick={handleFocusTodayBoard}>
-                    {week ? `Week ${week.weekNumber}` : "打开"}
-                  </button>
-                  <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value + 1)}>
-                    ›
-                  </button>
-                  <button className="top-tool active" onClick={() => setShowSummary(true)}>
-                    <span className="top-tool-icon">◫</span>
-                    <span>Weekly Summary</span>
-                  </button>
-                </>
-              ) : null}
+              <>
+                <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value - 1)}>
+                  ‹
+                </button>
+                <button
+                  className="today-button"
+                  onClick={() => {
+                    setWeekOffset(0);
+                    if (boardMode === "aesthetic") {
+                      handleFocusTodayBoard();
+                    } else {
+                      setReactorViewMode("week");
+                      setActiveReactorDayKey(todayDateKey());
+                    }
+                  }}
+                >
+                  {week ? `Week ${week.weekNumber}` : "This Week"}
+                </button>
+                <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value + 1)}>
+                  ›
+                </button>
+                <button className="top-tool active" onClick={() => setShowSummary(true)}>
+                  <span className="top-tool-icon">◫</span>
+                  <span>{boardMode === "aesthetic" ? "Weekly Summary" : "Weekly Digest"}</span>
+                </button>
+              </>
               <button
                 className="top-tool icon-tool"
                 onClick={() => setAppearance((current) => (current === "light" ? "dark" : "light"))}
@@ -971,7 +988,7 @@ export function App() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {showSummary && week ? (
+          {showSummary && ((boardMode === "aesthetic" && week) || (boardMode === "reactor" && reactorBoard)) ? (
             <motion.div
               className="summary-overlay"
               initial={{ opacity: 0 }}
@@ -989,34 +1006,64 @@ export function App() {
                 <button className="summary-close" onClick={() => setShowSummary(false)}>
                   ×
                 </button>
-                <h2>Week {week.weekNumber} Summary</h2>
-                <p>{week.label}</p>
-                <div className="summary-stats">
-                  <div>
-                    <span>Total Items</span>
-                    <strong>{weeklySummary.totalItems}</strong>
-                  </div>
-                  <div>
-                    <span>Terms Found</span>
-                    <strong>{weeklySummary.totalTerms}</strong>
-                  </div>
-                </div>
-                <div className="summary-list">
-                  {weeklySummary.topTerms.map((item, index) => (
-                    <button
-                      key={item.term}
-                      className="summary-row"
-                      onClick={() => void handleCopyTerm(item.term)}
-                    >
-                      <span className="summary-rank">{index + 1}</span>
-                      <span className="summary-term">{item.term}</span>
-                      <span className="summary-row-tail">
-                        <span className="summary-count">{item.count}x</span>
-                        <span className="summary-copy">⧉</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                {boardMode === "aesthetic" && week ? (
+                  <>
+                    <h2>Week {week.weekNumber} Summary</h2>
+                    <p>{week.label}</p>
+                    <div className="summary-stats">
+                      <div>
+                        <span>Total Items</span>
+                        <strong>{weeklySummary.totalItems}</strong>
+                      </div>
+                      <div>
+                        <span>Terms Found</span>
+                        <strong>{weeklySummary.totalTerms}</strong>
+                      </div>
+                    </div>
+                    <div className="summary-list">
+                      {weeklySummary.topTerms.map((item, index) => (
+                        <button
+                          key={item.term}
+                          className="summary-row"
+                          onClick={() => void handleCopyTerm(item.term)}
+                        >
+                          <span className="summary-rank">{index + 1}</span>
+                          <span className="summary-term">{item.term}</span>
+                          <span className="summary-row-tail">
+                            <span className="summary-count">{item.count}x</span>
+                            <span className="summary-copy">⧉</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2>{reactorWeekTitle(weekOffset)}</h2>
+                    <p>Loose notes, grouped by the week they belong to.</p>
+                    <div className="summary-stats">
+                      <div>
+                        <span>Total Notes</span>
+                        <strong>{reactorWeeklySummary.totalItems}</strong>
+                      </div>
+                      <div>
+                        <span>Active Days</span>
+                        <strong>{reactorWeeklySummary.activeDays}</strong>
+                      </div>
+                    </div>
+                    <div className="summary-list">
+                      {reactorWeeklySummary.topTypes.map((item, index) => (
+                        <div key={item.label} className="summary-row">
+                          <span className="summary-rank">{index + 1}</span>
+                          <span className="summary-term">{item.label}</span>
+                          <span className="summary-row-tail">
+                            <span className="summary-count">{item.count}x</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </motion.section>
             </motion.div>
           ) : null}
@@ -1194,7 +1241,7 @@ function ReactorBoardView({
     <section className="reactor-shell">
       <header className="reactor-header">
         <div>
-          <h2>把零散念头放进这一周。</h2>
+          <h2>Drop loose thoughts into the week.</h2>
         </div>
       </header>
 
@@ -1259,7 +1306,7 @@ function ReactorBoardView({
       {error ? (
         <div className="reactor-status reactor-status-error">
           <span>{error}</span>
-          <button className="ghost-action" onClick={onRetry}>重试</button>
+          <button className="ghost-action" onClick={onRetry}>Retry</button>
         </div>
       ) : null}
     </section>
@@ -1319,7 +1366,7 @@ function ReactorComposer({
     <section className={`reactor-compose-panel ${compact ? "reactor-compose-panel-compact" : ""}`}>
       <div className="reactor-compose-header">
         <strong>{labelForMaterialType(composerType)}</strong>
-        <button className="ghost-action" onClick={onCloseComposer}>关闭</button>
+        <button className="ghost-action" onClick={onCloseComposer}>Close</button>
       </div>
       <div className="reactor-compose-types">
         {(["diary", "idea", "prompt", "link", "sample"] as ReactorMaterialType[]).map((type) => (
@@ -1336,24 +1383,24 @@ function ReactorComposer({
         className="reactor-compose-textarea"
         value={composerContent}
         onChange={(event) => onComposerContentChange(event.target.value)}
-        placeholder="写下这句别丢掉的话"
+        placeholder="Write the line you do not want to lose."
       />
       <input
         className="reactor-compose-input"
         value={composerNote}
         onChange={(event) => onComposerNoteChange(event.target.value)}
-        placeholder="为什么留它"
+        placeholder="Why keep it"
       />
       <input
         className="reactor-compose-input"
         value={composerTagsDraft}
         onChange={(event) => onComposerTagsChange(event.target.value)}
-        placeholder="标签，用逗号分隔"
+        placeholder="Tags, comma separated"
       />
       <div className="reactor-compose-actions">
-        <button className="top-tool" onClick={onCloseComposer}>取消</button>
+        <button className="top-tool" onClick={onCloseComposer}>Cancel</button>
         <button className="today-button" onClick={onSaveMaterial} disabled={isSavingMaterial}>
-          {isSavingMaterial ? "保存中..." : "保存"}
+          {isSavingMaterial ? "Saving..." : "Save"}
         </button>
       </div>
     </section>
@@ -1444,7 +1491,7 @@ function ReactorDayColumn({
           <button
             className={`reactor-more-hint ${hasRareEvent ? "reactor-more-hint-event" : ""}`}
             onClick={() => onOpenDay(day.dayKey)}
-            aria-label="查看更多素材"
+            aria-label="Open more notes"
           >
             <span className="reactor-more-dots">
               <span />
@@ -1506,11 +1553,11 @@ function ReactorDayCanvas({
       <header className="day-canvas-header">
         <div>
           <p className="day-canvas-kicker">Focused Day</p>
-          <h2>{formatDayKey(dayKey)} · 当日白板</h2>
+          <h2>{formatDayKey(dayKey)} · Daily Canvas</h2>
         </div>
         <div className="day-canvas-actions">
-          <button className="nav-button" onClick={onBack}>回到本周</button>
-          <button className="today-button" onClick={() => onOpenComposer("diary", dayKey)}>新建</button>
+          <button className="nav-button" onClick={onBack}>Back to Week</button>
+          <button className="today-button" onClick={() => onOpenComposer("diary", dayKey)}>New Note</button>
         </div>
       </header>
       <div className="day-canvas-board reactor-canvas-board">
@@ -1630,7 +1677,6 @@ function ReactorMaterialCard({
       style={weekCardStyle}
     >
       <div className={`tape tape-${entryDecoration(index)}`} />
-      <div className="paper-clip" />
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
       <div
         className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
@@ -1695,10 +1741,10 @@ function BoardUnavailable({
       <p>{message}</p>
       <div className="board-unavailable-actions">
         <button className="today-button" onClick={onOpenReactor}>
-          打开反应堆
+          Open Reactor
         </button>
         <button className="top-tool" onClick={onRetry}>
-          重试
+          Retry
         </button>
       </div>
     </section>
@@ -2175,18 +2221,18 @@ function localDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function startOfCurrentWeek() {
+function startOfCurrentWeek(offset = 0) {
   const today = new Date();
   const start = new Date(today);
   const day = start.getDay();
   const diff = day === 0 ? -6 : 1 - day;
-  start.setDate(start.getDate() + diff);
+  start.setDate(start.getDate() + diff + offset * 7);
   start.setHours(0, 0, 0, 0);
   return start;
 }
 
-function buildReactorWeek(days: ReactorDay[]) {
-  const start = startOfCurrentWeek();
+function buildReactorWeek(days: ReactorDay[], offset = 0) {
+  const start = startOfCurrentWeek(offset);
   const byKey = new Map(days.map((day) => [day.dayKey, day]));
   const week = new Map<DaySlot, ReactorDay>();
 
@@ -2261,6 +2307,41 @@ function defaultReactorLayout(index: number): BoardLayout {
     width: 258,
     z: index + 1,
   };
+}
+
+function buildReactorWeeklySummary(board: ReactorBoard | null) {
+  const materials = board?.days.flatMap((day) => day.materials) ?? [];
+  const activeDays = board?.days.filter((day) => day.materials.length > 0).length ?? 0;
+  const typeCount = new Map<string, number>();
+
+  materials.forEach((material) => {
+    const label = labelForMaterialType(material.type);
+    typeCount.set(label, (typeCount.get(label) ?? 0) + 1);
+  });
+
+  return {
+    totalItems: materials.length,
+    activeDays,
+    topTypes: Array.from(typeCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, count]) => ({ label, count })),
+  };
+}
+
+function reactorWeekTitle(offset: number) {
+  const start = startOfCurrentWeek(offset);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  return `${monthDayLabel(start)} - ${monthDayLabel(end)} Digest`;
+}
+
+function monthDayLabel(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function entryDecoration(index: number) {

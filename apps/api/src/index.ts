@@ -69,8 +69,10 @@ app.get("/api/weeks/:weekKey", async (request, response) => {
 
 app.get("/api/reactor/days", async (request, response) => {
   const rawDays = Number(request.query.days ?? 3);
+  const rawOffset = Number(request.query.offset ?? 0);
   const days = Number.isFinite(rawDays) ? Math.max(1, Math.min(7, rawDays)) : 3;
-  response.json(await getReactorBoard(days));
+  const offset = Number.isFinite(rawOffset) ? Math.max(-52, Math.min(52, rawOffset)) : 0;
+  response.json(await getReactorBoard(days, offset));
 });
 
 app.post("/api/reactor/materials", async (request, response) => {

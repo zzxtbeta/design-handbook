@@ -1498,30 +1498,6 @@ img {
   rotate: 5deg;
 }
 
-.reactor-card-style-amber .paper-clip {
-  right: 16px;
-  top: 16px;
-  rotate: 8deg;
-}
-
-.reactor-card-style-pink .paper-clip {
-  right: 10px;
-  top: 16px;
-  rotate: -4deg;
-}
-
-.reactor-card-style-sage .paper-clip {
-  right: 18px;
-  top: 16px;
-  rotate: 12deg;
-}
-
-.reactor-card-style-blue .paper-clip {
-  right: 14px;
-  top: 16px;
-  rotate: 3deg;
-}
-
 .reactor-more-hint {
   position: relative;
   display: flex;
