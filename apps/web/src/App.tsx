@@ -119,6 +119,7 @@ export function App() {
   const [composerTagsDraft, setComposerTagsDraft] = useState("");
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
+  const [editingImportant, setEditingImportant] = useState(false);
   const [editingNoteDraft, setEditingNoteDraft] = useState("");
   const [editingTagsDraft, setEditingTagsDraft] = useState("");
   const [isSavingMaterialEdit, setIsSavingMaterialEdit] = useState(false);
@@ -509,6 +510,7 @@ export function App() {
         dayKey: composerDayKey,
         type: composerType,
         content: composerContent,
+        important: false,
         note: composerNote,
         manualTags: composerTagsDraft
           .split(",")
@@ -530,6 +532,7 @@ export function App() {
     dayKey: string;
     type: ReactorMaterialType;
     content: string;
+    important?: boolean;
     note?: string;
     manualTags?: string[];
     meta?: ReactorMaterialMeta | null;
@@ -544,6 +547,7 @@ export function App() {
         },
         body: JSON.stringify({
           ...input,
+          important: Boolean(input.important),
           manualTags:
             input.manualTags && input.manualTags.length > 0
               ? input.manualTags
@@ -588,6 +592,7 @@ export function App() {
     }
 
     setEditingMaterialId(materialId);
+    setEditingImportant(Boolean(material.important));
     setEditingNoteDraft(material.note ?? "");
     setEditingTagsDraft(
       (material.manualTags?.length ? material.manualTags : defaultMaterialTags(material.type)).join(", "),
@@ -607,6 +612,7 @@ export function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          important: editingImportant,
           note: editingNoteDraft,
           manualTags: editingTagsDraft
             .split(",")
@@ -639,6 +645,34 @@ export function App() {
       ? current.filter((item) => item.toLowerCase() !== tag.toLowerCase())
       : [...current, tag];
     setEditingTagsDraft(next.join(", "));
+  }
+
+  async function handleToggleImportant(materialId: string) {
+    const material = reactorMaterialsById.get(materialId);
+    if (!material) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/reactor/materials/${materialId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          important: !material.important,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Reactor important toggle failed with status ${response.status}`);
+      }
+
+      await loadReactorBoard();
+    } catch (error) {
+      console.error("[web] handleToggleImportant failed", error);
+      setReactorError("Could not update importance right now.");
+    }
   }
 
   async function handleDeleteTerm(termId: string) {
@@ -1086,6 +1120,7 @@ export function App() {
                   onOpenComposer={openComposer}
                   onDeleteMaterial={(id) => void handleDeleteMaterial(id)}
                   onEditMaterial={openMaterialEditor}
+                  onToggleImportant={(id) => void handleToggleImportant(id)}
                   onOpenDay={(dayKey) => {
                     setActiveReactorDayKey(dayKey);
                     setReactorViewMode("day");
@@ -1206,6 +1241,12 @@ export function App() {
                     </button>
                   ))}
                 </div>
+                <button
+                  className={`reactor-important-toggle ${editingImportant ? "active" : ""}`}
+                  onClick={() => setEditingImportant((value) => !value)}
+                >
+                  {editingImportant ? "Marked important" : "Mark as important"}
+                </button>
                 <input
                   className="reactor-compose-input"
                   value={editingTagsDraft}
@@ -1489,6 +1530,7 @@ function ReactorBoardView({
   onOpenComposer,
   onDeleteMaterial,
   onEditMaterial,
+  onToggleImportant,
   onOpenDay,
   onBackToWeek,
   onCloseComposer,
@@ -1517,6 +1559,7 @@ function ReactorBoardView({
   onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
   onDeleteMaterial: (materialId: string) => void;
   onEditMaterial: (materialId: string) => void;
+  onToggleImportant: (materialId: string) => void;
   onOpenDay: (dayKey: string) => void;
   onBackToWeek: () => void;
   onCloseComposer: () => void;
@@ -1546,6 +1589,7 @@ function ReactorBoardView({
               onOpenComposer={onOpenComposer}
               onDeleteMaterial={onDeleteMaterial}
               onEditMaterial={onEditMaterial}
+              onToggleImportant={onToggleImportant}
               isComposerOpen={
                 isComposerOpen &&
                 composerDayKey === (week.get(slot)?.dayKey ?? emptyReactorDay(slot).dayKey)
@@ -1574,6 +1618,7 @@ function ReactorBoardView({
               onOpenComposer={onOpenComposer}
               onDeleteMaterial={onDeleteMaterial}
               onEditMaterial={onEditMaterial}
+              onToggleImportant={onToggleImportant}
               isComposerOpen={
                 isComposerOpen &&
                 composerDayKey === (week.get(slot)?.dayKey ?? emptyReactorDay(slot).dayKey)
@@ -1617,6 +1662,7 @@ function ReactorBoardView({
       onOpenComposer={onOpenComposer}
       onDeleteMaterial={onDeleteMaterial}
       onEditMaterial={onEditMaterial}
+      onToggleImportant={onToggleImportant}
       onUpdateLayout={onUpdateLayout}
       onCloseComposer={onCloseComposer}
       onComposerTypeChange={onComposerTypeChange}
@@ -1727,6 +1773,7 @@ function ReactorDayColumn({
   onOpenComposer,
   onDeleteMaterial,
   onEditMaterial,
+  onToggleImportant,
   isComposerOpen,
   composerType,
   composerContent,
@@ -1746,6 +1793,7 @@ function ReactorDayColumn({
   onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
   onDeleteMaterial: (materialId: string) => void;
   onEditMaterial: (materialId: string) => void;
+  onToggleImportant: (materialId: string) => void;
   isComposerOpen: boolean;
   composerType: ReactorMaterialType;
   composerContent: string;
@@ -1802,6 +1850,7 @@ function ReactorDayColumn({
             weekMode
             onDelete={() => onDeleteMaterial(material.id)}
             onEdit={() => onEditMaterial(material.id)}
+            onToggleImportant={() => onToggleImportant(material.id)}
           />
         ))}
         {hiddenCount > 0 ? (
@@ -1837,6 +1886,7 @@ function ReactorDayCanvas({
   onOpenComposer,
   onDeleteMaterial,
   onEditMaterial,
+  onToggleImportant,
   onUpdateLayout,
   onCloseComposer,
   onComposerTypeChange,
@@ -1858,6 +1908,7 @@ function ReactorDayCanvas({
   onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
   onDeleteMaterial: (materialId: string) => void;
   onEditMaterial: (materialId: string) => void;
+  onToggleImportant: (materialId: string) => void;
   onUpdateLayout: (materialId: string, next: Partial<BoardLayout>) => void;
   onCloseComposer: () => void;
   onComposerTypeChange: (type: ReactorMaterialType) => void;
@@ -2074,6 +2125,7 @@ function ReactorDayCanvas({
                 clusterRole={clusterRoleByMaterial.get(material.id) ?? "solo"}
                 onDelete={() => onDeleteMaterial(material.id)}
                 onEdit={() => onEditMaterial(material.id)}
+                onToggleImportant={() => onToggleImportant(material.id)}
               />
               <button
                 className="resize-handle resize-handle-corner"
@@ -2173,6 +2225,7 @@ function ReactorMaterialCard({
   clusterRole = "solo",
   onDelete,
   onEdit,
+  onToggleImportant,
 }: {
   material: ReactorDay["materials"][number];
   index: number;
@@ -2181,6 +2234,7 @@ function ReactorMaterialCard({
   clusterRole?: "solo" | "left" | "middle" | "right";
   onDelete: () => void;
   onEdit: () => void;
+  onToggleImportant: () => void;
 }) {
   const pet = petForMaterial(material);
   const weekCardStyle = weekMode ? reactorWeekCardStyle(material, index) : undefined;
@@ -2220,12 +2274,25 @@ function ReactorMaterialCard({
       <div
         className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
           weekMode ? "reactor-pet-week" : "reactor-pet-canvas"
-        } ${clustered ? "reactor-pet-clustered" : ""} reactor-pet-cluster-${clusterRole}`}
+        } ${clustered ? "reactor-pet-clustered" : ""} ${
+          material.important ? "reactor-pet-important" : ""
+        } reactor-pet-cluster-${clusterRole}`}
         aria-hidden="true"
       >
         <PixelPetSprite pet={pet} size={weekMode ? 54 : 60} />
         {clustered ? <span className="reactor-pet-chirp" aria-hidden="true" /> : null}
+        {material.important ? <span className="reactor-pet-crown" aria-hidden="true">✦</span> : null}
       </div>
+      <button
+        className={`entry-important ${material.important ? "active" : ""}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleImportant();
+        }}
+        title={material.important ? "Unmark important" : "Mark important"}
+      >
+        ★
+      </button>
       <button
         className="entry-edit"
         onClick={(event) => {

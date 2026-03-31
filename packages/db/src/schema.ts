@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   jsonb,
   pgEnum,
@@ -112,6 +113,7 @@ export const reactorMaterials = pgTable("reactor_materials", {
   dayKey: varchar("day_key", { length: 10 }).notNull(),
   type: reactorMaterialTypeEnum("type").notNull(),
   content: text("content").notNull(),
+  important: boolean("important").notNull().default(false),
   note: text("note").notNull().default(""),
   manualTags: jsonb("manual_tags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   meta: jsonb("meta").$type<{

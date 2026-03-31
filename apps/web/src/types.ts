@@ -52,6 +52,7 @@ export interface ReactorMaterial {
   dayKey: string;
   type: ReactorMaterialType;
   content: string;
+  important: boolean;
   note: string;
   manualTags: string[];
   meta: ReactorMaterialMeta | null;

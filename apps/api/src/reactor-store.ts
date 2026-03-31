@@ -19,6 +19,7 @@ export interface ReactorMaterialRecord {
   dayKey: string;
   type: ReactorMaterialType;
   content: string;
+  important: boolean;
   note: string;
   manualTags: string[];
   meta: ReactorMaterialMeta | null;
@@ -64,6 +65,7 @@ export async function getReactorBoard(dayCount = 3, weekOffset = 0) {
 export async function createReactorMaterial(input: {
   type: ReactorMaterialType;
   content: string;
+  important?: boolean;
   note?: string;
   manualTags?: string[];
   dayKey?: string;
@@ -77,6 +79,7 @@ export async function createReactorMaterial(input: {
       dayKey,
       type: input.type,
       content: input.content.trim(),
+      important: input.important ?? false,
       note: input.note?.trim() ?? "",
       manualTags: normalizeTags(input.manualTags ?? []),
       meta: input.meta ?? null,
@@ -92,6 +95,7 @@ export async function updateReactorMaterial(
   materialId: string,
   patch: {
     content?: string;
+    important?: boolean;
     note?: string;
     manualTags?: string[];
     meta?: ReactorMaterialMeta | null;
@@ -101,6 +105,7 @@ export async function updateReactorMaterial(
     .update(reactorMaterials)
     .set({
       content: patch.content?.trim(),
+      important: patch.important,
       note: patch.note?.trim(),
       manualTags: patch.manualTags ? normalizeTags(patch.manualTags) : undefined,
       meta: patch.meta,
@@ -137,6 +142,7 @@ function mapMaterial(row: typeof reactorMaterials.$inferSelect): ReactorMaterial
     dayKey: row.dayKey,
     type: row.type,
     content: row.content,
+    important: row.important,
     note: row.note,
     manualTags: Array.isArray(row.manualTags) ? row.manualTags : [],
     meta: row.meta && typeof row.meta === "object" ? (row.meta as ReactorMaterialMeta) : null,
