@@ -48,6 +48,23 @@ interface BoardLayout {
   z: number;
 }
 
+interface ReactorCluster {
+  id: string;
+  materialIds: string[];
+  suggestion: string;
+  note: string;
+  bounds: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+  links: Array<{
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  }>;
+}
+
 type WeekCardSizes = Record<string, number>;
 
 interface ReactorPet {
@@ -1853,6 +1870,14 @@ function ReactorDayCanvas({
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
   const [dockPosition, setDockPosition] = useState({ x: 420, y: 720 });
+  const clusters = useMemo(
+    () => buildReactorClusters(materials, layouts),
+    [materials, layouts],
+  );
+  const clusteredMaterialIds = useMemo(
+    () => new Set(clusters.flatMap((cluster) => cluster.materialIds)),
+    [clusters],
+  );
 
   useEffect(() => {
     setDockPosition(readStoredJson(`creator-reactor-dock:${dayKey}`, { x: 420, y: 720 }));
@@ -1924,12 +1949,48 @@ function ReactorDayCanvas({
             transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`,
           }}
         >
+        {clusters.map((cluster) => (
+          <div
+            key={cluster.id}
+            className="reactor-cluster-halo"
+            style={{
+              left: `${cluster.bounds.left}px`,
+              top: `${cluster.bounds.top}px`,
+              width: `${cluster.bounds.width}px`,
+              height: `${cluster.bounds.height}px`,
+            }}
+          >
+            <div className="reactor-cluster-links" aria-hidden="true">
+              <svg
+                width={cluster.bounds.width}
+                height={cluster.bounds.height}
+                viewBox={`0 0 ${cluster.bounds.width} ${cluster.bounds.height}`}
+              >
+                {cluster.links.map((link, index) => (
+                  <line
+                    key={`${cluster.id}-${index}`}
+                    x1={link.from.x - cluster.bounds.left}
+                    y1={link.from.y - cluster.bounds.top}
+                    x2={link.to.x - cluster.bounds.left}
+                    y2={link.to.y - cluster.bounds.top}
+                  />
+                ))}
+              </svg>
+            </div>
+            <div className="reactor-cluster-note">
+              <strong>{cluster.suggestion}</strong>
+              <span>{cluster.note}</span>
+            </div>
+          </div>
+        ))}
         {materials.map((material, index) => {
           const layout = layouts[material.id] ?? defaultReactorLayout(index);
           return (
             <motion.article
               key={material.id}
-              className="day-board-card reactor-board-card"
+              className={`day-board-card reactor-board-card ${
+                clusteredMaterialIds.has(material.id) ? "reactor-board-card-clustered" : ""
+              }`}
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               style={{
@@ -1969,6 +2030,7 @@ function ReactorDayCanvas({
               <ReactorMaterialCard
                 material={material}
                 index={index}
+                clustered={clusteredMaterialIds.has(material.id)}
                 onDelete={() => onDeleteMaterial(material.id)}
                 onEdit={() => onEditMaterial(material.id)}
               />
@@ -2066,12 +2128,14 @@ function ReactorMaterialCard({
   material,
   index,
   weekMode = false,
+  clustered = false,
   onDelete,
   onEdit,
 }: {
   material: ReactorDay["materials"][number];
   index: number;
   weekMode?: boolean;
+  clustered?: boolean;
   onDelete: () => void;
   onEdit: () => void;
 }) {
@@ -2113,7 +2177,7 @@ function ReactorMaterialCard({
       <div
         className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
           weekMode ? "reactor-pet-week" : "reactor-pet-canvas"
-        }`}
+        } ${clustered ? "reactor-pet-clustered" : ""}`}
         aria-hidden="true"
       >
         <PixelPetSprite pet={pet} size={weekMode ? 54 : 60} />
@@ -2169,6 +2233,168 @@ function ReactorMaterialCard({
 
 function defaultMaterialTags(type: ReactorMaterialType) {
   return [labelForMaterialType(type)];
+}
+
+function buildReactorClusters(
+  materials: ReactorDay["materials"],
+  layouts: Record<string, BoardLayout>,
+): ReactorCluster[] {
+  const nodes = materials.map((material, index) => {
+    const layout = layouts[material.id] ?? defaultReactorLayout(index);
+    const height = defaultReactorCardHeight(material);
+    return {
+      material,
+      layout,
+      height,
+      center: {
+        x: layout.x + layout.width / 2,
+        y: layout.y + height / 2,
+      },
+    };
+  });
+
+  const adjacency = new Map<string, Set<string>>();
+  const links: Array<{ from: string; to: string }> = [];
+
+  for (let index = 0; index < nodes.length; index += 1) {
+    for (let inner = index + 1; inner < nodes.length; inner += 1) {
+      const left = nodes[index];
+      const right = nodes[inner];
+      const dx = Math.abs(left.center.x - right.center.x);
+      const dy = Math.abs(left.center.y - right.center.y);
+
+      if (dx > 360 || dy > 300) {
+        continue;
+      }
+
+      const sameTag = sharedMeaningfulTags(left.material, right.material).length > 0;
+      const sameType = left.material.type === right.material.type;
+      const nearEnough = Math.hypot(dx, dy) < (sameTag || sameType ? 320 : 240);
+
+      if (!nearEnough) {
+        continue;
+      }
+
+      if (!adjacency.has(left.material.id)) adjacency.set(left.material.id, new Set());
+      if (!adjacency.has(right.material.id)) adjacency.set(right.material.id, new Set());
+      adjacency.get(left.material.id)?.add(right.material.id);
+      adjacency.get(right.material.id)?.add(left.material.id);
+      links.push({ from: left.material.id, to: right.material.id });
+    }
+  }
+
+  const visited = new Set<string>();
+  const clusters: ReactorCluster[] = [];
+
+  for (const node of nodes) {
+    if (visited.has(node.material.id) || !adjacency.has(node.material.id)) {
+      continue;
+    }
+
+    const queue = [node.material.id];
+    const ids: string[] = [];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current || visited.has(current)) {
+        continue;
+      }
+      visited.add(current);
+      ids.push(current);
+      adjacency.get(current)?.forEach((next) => {
+        if (!visited.has(next)) queue.push(next);
+      });
+    }
+
+    if (ids.length < 2) {
+      continue;
+    }
+
+    const clusterNodes = nodes.filter((entry) => ids.includes(entry.material.id));
+    const left = Math.min(...clusterNodes.map((entry) => entry.layout.x)) - 28;
+    const top = Math.min(...clusterNodes.map((entry) => entry.layout.y)) - 34;
+    const right =
+      Math.max(...clusterNodes.map((entry) => entry.layout.x + entry.layout.width)) + 28;
+    const bottom =
+      Math.max(...clusterNodes.map((entry) => entry.layout.y + entry.height)) + 34;
+    const suggestion = summarizeCluster(clusterNodes.map((entry) => entry.material));
+    const clusterLinks = links
+      .filter((link) => ids.includes(link.from) && ids.includes(link.to))
+      .map((link) => {
+        const fromNode = clusterNodes.find((entry) => entry.material.id === link.from);
+        const toNode = clusterNodes.find((entry) => entry.material.id === link.to);
+        return fromNode && toNode
+          ? {
+              from: fromNode.center,
+              to: toNode.center,
+            }
+          : null;
+      })
+      .filter(Boolean) as ReactorCluster["links"];
+
+    clusters.push({
+      id: ids.join("-"),
+      materialIds: ids,
+      suggestion: suggestion.title,
+      note: suggestion.note,
+      bounds: {
+        left,
+        top,
+        width: right - left,
+        height: bottom - top,
+      },
+      links: clusterLinks,
+    });
+  }
+
+  return clusters;
+}
+
+function summarizeCluster(materials: ReactorDay["materials"]) {
+  const tags = materials.flatMap((material) =>
+    (material.manualTags ?? []).filter((tag) => {
+      const normalized = tag.trim().toLowerCase();
+      return normalized && normalized !== labelForMaterialType(material.type).toLowerCase();
+    }),
+  );
+  const tagCount = new Map<string, number>();
+  tags.forEach((tag) => tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1));
+  const topTag = Array.from(tagCount.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const types = Array.from(new Set(materials.map((material) => labelForMaterialType(material.type))));
+
+  if (topTag) {
+    return {
+      title: topTag,
+      note: "These notes look related. A good point to distill together.",
+    };
+  }
+
+  if (types.length === 1) {
+    return {
+      title: `${types[0]} thread`,
+      note: "Similar material is gathering here. This could become one direction.",
+    };
+  }
+
+  return {
+    title: "Possible thread",
+    note: "Different fragments are starting to point at the same idea.",
+  };
+}
+
+function sharedMeaningfulTags(
+  left: ReactorDay["materials"][number],
+  right: ReactorDay["materials"][number],
+) {
+  const leftTags = new Set(
+    (left.manualTags ?? [])
+      .map((tag) => tag.trim().toLowerCase())
+      .filter((tag) => tag && tag !== labelForMaterialType(left.type).toLowerCase()),
+  );
+
+  return (right.manualTags ?? [])
+    .map((tag) => tag.trim().toLowerCase())
+    .filter((tag) => leftTags.has(tag));
 }
 
 function PixelPetSprite({

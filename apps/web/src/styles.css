@@ -1646,6 +1646,11 @@ img {
   transform: translateX(-50%) translateY(-2px);
 }
 
+.reactor-pet-clustered .reactor-pet-sprite {
+  animation-duration: 1.35s;
+  filter: drop-shadow(0 0 8px rgba(183, 204, 187, 0.2));
+}
+
 .reactor-rarity-legendary {
   animation: reactorLegendaryGlow 3.2s ease-in-out infinite;
 }
@@ -1819,6 +1824,66 @@ img {
   transform-origin: 0 0;
 }
 
+.reactor-cluster-halo {
+  position: absolute;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(235, 245, 236, 0.26), transparent 56%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(247, 243, 236, 0.08));
+  border: 1px dashed rgba(132, 163, 138, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  pointer-events: none;
+}
+
+.reactor-cluster-links {
+  position: absolute;
+  inset: 0;
+}
+
+.reactor-cluster-links svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.reactor-cluster-links line {
+  stroke: rgba(153, 181, 157, 0.32);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 6 10;
+}
+
+.reactor-cluster-note {
+  position: absolute;
+  top: -18px;
+  left: 24px;
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 24px rgba(71, 49, 35, 0.05);
+  min-width: 220px;
+}
+
+.reactor-cluster-note strong,
+.reactor-cluster-note span {
+  margin: 0;
+}
+
+.reactor-cluster-note strong {
+  font-family: "Bradley Hand", "Marker Felt", "Segoe Print", cursive;
+  font-size: 1rem;
+  color: rgba(53, 39, 31, 0.84);
+}
+
+.reactor-cluster-note span {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.77rem;
+  line-height: 1.45;
+  color: rgba(76, 56, 42, 0.58);
+}
+
 .reactor-board-card {
   max-width: calc(100% - 28px);
   transition: transform 180ms ease, filter 180ms ease;
@@ -1826,6 +1891,10 @@ img {
 
 .reactor-board-card:hover {
   filter: drop-shadow(0 24px 30px rgba(71, 49, 35, 0.08));
+}
+
+.reactor-board-card-clustered {
+  filter: drop-shadow(0 16px 24px rgba(137, 165, 141, 0.08));
 }
 
 .reactor-capture-prompt {
