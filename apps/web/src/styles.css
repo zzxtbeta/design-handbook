@@ -1340,6 +1340,7 @@ img {
   position: relative;
   min-height: 138px;
   overflow: visible;
+  padding-top: 26px;
 }
 
 .reactor-card-week {
@@ -1420,21 +1421,19 @@ img {
   position: absolute;
   image-rendering: pixelated;
   pointer-events: none;
+  left: 50%;
 }
 
 .reactor-pet-peek {
-  left: 22px;
-  top: -14px;
+  top: -18px;
 }
 
 .reactor-pet-perch {
-  left: 26px;
-  top: -16px;
+  top: -22px;
 }
 
 .reactor-pet-float {
-  left: 24px;
-  top: -14px;
+  top: -18px;
 }
 
 .reactor-pet-rarity-legendary {
@@ -1451,11 +1450,11 @@ img {
 }
 
 .reactor-pet-week {
-  transform: translateY(-1px);
+  transform: translateX(-50%) translateY(0);
 }
 
 .reactor-pet-canvas {
-  transform: translateY(-4px);
+  transform: translateX(-50%) translateY(-2px);
 }
 
 .reactor-rarity-legendary {
@@ -1472,30 +1471,6 @@ img {
 .reactor-card-material:focus-within .entry-delete {
   opacity: 1;
   transform: translateY(0);
-}
-
-.reactor-card-style-amber .tape {
-  left: 45%;
-  top: -10px;
-  rotate: -4deg;
-}
-
-.reactor-card-style-pink .tape {
-  left: 52%;
-  top: -9px;
-  rotate: 2deg;
-}
-
-.reactor-card-style-sage .tape {
-  left: 48%;
-  top: -11px;
-  rotate: -2deg;
-}
-
-.reactor-card-style-blue .tape {
-  left: 41%;
-  top: -10px;
-  rotate: 5deg;
 }
 
 .reactor-more-hint {
