@@ -1878,6 +1878,35 @@ function ReactorDayCanvas({
     () => new Set(clusters.flatMap((cluster) => cluster.materialIds)),
     [clusters],
   );
+  const clusterByMaterial = useMemo(() => {
+    const map = new Map<string, ReactorCluster>();
+    clusters.forEach((cluster) => {
+      cluster.materialIds.forEach((materialId) => map.set(materialId, cluster));
+    });
+    return map;
+  }, [clusters]);
+  const clusterRoleByMaterial = useMemo(() => {
+    const map = new Map<string, "solo" | "left" | "middle" | "right">();
+    clusters.forEach((cluster) => {
+      const ordered = [...cluster.materialIds].sort((leftId, rightId) => {
+        const leftLayout = layouts[leftId] ?? defaultReactorLayout(0);
+        const rightLayout = layouts[rightId] ?? defaultReactorLayout(0);
+        return leftLayout.x - rightLayout.x;
+      });
+      ordered.forEach((materialId, index) => {
+        if (ordered.length === 1) {
+          map.set(materialId, "solo");
+        } else if (index === 0) {
+          map.set(materialId, "left");
+        } else if (index === ordered.length - 1) {
+          map.set(materialId, "right");
+        } else {
+          map.set(materialId, "middle");
+        }
+      });
+    });
+    return map;
+  }, [clusters, layouts]);
 
   useEffect(() => {
     setDockPosition(readStoredJson(`creator-reactor-dock:${dayKey}`, { x: 420, y: 720 }));
@@ -2007,14 +2036,25 @@ function ReactorDayCanvas({
 
                 const startX = event.clientX;
                 const startY = event.clientY;
-                const startLeft = layout.x;
-                const startTop = layout.y;
-                onUpdateLayout(material.id, { z: Date.now() });
+                const cluster = clusterByMaterial.get(material.id);
+                const idsToMove = cluster?.materialIds ?? [material.id];
+                const startingLayouts = Object.fromEntries(
+                  idsToMove.map((materialId, order) => [
+                    materialId,
+                    layouts[materialId] ?? defaultReactorLayout(index + order),
+                  ]),
+                );
+                idsToMove.forEach((materialId, order) => {
+                  onUpdateLayout(materialId, { z: Date.now() + order });
+                });
 
                 const handleMove = (moveEvent: MouseEvent) => {
-                  onUpdateLayout(material.id, {
-                    x: Math.max(0, startLeft + (moveEvent.clientX - startX) / canvasScale),
-                    y: Math.max(0, startTop + (moveEvent.clientY - startY) / canvasScale),
+                  idsToMove.forEach((materialId) => {
+                    const current = startingLayouts[materialId];
+                    onUpdateLayout(materialId, {
+                      x: Math.max(0, current.x + (moveEvent.clientX - startX) / canvasScale),
+                      y: Math.max(0, current.y + (moveEvent.clientY - startY) / canvasScale),
+                    });
                   });
                 };
 
@@ -2031,6 +2071,7 @@ function ReactorDayCanvas({
                 material={material}
                 index={index}
                 clustered={clusteredMaterialIds.has(material.id)}
+                clusterRole={clusterRoleByMaterial.get(material.id) ?? "solo"}
                 onDelete={() => onDeleteMaterial(material.id)}
                 onEdit={() => onEditMaterial(material.id)}
               />
@@ -2129,6 +2170,7 @@ function ReactorMaterialCard({
   index,
   weekMode = false,
   clustered = false,
+  clusterRole = "solo",
   onDelete,
   onEdit,
 }: {
@@ -2136,6 +2178,7 @@ function ReactorMaterialCard({
   index: number;
   weekMode?: boolean;
   clustered?: boolean;
+  clusterRole?: "solo" | "left" | "middle" | "right";
   onDelete: () => void;
   onEdit: () => void;
 }) {
@@ -2177,10 +2220,11 @@ function ReactorMaterialCard({
       <div
         className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
           weekMode ? "reactor-pet-week" : "reactor-pet-canvas"
-        } ${clustered ? "reactor-pet-clustered" : ""}`}
+        } ${clustered ? "reactor-pet-clustered" : ""} reactor-pet-cluster-${clusterRole}`}
         aria-hidden="true"
       >
         <PixelPetSprite pet={pet} size={weekMode ? 54 : 60} />
+        {clustered ? <span className="reactor-pet-chirp" aria-hidden="true" /> : null}
       </div>
       <button
         className="entry-edit"
