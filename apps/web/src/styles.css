@@ -1112,12 +1112,32 @@ img {
 .reactor-card-type {
   display: inline-flex;
   width: fit-content;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(245, 242, 235, 0.96);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 6px 14px rgba(71, 49, 35, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   font-family: "Georgia", "Times New Roman", serif;
   font-size: 0.72rem;
   color: rgba(76, 56, 42, 0.68);
+}
+
+.reactor-bubble-soft .reactor-card-type {
+  border-radius: 16px 16px 16px 10px;
+}
+
+.reactor-bubble-ticket .reactor-card-type {
+  border-radius: 12px;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+}
+
+.reactor-bubble-star .reactor-card-type {
+  border-radius: 18px 12px 18px 12px;
+}
+
+.reactor-bubble-notch .reactor-card-type {
+  border-radius: 14px 14px 14px 6px;
 }
 
 .reactor-card-title,
