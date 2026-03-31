@@ -19,6 +19,17 @@ const dayGroups = [
   ["weekend", "Weekend"],
 ] as const;
 
+const reactorQuickTags = [
+  "Angle",
+  "Reference",
+  "Structure",
+  "Tone",
+  "Visual",
+  "Follow-up",
+  "Topic",
+  "Prompt",
+] as const;
+
 type ViewMode = "week" | "day";
 type BoardMode = "aesthetic" | "reactor";
 
@@ -82,6 +93,10 @@ export function App() {
   const [composerNote, setComposerNote] = useState("");
   const [composerTagsDraft, setComposerTagsDraft] = useState("");
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+  const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
+  const [editingNoteDraft, setEditingNoteDraft] = useState("");
+  const [editingTagsDraft, setEditingTagsDraft] = useState("");
+  const [isSavingMaterialEdit, setIsSavingMaterialEdit] = useState(false);
   const [isPasting, setIsPasting] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [dayNoteDraft, setDayNoteDraft] = useState("");
@@ -118,15 +133,12 @@ export function App() {
     }
 
     const storageKey = layoutStorageKey(week.weekKey, activeDay);
-    const raw = window.localStorage.getItem(storageKey);
-    const parsed = raw ? (JSON.parse(raw) as Record<string, BoardLayout>) : {};
+    const parsed = readStoredJson<Record<string, BoardLayout>>(storageKey, {});
     const entries = week.entries.filter((entry) => entry.daySlot === activeDay);
-    const merged = { ...parsed };
+    const merged: Record<string, BoardLayout> = {};
 
     entries.forEach((entry, index) => {
-      if (!merged[entry.id]) {
-        merged[entry.id] = defaultBoardLayout(entry, index);
-      }
+      merged[entry.id] = parsed[entry.id] ?? defaultBoardLayout(entry, index);
     });
 
     setBoardLayouts(merged);
@@ -137,8 +149,11 @@ export function App() {
       return;
     }
 
-    const raw = window.localStorage.getItem(weekCardStorageKey(week.weekKey));
-    setWeekCardSizes(raw ? (JSON.parse(raw) as WeekCardSizes) : {});
+    const stored = readStoredJson<WeekCardSizes>(weekCardStorageKey(week.weekKey), {});
+    const validIds = new Set(week.entries.map((entry) => entry.id));
+    setWeekCardSizes(
+      Object.fromEntries(Object.entries(stored).filter(([entryId]) => validIds.has(entryId))),
+    );
   }, [week]);
 
   useEffect(() => {
@@ -168,14 +183,11 @@ export function App() {
       return;
     }
 
-    const raw = window.localStorage.getItem(reactorLayoutStorageKey(activeReactorDayKey));
-    const parsed = raw ? (JSON.parse(raw) as Record<string, BoardLayout>) : {};
-    const merged = { ...parsed };
+    const parsed = readStoredJson<Record<string, BoardLayout>>(reactorLayoutStorageKey(activeReactorDayKey), {});
+    const merged: Record<string, BoardLayout> = {};
 
     activeMaterials.forEach((material, index) => {
-      if (!merged[material.id]) {
-        merged[material.id] = findOpenReactorLayout(merged, material, index);
-      }
+      merged[material.id] = parsed[material.id] ?? findOpenReactorLayout(merged, material, index);
     });
 
     setReactorLayouts(merged);
@@ -384,6 +396,15 @@ export function App() {
   const activeReactorDay = reactorWeek.get(reactorSlotForDate(activeReactorDayKey));
   const activeReactorMaterials =
     reactorBoard?.days.find((day) => day.dayKey === activeReactorDayKey)?.materials ?? [];
+  const reactorMaterialsById = useMemo(
+    () =>
+      new Map(
+        (reactorBoard?.days ?? [])
+          .flatMap((day) => day.materials)
+          .map((material) => [material.id, material] as const),
+      ),
+    [reactorBoard],
+  );
 
   const activeEntries = week
     ? week.entries.filter((entry) => entry.daySlot === activeDay)
@@ -512,11 +533,77 @@ export function App() {
       await fetch(`/api/reactor/materials/${materialId}`, {
         method: "DELETE",
       });
+      setReactorLayouts((current) => {
+        const next = { ...current };
+        delete next[materialId];
+        return next;
+      });
+      if (editingMaterialId === materialId) {
+        setEditingMaterialId(null);
+      }
       await loadReactorBoard();
     } catch (error) {
       console.error("[web] handleDeleteMaterial failed", error);
       setReactorError("Could not delete this note. Please try again.");
     }
+  }
+
+  function openMaterialEditor(materialId: string) {
+    const material = reactorMaterialsById.get(materialId);
+    if (!material) {
+      return;
+    }
+
+    setEditingMaterialId(materialId);
+    setEditingNoteDraft(material.note ?? "");
+    setEditingTagsDraft((material.manualTags ?? []).join(", "));
+  }
+
+  async function handleSaveMaterialEdit() {
+    if (!editingMaterialId) {
+      return;
+    }
+
+    try {
+      setIsSavingMaterialEdit(true);
+      const response = await fetch(`/api/reactor/materials/${editingMaterialId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          note: editingNoteDraft,
+          manualTags: editingTagsDraft
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Reactor update failed with status ${response.status}`);
+      }
+
+      setEditingMaterialId(null);
+      await loadReactorBoard();
+    } catch (error) {
+      console.error("[web] handleSaveMaterialEdit failed", error);
+      setReactorError("Could not update this note. Please try again.");
+    } finally {
+      setIsSavingMaterialEdit(false);
+    }
+  }
+
+  function handleApplyQuickTag(tag: string) {
+    const current = editingTagsDraft
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const exists = current.some((item) => item.toLowerCase() === tag.toLowerCase());
+    const next = exists
+      ? current.filter((item) => item.toLowerCase() !== tag.toLowerCase())
+      : [...current, tag];
+    setEditingTagsDraft(next.join(", "));
   }
 
   async function handleDeleteTerm(termId: string) {
@@ -947,7 +1034,6 @@ export function App() {
               >
                 <ReactorBoardView
                   week={reactorWeek}
-                  activeDayKey={activeReactorDayKey}
                   activeDay={activeReactorDay}
                   activeMaterials={activeReactorMaterials}
                   viewMode={reactorViewMode}
@@ -964,6 +1050,7 @@ export function App() {
                   onRetry={() => void loadReactorBoard()}
                   onOpenComposer={openComposer}
                   onDeleteMaterial={(id) => void handleDeleteMaterial(id)}
+                  onEditMaterial={openMaterialEditor}
                   onOpenDay={(dayKey) => {
                     setActiveReactorDayKey(dayKey);
                     setReactorViewMode("day");
@@ -1015,6 +1102,62 @@ export function App() {
               </motion.div>
             </motion.div>
           )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {editingMaterialId ? (
+            <motion.div
+              className="summary-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingMaterialId(null)}
+            >
+              <motion.section
+                className="reactor-edit-sheet"
+                initial={{ scale: 0.92, y: 22 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.96, y: 10 }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="reactor-edit-sheet-header">
+                  <strong>Refine note</strong>
+                  <button className="ghost-action" onClick={() => setEditingMaterialId(null)}>Close</button>
+                </div>
+                <textarea
+                  className="reactor-compose-textarea"
+                  value={editingNoteDraft}
+                  onChange={(event) => setEditingNoteDraft(event.target.value)}
+                  placeholder="Add a quick note"
+                />
+                <input
+                  className="reactor-compose-input"
+                  value={editingTagsDraft}
+                  onChange={(event) => setEditingTagsDraft(event.target.value)}
+                  placeholder="Tags, comma separated"
+                />
+                <div className="reactor-quick-tags">
+                  {reactorQuickTags.map((tag) => (
+                    <button
+                      key={tag}
+                      className={`top-tool ${
+                        editingTagsDraft.toLowerCase().includes(tag.toLowerCase()) ? "active" : ""
+                      }`}
+                      onClick={() => handleApplyQuickTag(tag)}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                <div className="reactor-compose-actions">
+                  <button className="top-tool" onClick={() => setEditingMaterialId(null)}>Cancel</button>
+                  <button className="today-button" onClick={() => void handleSaveMaterialEdit()} disabled={isSavingMaterialEdit}>
+                    {isSavingMaterialEdit ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </motion.section>
+            </motion.div>
+          ) : null}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -1111,7 +1254,7 @@ export function App() {
                 ) : (
                   <>
                     <h2>{reactorWeekTitle(weekOffset)}</h2>
-                    <p>Loose notes, grouped by the week they belong to.</p>
+                    <p>A quick read on what accumulated this week.</p>
                     <div className="summary-stats">
                       <div>
                         <span>Total Notes</span>
@@ -1253,7 +1396,6 @@ function DayColumn({
 
 function ReactorBoardView({
   week,
-  activeDayKey,
   activeDay,
   activeMaterials,
   viewMode,
@@ -1270,6 +1412,7 @@ function ReactorBoardView({
   onRetry,
   onOpenComposer,
   onDeleteMaterial,
+  onEditMaterial,
   onOpenDay,
   onBackToWeek,
   onCloseComposer,
@@ -1281,7 +1424,6 @@ function ReactorBoardView({
   onUpdateLayout,
 }: {
   week: Map<DaySlot, ReactorDay>;
-  activeDayKey: string;
   activeDay: ReactorDay | undefined;
   activeMaterials: ReactorDay["materials"];
   viewMode: ViewMode;
@@ -1298,6 +1440,7 @@ function ReactorBoardView({
   onRetry: () => void;
   onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
   onDeleteMaterial: (materialId: string) => void;
+  onEditMaterial: (materialId: string) => void;
   onOpenDay: (dayKey: string) => void;
   onBackToWeek: () => void;
   onCloseComposer: () => void;
@@ -1326,6 +1469,7 @@ function ReactorBoardView({
               onOpenDay={onOpenDay}
               onOpenComposer={onOpenComposer}
               onDeleteMaterial={onDeleteMaterial}
+              onEditMaterial={onEditMaterial}
               isComposerOpen={
                 isComposerOpen &&
                 composerDayKey === (week.get(slot)?.dayKey ?? emptyReactorDay(slot).dayKey)
@@ -1353,6 +1497,7 @@ function ReactorBoardView({
               onOpenDay={onOpenDay}
               onOpenComposer={onOpenComposer}
               onDeleteMaterial={onDeleteMaterial}
+              onEditMaterial={onEditMaterial}
               isComposerOpen={
                 isComposerOpen &&
                 composerDayKey === (week.get(slot)?.dayKey ?? emptyReactorDay(slot).dayKey)
@@ -1395,6 +1540,7 @@ function ReactorBoardView({
       onBack={onBackToWeek}
       onOpenComposer={onOpenComposer}
       onDeleteMaterial={onDeleteMaterial}
+      onEditMaterial={onEditMaterial}
       onUpdateLayout={onUpdateLayout}
       onCloseComposer={onCloseComposer}
       onComposerTypeChange={onComposerTypeChange}
@@ -1491,6 +1637,7 @@ function ReactorDayColumn({
   onOpenDay,
   onOpenComposer,
   onDeleteMaterial,
+  onEditMaterial,
   isComposerOpen,
   composerType,
   composerContent,
@@ -1509,6 +1656,7 @@ function ReactorDayColumn({
   onOpenDay: (dayKey: string) => void;
   onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
   onDeleteMaterial: (materialId: string) => void;
+  onEditMaterial: (materialId: string) => void;
   isComposerOpen: boolean;
   composerType: ReactorMaterialType;
   composerContent: string;
@@ -1563,6 +1711,7 @@ function ReactorDayColumn({
             index={index}
             weekMode
             onDelete={() => onDeleteMaterial(material.id)}
+            onEdit={() => onEditMaterial(material.id)}
           />
         ))}
         {hiddenCount > 0 ? (
@@ -1597,6 +1746,7 @@ function ReactorDayCanvas({
   onBack,
   onOpenComposer,
   onDeleteMaterial,
+  onEditMaterial,
   onUpdateLayout,
   onCloseComposer,
   onComposerTypeChange,
@@ -1617,6 +1767,7 @@ function ReactorDayCanvas({
   onBack: () => void;
   onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
   onDeleteMaterial: (materialId: string) => void;
+  onEditMaterial: (materialId: string) => void;
   onUpdateLayout: (materialId: string, next: Partial<BoardLayout>) => void;
   onCloseComposer: () => void;
   onComposerTypeChange: (type: ReactorMaterialType) => void;
@@ -1631,17 +1782,7 @@ function ReactorDayCanvas({
   const [dockPosition, setDockPosition] = useState({ x: 420, y: 720 });
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(`creator-reactor-dock:${dayKey}`);
-    if (!raw) {
-      setDockPosition({ x: 420, y: 720 });
-      return;
-    }
-
-    try {
-      setDockPosition(JSON.parse(raw) as { x: number; y: number });
-    } catch {
-      setDockPosition({ x: 420, y: 720 });
-    }
+    setDockPosition(readStoredJson(`creator-reactor-dock:${dayKey}`, { x: 420, y: 720 }));
   }, [dayKey]);
 
   useEffect(() => {
@@ -1657,7 +1798,6 @@ function ReactorDayCanvas({
         </div>
         <div className="day-canvas-actions">
           <button className="nav-button" onClick={onBack}>Back to Week</button>
-          <button className="today-button" onClick={() => onOpenComposer("idea", dayKey)}>Capture</button>
           <div className="canvas-zoom-controls">
             <button className="nav-button" onClick={() => setCanvasScale((value) => Math.max(0.65, value - 0.1))}>－</button>
             <span>{Math.round(canvasScale * 100)}%</span>
@@ -1757,6 +1897,7 @@ function ReactorDayCanvas({
                 material={material}
                 index={index}
                 onDelete={() => onDeleteMaterial(material.id)}
+                onEdit={() => onEditMaterial(material.id)}
               />
               <button
                 className="resize-handle resize-handle-corner"
@@ -1852,11 +1993,13 @@ function ReactorMaterialCard({
   index,
   weekMode = false,
   onDelete,
+  onEdit,
 }: {
   material: ReactorDay["materials"][number];
   index: number;
   weekMode?: boolean;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const pet = petForMaterial(material);
   const weekCardStyle = weekMode ? reactorWeekCardStyle(material, index) : undefined;
@@ -1901,7 +2044,24 @@ function ReactorMaterialCard({
       >
         <PixelPetSprite pet={pet} size={weekMode ? 54 : 60} />
       </div>
-      <button className="entry-delete" onClick={onDelete}>×</button>
+      <button
+        className="entry-edit"
+        onClick={(event) => {
+          event.stopPropagation();
+          onEdit();
+        }}
+      >
+        Edit
+      </button>
+      <button
+        className="entry-delete"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete();
+        }}
+      >
+        ×
+      </button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
       {material.type === "link" && material.meta?.sourceUrl ? (
         <button
@@ -2535,6 +2695,20 @@ function emptyReactorDay(slot: DaySlot): ReactorDay {
 
 function reactorLayoutStorageKey(dayKey: string) {
   return `creator-reactor-layout:${dayKey}`;
+}
+
+function readStoredJson<T>(key: string, fallback: T) {
+  const raw = window.localStorage.getItem(key);
+  if (!raw) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    window.localStorage.removeItem(key);
+    return fallback;
+  }
 }
 
 function defaultReactorLayout(index: number): BoardLayout {
