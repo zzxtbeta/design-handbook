@@ -1870,10 +1870,20 @@ function ReactorMaterialCard({
     ? material.meta?.siteName ?? material.meta?.sourceUrl ?? material.note
     : material.note;
   const [imageVisible, setImageVisible] = useState(Boolean(imageUrl));
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     setImageVisible(Boolean(imageUrl));
   }, [imageUrl]);
+
+  useEffect(() => {
+    if (!copiedLink) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setCopiedLink(false), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [copiedLink]);
 
   return (
     <article
@@ -1895,15 +1905,16 @@ function ReactorMaterialCard({
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
       {material.type === "link" && material.meta?.sourceUrl ? (
         <button
-          className="reactor-card-link-copy"
+          className={`reactor-card-link-copy ${copiedLink ? "copied" : ""}`}
           onClick={(event) => {
             event.stopPropagation();
             void navigator.clipboard.writeText(material.meta?.sourceUrl ?? "");
+            setCopiedLink(true);
           }}
           aria-label="Copy original link"
           title="Copy link"
         >
-          Copy Link
+          {copiedLink ? "Copied" : "Copy Link"}
         </button>
       ) : null}
       {imageUrl && imageVisible ? (

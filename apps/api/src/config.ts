@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 
 export type AiProvider =
@@ -61,11 +62,13 @@ export const config: AppConfig = {
 };
 
 function loadEnv() {
+  const appRoot = path.resolve(moduleDir(), "..");
+  const repoRoot = repositoryRoot();
   const candidates = [
-    path.resolve(process.cwd(), ".env.local"),
-    path.resolve(process.cwd(), ".env"),
-    path.resolve(process.cwd(), "../../.env.local"),
-    path.resolve(process.cwd(), "../../.env"),
+    path.resolve(appRoot, ".env.local"),
+    path.resolve(appRoot, ".env"),
+    path.resolve(repoRoot, ".env.local"),
+    path.resolve(repoRoot, ".env"),
   ];
 
   for (const candidate of candidates) {
@@ -81,7 +84,7 @@ function loadEnv() {
 }
 
 function resolveUploadDir() {
-  const repoRoot = path.resolve(process.cwd(), "../..");
+  const repoRoot = repositoryRoot();
   const configured = process.env.UPLOAD_DIR;
 
   if (!configured) {
@@ -93,4 +96,12 @@ function resolveUploadDir() {
   }
 
   return path.resolve(repoRoot, configured);
+}
+
+function moduleDir() {
+  return path.dirname(fileURLToPath(import.meta.url));
+}
+
+function repositoryRoot() {
+  return path.resolve(moduleDir(), "../../..");
 }

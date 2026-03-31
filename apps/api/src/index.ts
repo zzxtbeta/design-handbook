@@ -5,7 +5,7 @@ import express from "express";
 import cors from "cors";
 import { generateDesignTerms } from "./ai";
 import { config } from "./config";
-import { deleteStoredImage, saveImageDataUrl } from "./image-storage";
+import { deleteStoredImage, saveImageDataUrl, saveRemoteImageUrl } from "./image-storage";
 import { fetchLinkPreview } from "./link-preview";
 import {
   createReactorMaterial,
@@ -101,9 +101,14 @@ app.post("/api/reactor/materials", async (request, response) => {
 
   if (type === "link" && resolvedMeta?.sourceUrl && typeof resolvedMeta.sourceUrl === "string") {
     const preview = await fetchLinkPreview(resolvedMeta.sourceUrl);
+    const cachedPreview =
+      preview.previewImageUrl
+        ? await saveRemoteImageUrl({ imageUrl: preview.previewImageUrl })
+        : null;
     resolvedMeta = {
       ...resolvedMeta,
       ...preview,
+      ...(cachedPreview ? { imageUrl: cachedPreview.publicUrl } : {}),
     };
     resolvedContent = preview.previewTitle ?? resolvedContent ?? preview.sourceUrl;
   }

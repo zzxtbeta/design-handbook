@@ -13,27 +13,33 @@ export async function fetchLinkPreview(sourceUrl: string): Promise<LinkPreviewRe
   try {
     const response = await fetch(normalizedUrl, {
       headers: {
-        "User-Agent": "handbook-reactor-bot/0.1",
-        Accept: "text/html,application/xhtml+xml",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
       },
       signal: controller.signal,
     });
 
+    if (!response.ok) {
+      throw new Error(`preview fetch failed: ${response.status}`);
+    }
+
     const html = await response.text();
+    const meta = parseMetaTags(html);
     const previewTitle =
-      readMeta(html, "property", "og:title") ??
-      readMeta(html, "name", "twitter:title") ??
+      meta["og:title"] ??
+      meta["twitter:title"] ??
       readTitle(html) ??
       hostnameForUrl(normalizedUrl);
 
     const siteName =
-      readMeta(html, "property", "og:site_name") ??
-      readMeta(html, "name", "application-name") ??
+      meta["og:site_name"] ??
+      meta["application-name"] ??
       hostnameForUrl(normalizedUrl);
 
-    const previewImageUrl = absolutizeUrl(
-      normalizedUrl,
-      readMeta(html, "property", "og:image") ?? readMeta(html, "name", "twitter:image"),
+    const previewImageUrl = sanitizePreviewImageUrl(
+      absolutizeUrl(normalizedUrl, meta["og:image"] ?? meta["twitter:image"]),
     );
 
     return {
@@ -106,4 +112,45 @@ function decodeHtmlEntity(input: string) {
 
 function escapeRegExp(input: string) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseMetaTags(html: string) {
+  const tags = [...html.matchAll(/<meta\b[^>]*>/gi)];
+  const meta: Record<string, string> = {};
+
+  for (const [tag] of tags) {
+    const attrs = Object.fromEntries(
+      [...tag.matchAll(/([^\s=]+)\s*=\s*["']([^"']*)["']/g)].map(([, key, value]) => [
+        key.toLowerCase(),
+        decodeHtmlEntity(value.trim()),
+      ]),
+    );
+
+    const lookup = attrs.property ?? attrs.name;
+    const content = attrs.content;
+    if (!lookup || !content) {
+      continue;
+    }
+
+    meta[lookup.toLowerCase()] = content;
+  }
+
+  return meta;
+}
+
+function sanitizePreviewImageUrl(input?: string) {
+  if (!input) {
+    return undefined;
+  }
+
+  const lowered = input.toLowerCase();
+  if (
+    lowered.includes("transparent.png") ||
+    lowered.includes("/blank.") ||
+    lowered.includes("pixel.png")
+  ) {
+    return undefined;
+  }
+
+  return input;
 }
