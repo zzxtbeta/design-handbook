@@ -1,4 +1,6 @@
+import fs from "node:fs";
 import path from "node:path";
+import dotenv from "dotenv";
 
 export type AiProvider =
   | "mock"
@@ -29,6 +31,8 @@ export interface AppConfig {
   };
 }
 
+loadEnv();
+
 export const config: AppConfig = {
   port: Number(process.env.PORT ?? 8787),
   databaseUrl:
@@ -58,3 +62,23 @@ export const config: AppConfig = {
     litellmModel: process.env.LITELLM_MODEL ?? "gpt-4.1-mini",
   },
 };
+
+function loadEnv() {
+  const candidates = [
+    path.resolve(process.cwd(), ".env.local"),
+    path.resolve(process.cwd(), ".env"),
+    path.resolve(process.cwd(), "../../.env.local"),
+    path.resolve(process.cwd(), "../../.env"),
+  ];
+
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) {
+      continue;
+    }
+
+    dotenv.config({
+      path: candidate,
+      override: false,
+    });
+  }
+}

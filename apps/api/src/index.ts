@@ -47,6 +47,17 @@ app.get("/api/health", (_request, response) => {
   response.json({
     ok: true,
     service: "api",
+    aiProvider: config.ai.provider,
+    aiConfigured:
+      config.ai.provider === "mock"
+        ? false
+        : Boolean(
+            config.ai.geminiApiKey ||
+              config.ai.apiKey ||
+              config.ai.openaiApiKey ||
+              config.ai.anthropicApiKey ||
+              config.ai.litellmApiKey,
+          ),
     timestamp: new Date().toISOString(),
   });
 });

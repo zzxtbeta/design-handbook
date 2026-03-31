@@ -1363,6 +1363,9 @@ function ReactorDayColumn({
   onComposerTagsChange: (value: string) => void;
   onSaveMaterial: () => void;
 }) {
+  const visibleMaterials = day.materials.slice(0, 3);
+  const hiddenCount = Math.max(0, day.materials.length - visibleMaterials.length);
+
   return (
     <section className="day-column reactor-day-column">
       <header className="day-header reactor-day-column-header">
@@ -1389,7 +1392,7 @@ function ReactorDayColumn({
             onSaveMaterial={onSaveMaterial}
           />
         ) : null}
-        {day.materials.map((material, index) => (
+        {visibleMaterials.map((material, index) => (
           <ReactorMaterialCard
             key={material.id}
             material={material}
@@ -1397,6 +1400,16 @@ function ReactorDayColumn({
             onDelete={() => onDeleteMaterial(material.id)}
           />
         ))}
+        {hiddenCount > 0 ? (
+          <button className="reactor-more-card" onClick={() => onOpenDay(day.dayKey)} aria-label="查看更多素材">
+            <span className="reactor-more-stack">
+              <span />
+              <span />
+              <span />
+            </span>
+            <span className="reactor-more-count">+{hiddenCount}</span>
+          </button>
+        ) : null}
       </div>
     </section>
   );
