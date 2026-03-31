@@ -4,6 +4,7 @@ import type {
   DaySlot,
   ReactorBoard,
   ReactorDay,
+  ReactorMaterial,
   ReactorMaterialMeta,
   ReactorMaterialType,
   WeekData,
@@ -1921,6 +1922,11 @@ function ReactorDayCanvas({
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
   const [dockPosition, setDockPosition] = useState({ x: 420, y: 720 });
+  const [exportOpen, setExportOpen] = useState(false);
+  const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<Record<string, ReactorClusterSuggestion>>({});
+  const [loadingClusterId, setLoadingClusterId] = useState<string | null>(null);
   const clusters = useMemo(
     () => buildReactorClusters(materials, layouts),
     [materials, layouts],
@@ -1929,13 +1935,6 @@ function ReactorDayCanvas({
     () => new Set(clusters.flatMap((cluster) => cluster.materialIds)),
     [clusters],
   );
-  const clusterByMaterial = useMemo(() => {
-    const map = new Map<string, ReactorCluster>();
-    clusters.forEach((cluster) => {
-      cluster.materialIds.forEach((materialId) => map.set(materialId, cluster));
-    });
-    return map;
-  }, [clusters]);
   const clusterRoleByMaterial = useMemo(() => {
     const map = new Map<string, "solo" | "left" | "middle" | "right">();
     clusters.forEach((cluster) => {
@@ -1967,6 +1966,104 @@ function ReactorDayCanvas({
     window.localStorage.setItem(`creator-reactor-dock:${dayKey}`, JSON.stringify(dockPosition));
   }, [dayKey, dockPosition]);
 
+  useEffect(() => {
+    setSelectedExportIds(materials.map((material) => material.id));
+  }, [dayKey, materials]);
+
+  useEffect(() => {
+    if (!copiedMarkdown) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setCopiedMarkdown(false), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [copiedMarkdown]);
+
+  const selectedExportMaterials = useMemo(
+    () => materials.filter((material) => selectedExportIds.includes(material.id)),
+    [materials, selectedExportIds],
+  );
+  const exportMarkdown = useMemo(
+    () => buildReactorMarkdownExport(dayKey, selectedExportMaterials),
+    [dayKey, selectedExportMaterials],
+  );
+
+  async function handleAskClusterAi(cluster: ReactorCluster) {
+    try {
+      setLoadingClusterId(cluster.id);
+      const response = await fetch("/api/reactor/assist/cluster", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          materials: cluster.materialIds
+            .map((materialId) => materials.find((material) => material.id === materialId))
+            .filter(Boolean)
+            .map((material) => ({
+              type: material?.type,
+              content: material?.content,
+              note: material?.note,
+              tags: material?.manualTags,
+              important: material?.important,
+            })),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Cluster AI failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as ReactorClusterSuggestion;
+      setAiSuggestions((current) => ({
+        ...current,
+        [cluster.id]: data,
+      }));
+    } catch (error) {
+      console.error("[web] handleAskClusterAi failed", error);
+    } finally {
+      setLoadingClusterId(null);
+    }
+  }
+
+  function handleClusterDrag(cluster: ReactorCluster, event: React.MouseEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest(".reactor-cluster-ai")) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startingLayouts = Object.fromEntries(
+      cluster.materialIds.map((materialId, order) => [
+        materialId,
+        layouts[materialId] ?? defaultReactorLayout(order),
+      ]),
+    );
+    cluster.materialIds.forEach((materialId, order) => {
+      onUpdateLayout(materialId, { z: Date.now() + order });
+    });
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      cluster.materialIds.forEach((materialId) => {
+        const current = startingLayouts[materialId];
+        onUpdateLayout(materialId, {
+          x: Math.max(0, current.x + (moveEvent.clientX - startX) / canvasScale),
+          y: Math.max(0, current.y + (moveEvent.clientY - startY) / canvasScale),
+        });
+      });
+    };
+
+    const handleUp = () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+  }
+
   return (
     <section className="day-canvas">
       <header className="day-canvas-header">
@@ -1976,6 +2073,9 @@ function ReactorDayCanvas({
         </div>
         <div className="day-canvas-actions">
           <button className="nav-button" onClick={onBack}>Back to Week</button>
+          <button className="nav-button" onClick={() => setExportOpen((value) => !value)}>
+            Download
+          </button>
           <div className="canvas-zoom-controls">
             <button className="nav-button" onClick={() => setCanvasScale((value) => Math.max(0.65, value - 0.1))}>－</button>
             <span>{Math.round(canvasScale * 100)}%</span>
@@ -1983,6 +2083,63 @@ function ReactorDayCanvas({
           </div>
         </div>
       </header>
+      {exportOpen ? (
+        <section className="reactor-export-sheet">
+          <div className="reactor-export-header">
+            <div>
+              <strong>Export source pack</strong>
+              <span>Pick notes to turn into a clean markdown bundle.</span>
+            </div>
+            <button className="ghost-action" onClick={() => setExportOpen(false)}>Close</button>
+          </div>
+          <div className="reactor-export-grid">
+            <div className="reactor-export-list">
+              {materials.map((material) => (
+                <label key={material.id} className="reactor-export-item">
+                  <input
+                    type="checkbox"
+                    checked={selectedExportIds.includes(material.id)}
+                    onChange={() =>
+                      setSelectedExportIds((current) =>
+                        current.includes(material.id)
+                          ? current.filter((id) => id !== material.id)
+                          : [...current, material.id],
+                      )
+                    }
+                  />
+                  <span className="reactor-export-item-type">{labelForMaterialType(material.type)}</span>
+                  <span className="reactor-export-item-title">{material.content}</span>
+                </label>
+              ))}
+            </div>
+            <div className="reactor-export-preview">
+              <pre>{exportMarkdown}</pre>
+              <div className="reactor-export-actions">
+                <button
+                  className={`top-tool ${copiedMarkdown ? "active" : ""}`}
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(exportMarkdown);
+                    setCopiedMarkdown(true);
+                  }}
+                >
+                  {copiedMarkdown ? "Copied" : "Copy Markdown"}
+                </button>
+                <button
+                  className="today-button"
+                  onClick={() =>
+                    downloadTextFile(
+                      `reactor-${dayKey}.md`,
+                      exportMarkdown,
+                    )
+                  }
+                >
+                  Download .md
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
       <div
         className="day-canvas-board reactor-canvas-board"
         onWheel={(event) => {
@@ -2057,9 +2214,22 @@ function ReactorDayCanvas({
                 ))}
               </svg>
             </div>
-            <div className="reactor-cluster-note">
-              <strong>{cluster.suggestion}</strong>
-              <span>{cluster.note}</span>
+            <div className="reactor-cluster-note" onMouseDown={(event) => handleClusterDrag(cluster, event)}>
+              <strong>{aiSuggestions[cluster.id]?.title ?? cluster.suggestion}</strong>
+              <span>{aiSuggestions[cluster.id]?.note ?? cluster.note}</span>
+              {aiSuggestions[cluster.id]?.subsetHint ? (
+                <em>{aiSuggestions[cluster.id]?.subsetHint}</em>
+              ) : null}
+              <button
+                className="reactor-cluster-ai"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleAskClusterAi(cluster);
+                }}
+                disabled={loadingClusterId === cluster.id}
+              >
+                {loadingClusterId === cluster.id ? "Thinking..." : "AI tidy"}
+              </button>
             </div>
           </div>
         ))}
@@ -2081,31 +2251,20 @@ function ReactorDayCanvas({
                 rotate: entryRotation(index),
               }}
               onMouseDown={(event) => {
-                if ((event.target as HTMLElement).closest(".resize-handle, .entry-delete")) {
+                if ((event.target as HTMLElement).closest("button, a, .resize-handle")) {
                   return;
                 }
 
                 const startX = event.clientX;
                 const startY = event.clientY;
-                const cluster = clusterByMaterial.get(material.id);
-                const idsToMove = cluster?.materialIds ?? [material.id];
-                const startingLayouts = Object.fromEntries(
-                  idsToMove.map((materialId, order) => [
-                    materialId,
-                    layouts[materialId] ?? defaultReactorLayout(index + order),
-                  ]),
-                );
-                idsToMove.forEach((materialId, order) => {
-                  onUpdateLayout(materialId, { z: Date.now() + order });
-                });
+                const startLeft = layout.x;
+                const startTop = layout.y;
+                onUpdateLayout(material.id, { z: Date.now() });
 
                 const handleMove = (moveEvent: MouseEvent) => {
-                  idsToMove.forEach((materialId) => {
-                    const current = startingLayouts[materialId];
-                    onUpdateLayout(materialId, {
-                      x: Math.max(0, current.x + (moveEvent.clientX - startX) / canvasScale),
-                      y: Math.max(0, current.y + (moveEvent.clientY - startY) / canvasScale),
-                    });
+                  onUpdateLayout(material.id, {
+                    x: Math.max(0, startLeft + (moveEvent.clientX - startX) / canvasScale),
+                    y: Math.max(0, startTop + (moveEvent.clientY - startY) / canvasScale),
                   });
                 };
 
@@ -2491,6 +2650,96 @@ function summarizeCluster(materials: ReactorDay["materials"]) {
     title: "Possible thread",
     note: "Different fragments are starting to point at the same idea.",
   };
+}
+
+function buildReactorMarkdownExport(dayKey: string, materials: ReactorMaterial[]) {
+  const grouped = new Map<ReactorMaterialType, ReactorMaterial[]>();
+  materials.forEach((material) => {
+    const current = grouped.get(material.type) ?? [];
+    current.push(material);
+    grouped.set(material.type, current);
+  });
+
+  const orderedTypes: ReactorMaterialType[] = ["idea", "diary", "prompt", "sample", "link", "image"];
+  const sections = orderedTypes
+    .map((type) => {
+      const items = grouped.get(type) ?? [];
+      if (items.length === 0) {
+        return null;
+      }
+
+      const body = items
+        .map((material) => materialToMarkdown(material))
+        .join("\n\n");
+      return `## ${pluralLabelForMaterialType(type)}\n\n${body}`;
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+  return `# Reactor Export · ${dayKey}\n\n${sections}`.trim();
+}
+
+function materialToMarkdown(material: ReactorMaterial) {
+  const lines = [`- ${material.content}`];
+
+  if (material.note) {
+    lines.push(`  - Why keep: ${material.note}`);
+  }
+
+  if (material.manualTags.length > 0) {
+    lines.push(`  - Tags: ${material.manualTags.join(", ")}`);
+  }
+
+  if (material.important) {
+    lines.push("  - Important: yes");
+  }
+
+  if (material.type === "link" && material.meta?.sourceUrl) {
+    lines.push(`  - URL: ${material.meta.sourceUrl}`);
+  }
+
+  if (material.type === "image" && material.meta?.imageUrl) {
+    lines.push(`  - Image: ${material.meta.imageUrl}`);
+  }
+
+  return lines.join("\n");
+}
+
+function pluralLabelForMaterialType(type: ReactorMaterialType) {
+  switch (type) {
+    case "diary":
+      return "Diary";
+    case "idea":
+      return "Ideas";
+    case "prompt":
+      return "Prompts";
+    case "link":
+      return "Links";
+    case "sample":
+      return "Samples";
+    case "image":
+      return "Images";
+    default:
+      return "Notes";
+  }
+}
+
+function downloadTextFile(filename: string, contents: string) {
+  const blob = new Blob([contents], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+interface ReactorClusterSuggestion {
+  title: string;
+  note: string;
+  subsetHint: string | null;
 }
 
 function sharedMeaningfulTags(

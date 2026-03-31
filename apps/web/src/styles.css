@@ -1934,12 +1934,14 @@ img {
   top: -18px;
   left: 24px;
   display: grid;
-  gap: 2px;
+  gap: 4px;
   padding: 10px 14px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 14px 24px rgba(71, 49, 35, 0.05);
   min-width: 220px;
+  pointer-events: auto;
+  cursor: grab;
 }
 
 .reactor-cluster-note strong,
@@ -1958,6 +1960,123 @@ img {
   font-size: 0.77rem;
   line-height: 1.45;
   color: rgba(76, 56, 42, 0.58);
+}
+
+.reactor-cluster-note em {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.73rem;
+  line-height: 1.45;
+  font-style: normal;
+  color: rgba(96, 115, 90, 0.8);
+}
+
+.reactor-cluster-ai {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(141, 170, 145, 0.24);
+  background: rgba(246, 251, 246, 0.92);
+  color: rgba(56, 74, 56, 0.84);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.reactor-cluster-ai:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.reactor-export-sheet {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(215, 201, 186, 0.42);
+  box-shadow: 0 20px 40px rgba(71, 49, 35, 0.06);
+}
+
+.reactor-export-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reactor-export-header strong,
+.reactor-export-header span {
+  display: block;
+}
+
+.reactor-export-header span {
+  margin-top: 4px;
+  color: rgba(76, 56, 42, 0.62);
+}
+
+.reactor-export-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.reactor-export-list {
+  display: grid;
+  gap: 10px;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.reactor-export-item {
+  display: grid;
+  grid-template-columns: 18px 64px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(252, 250, 246, 0.92);
+  border: 1px solid rgba(221, 208, 192, 0.32);
+}
+
+.reactor-export-item-type {
+  color: rgba(91, 72, 58, 0.62);
+  font-size: 0.8rem;
+}
+
+.reactor-export-item-title {
+  line-height: 1.45;
+  color: rgba(52, 38, 30, 0.84);
+  word-break: break-word;
+}
+
+.reactor-export-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.reactor-export-preview pre {
+  margin: 0;
+  min-height: 280px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(252, 250, 246, 0.92);
+  border: 1px solid rgba(221, 208, 192, 0.32);
+  color: rgba(52, 38, 30, 0.82);
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.reactor-export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .reactor-board-card {

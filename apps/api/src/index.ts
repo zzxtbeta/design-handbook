@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import express from "express";
 import cors from "cors";
-import { generateDesignTerms } from "./ai";
+import { generateDesignTerms, generateReactorClusterInsight } from "./ai";
 import { config } from "./config";
 import { deleteStoredImage, saveImageDataUrl, saveRemoteImageUrl } from "./image-storage";
 import { fetchLinkPreview } from "./link-preview";
@@ -160,6 +160,33 @@ app.patch("/api/reactor/materials/:id", async (request, response) => {
   }
 
   response.json(updated);
+});
+
+app.post("/api/reactor/assist/cluster", async (request, response) => {
+  const materials = Array.isArray(request.body?.materials)
+    ? request.body.materials
+        .filter((material: unknown) => material && typeof material === "object")
+        .map((material: unknown) => {
+          const record = material as Record<string, unknown>;
+          return {
+            type: typeof record.type === "string" ? record.type : "idea",
+            content: typeof record.content === "string" ? record.content.slice(0, 400) : "",
+            note: typeof record.note === "string" ? record.note.slice(0, 220) : "",
+            tags: Array.isArray(record.tags)
+              ? record.tags.filter((tag): tag is string => typeof tag === "string").slice(0, 8)
+              : [],
+            important: Boolean(record.important),
+          };
+        })
+        .filter((material: { content: string }) => material.content.trim())
+    : [];
+
+  if (materials.length < 2) {
+    response.status(400).json({ error: "At least two materials are required." });
+    return;
+  }
+
+  response.json(await generateReactorClusterInsight({ materials }));
 });
 
 app.delete("/api/reactor/materials/:id", async (request, response) => {
