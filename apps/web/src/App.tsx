@@ -2228,7 +2228,7 @@ function ReactorDayCanvas({
                 }}
                 disabled={loadingClusterId === cluster.id}
               >
-                {loadingClusterId === cluster.id ? "Thinking..." : "AI tidy"}
+                {loadingClusterId === cluster.id ? "思考中..." : "AI整理"}
               </button>
             </div>
           </div>
@@ -2635,20 +2635,20 @@ function summarizeCluster(materials: ReactorDay["materials"]) {
   if (topTag) {
     return {
       title: topTag,
-      note: "These notes look related. A good point to distill together.",
+      note: "这几条素材已经开始指向同一个方向了，值得先收在一起。",
     };
   }
 
   if (types.length === 1) {
     return {
-      title: `${types[0]} thread`,
-      note: "Similar material is gathering here. This could become one direction.",
+      title: `${types[0]}主线`,
+      note: "同类素材正在聚起来，可以先把它们收成一个小主题。",
     };
   }
 
   return {
-    title: "Possible thread",
-    note: "Different fragments are starting to point at the same idea.",
+    title: "可能是一条主线",
+    note: "不同碎片已经开始指向同一个想法，可以继续往下收拢。",
   };
 }
 

@@ -35,17 +35,17 @@ const prompt =
 
 const reactorClusterPrompt = (materials: ReactorClusterMaterialInput[]) =>
   [
-    "You are helping a solo creator tidy a loose idea board.",
-    "Given a small group of notes, infer the most likely shared thread.",
-    "Return concise JSON only.",
-    'Output shape: {"title":"...","note":"...","subsetHint":"...|null"}',
-    "Rules:",
-    '- title: 2-5 English words, crisp, not generic.',
-    '- note: one short sentence in English, practical and creator-focused.',
-    "- subsetHint: either null or one short sentence that points out if one note looks like support/subset/redundant detail under another.",
-    "- Do not mention AI. Do not be verbose.",
+    "你在帮助内容创作者整理一个乱序素材白板。",
+    "给定一小组已经靠近的素材，请判断它们最可能指向的共同主题。",
+    "只输出 JSON，不要输出额外解释。",
+    '输出格式：{"title":"...","note":"...","subsetHint":"...|null"}',
+    "规则：",
+    "- title：中文，6到16个字，像一个可继续展开的主题，不要空泛。",
+    "- note：中文，一句简短建议，明确说明这组素材为什么值得留下或往哪个方向整理。",
+    "- subsetHint：中文；如果看得出其中一条更像补充、子集或可并入另一条，就指出来；否则返回 null。",
+    "- 语气要像在帮创作者判断，不要像总结报告，不要提到AI。",
     "",
-    "Materials:",
+    "素材：",
     JSON.stringify(materials),
   ].join("\n");
 
@@ -508,15 +508,15 @@ function generateMockClusterInsight(materials: ReactorClusterMaterialInput[]): R
   if (topTag) {
     return {
       title: topTag,
-      note: "These notes look ready to distill into one direction.",
-      subsetHint: materials.length >= 3 ? "One note here likely works better as support, not the main thread." : null,
+      note: "这组素材已经有共同指向了，适合先收成一个可写的方向。",
+      subsetHint: materials.length >= 3 ? "这里可能有一条更像补充说明，适合挂到主线素材下面。" : null,
     };
   }
 
   return {
-    title: `${capitalize(topType ?? "idea")} thread`,
-    note: "A loose direction is forming here. Worth shaping before you lose it.",
-    subsetHint: materials.length >= 3 ? "There may be one detail note here that belongs under a stronger lead note." : null,
+    title: `${capitalize(topType ?? "idea")}主线`,
+    note: "这里已经开始形成一个方向了，值得趁还新鲜时先整理出来。",
+    subsetHint: materials.length >= 3 ? "这里可能有一条细节素材，更适合并到更强的主卡片下面。" : null,
   };
 }
 

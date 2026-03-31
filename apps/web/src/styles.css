@@ -1903,11 +1903,11 @@ img {
 .reactor-cluster-halo {
   position: absolute;
   border-radius: 28px;
-  background:
-    radial-gradient(circle at 50% 20%, rgba(235, 245, 236, 0.26), transparent 56%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(247, 243, 236, 0.08));
-  border: 1px dashed rgba(132, 163, 138, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  background: transparent;
+  border: 1px dashed rgba(132, 163, 138, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.44),
+    0 0 0 1px rgba(248, 252, 248, 0.22);
   pointer-events: none;
 }
 
@@ -1923,25 +1923,30 @@ img {
 }
 
 .reactor-cluster-links line {
-  stroke: rgba(153, 181, 157, 0.32);
-  stroke-width: 2;
+  stroke: rgba(123, 158, 130, 0.46);
+  stroke-width: 2.4;
   stroke-linecap: round;
-  stroke-dasharray: 6 10;
+  stroke-dasharray: 4 8;
+  filter: drop-shadow(0 0 8px rgba(192, 220, 196, 0.35));
 }
 
 .reactor-cluster-note {
   position: absolute;
-  top: -18px;
-  left: 24px;
+  top: -52px;
+  left: 50%;
+  transform: translateX(-50%);
   display: grid;
   gap: 4px;
-  padding: 10px 14px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 14px 24px rgba(71, 49, 35, 0.05);
-  min-width: 220px;
+  padding: 10px 14px 11px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(210, 223, 212, 0.64);
+  box-shadow: 0 12px 30px rgba(71, 49, 35, 0.06);
+  min-width: 260px;
+  max-width: 360px;
   pointer-events: auto;
   cursor: grab;
+  z-index: 3;
 }
 
 .reactor-cluster-note strong,
@@ -1951,27 +1956,30 @@ img {
 
 .reactor-cluster-note strong {
   font-family: "Bradley Hand", "Marker Felt", "Segoe Print", cursive;
-  font-size: 1rem;
+  font-size: 0.98rem;
   color: rgba(53, 39, 31, 0.84);
+  text-align: center;
 }
 
 .reactor-cluster-note span {
   font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.77rem;
-  line-height: 1.45;
+  font-size: 0.74rem;
+  line-height: 1.4;
   color: rgba(76, 56, 42, 0.58);
+  text-align: center;
 }
 
 .reactor-cluster-note em {
   font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.73rem;
+  font-size: 0.72rem;
   line-height: 1.45;
   font-style: normal;
   color: rgba(96, 115, 90, 0.8);
+  text-align: center;
 }
 
 .reactor-cluster-ai {
-  justify-self: start;
+  justify-self: center;
   margin-top: 2px;
   padding: 6px 10px;
   border-radius: 999px;
@@ -1981,6 +1989,17 @@ img {
   font-family: "Georgia", "Times New Roman", serif;
   font-size: 0.76rem;
   cursor: pointer;
+}
+
+.reactor-cluster-note::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  width: 2px;
+  height: 12px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(144, 173, 149, 0.7), rgba(144, 173, 149, 0));
 }
 
 .reactor-cluster-ai:disabled {
