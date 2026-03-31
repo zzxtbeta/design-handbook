@@ -995,6 +995,12 @@ img {
   color: rgba(77, 58, 46, 0.72);
 }
 
+.canvas-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .day-canvas-board {
   position: relative;
   min-height: 780px;
@@ -1177,6 +1183,29 @@ img {
 .reactor-card-image-link {
   aspect-ratio: 1.7 / 1;
   margin-bottom: 2px;
+}
+
+.reactor-card-link-fallback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 84px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(246, 244, 239, 0.82);
+  border: 1px solid rgba(112, 84, 59, 0.05);
+  color: rgba(76, 56, 42, 0.68);
+}
+
+.reactor-card-link-favicon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 12px rgba(71, 49, 35, 0.04);
+  font-family: "Georgia", "Times New Roman", serif;
 }
 
 .reactor-compose-panel {
@@ -1589,6 +1618,7 @@ img {
   min-height: 920px;
   overflow: auto;
   border-radius: 32px;
+  cursor: grab;
   background:
     radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.88), transparent 20%),
     radial-gradient(circle at 82% 18%, rgba(244, 234, 220, 0.28), transparent 18%),
@@ -1599,6 +1629,10 @@ img {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.86),
     inset 0 -36px 80px rgba(169, 144, 118, 0.06);
+}
+
+.reactor-canvas-board:active {
+  cursor: grabbing;
 }
 
 .reactor-canvas-board::before,
@@ -1631,12 +1665,16 @@ img {
 
 .reactor-canvas-composer {
   position: absolute;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%);
-  width: min(460px, calc(100% - 96px));
+  width: 460px;
   z-index: 4;
   filter: drop-shadow(0 24px 44px rgba(71, 49, 35, 0.1));
+}
+
+.reactor-canvas-content {
+  position: relative;
+  width: 1800px;
+  min-height: 1400px;
+  transform-origin: 0 0;
 }
 
 .reactor-board-card {
@@ -1659,6 +1697,16 @@ img {
   box-shadow: 0 18px 28px rgba(71, 49, 35, 0.08);
   text-align: left;
   cursor: pointer;
+}
+
+.reactor-capture-handle {
+  width: 58px;
+  height: 6px;
+  border-radius: 999px;
+  justify-self: center;
+  margin-bottom: 4px;
+  background: rgba(191, 176, 160, 0.52);
+  cursor: grab;
 }
 
 .reactor-capture-title {

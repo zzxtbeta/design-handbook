@@ -174,7 +174,7 @@ export function App() {
 
     activeMaterials.forEach((material, index) => {
       if (!merged[material.id]) {
-        merged[material.id] = defaultReactorLayout(index);
+        merged[material.id] = findOpenReactorLayout(merged, material, index);
       }
     });
 
@@ -1625,6 +1625,28 @@ function ReactorDayCanvas({
   onSaveMaterial: () => void;
 }) {
   const dayKey = day?.dayKey ?? todayDateKey();
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+  const [dockPosition, setDockPosition] = useState({ x: 620, y: 1110 });
+
+  useEffect(() => {
+    const raw = window.localStorage.getItem(`creator-reactor-dock:${dayKey}`);
+    if (!raw) {
+      setDockPosition({ x: 620, y: 1110 });
+      return;
+    }
+
+    try {
+      setDockPosition(JSON.parse(raw) as { x: number; y: number });
+    } catch {
+      setDockPosition({ x: 620, y: 1110 });
+    }
+  }, [dayKey]);
+
+  useEffect(() => {
+    window.localStorage.setItem(`creator-reactor-dock:${dayKey}`, JSON.stringify(dockPosition));
+  }, [dayKey, dockPosition]);
+
   return (
     <section className="day-canvas">
       <header className="day-canvas-header">
@@ -1635,9 +1657,59 @@ function ReactorDayCanvas({
         <div className="day-canvas-actions">
           <button className="nav-button" onClick={onBack}>Back to Week</button>
           <button className="today-button" onClick={() => onOpenComposer("idea", dayKey)}>Capture</button>
+          <div className="canvas-zoom-controls">
+            <button className="nav-button" onClick={() => setCanvasScale((value) => Math.max(0.75, value - 0.1))}>－</button>
+            <span>{Math.round(canvasScale * 100)}%</span>
+            <button className="nav-button" onClick={() => setCanvasScale((value) => Math.min(1.8, value + 0.1))}>＋</button>
+          </div>
         </div>
       </header>
-      <div className="day-canvas-board reactor-canvas-board">
+      <div
+        className="day-canvas-board reactor-canvas-board"
+        onWheel={(event) => {
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            const delta = event.deltaY > 0 ? -0.08 : 0.08;
+            setCanvasScale((value) => Math.max(0.75, Math.min(1.8, value + delta)));
+            return;
+          }
+
+          setCanvasOffset((current) => ({
+            x: current.x - event.deltaX,
+            y: current.y - event.deltaY,
+          }));
+        }}
+        onMouseDown={(event) => {
+          if ((event.target as HTMLElement).closest(".day-board-card, .reactor-canvas-composer")) {
+            return;
+          }
+
+          const startX = event.clientX;
+          const startY = event.clientY;
+          const origin = canvasOffset;
+
+          const handleMove = (moveEvent: MouseEvent) => {
+            setCanvasOffset({
+              x: origin.x + (moveEvent.clientX - startX),
+              y: origin.y + (moveEvent.clientY - startY),
+            });
+          };
+
+          const handleUp = () => {
+            window.removeEventListener("mousemove", handleMove);
+            window.removeEventListener("mouseup", handleUp);
+          };
+
+          window.addEventListener("mousemove", handleMove);
+          window.addEventListener("mouseup", handleUp);
+        }}
+      >
+        <div
+          className="reactor-canvas-content"
+          style={{
+            transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`,
+          }}
+        >
         {materials.map((material, index) => {
           const layout = layouts[material.id] ?? defaultReactorLayout(index);
           return (
@@ -1666,8 +1738,8 @@ function ReactorDayCanvas({
 
                 const handleMove = (moveEvent: MouseEvent) => {
                   onUpdateLayout(material.id, {
-                    x: Math.max(0, startLeft + (moveEvent.clientX - startX)),
-                    y: Math.max(0, startTop + (moveEvent.clientY - startY)),
+                    x: Math.max(0, startLeft + (moveEvent.clientX - startX) / canvasScale),
+                    y: Math.max(0, startTop + (moveEvent.clientY - startY) / canvasScale),
                   });
                 };
 
@@ -1695,7 +1767,7 @@ function ReactorDayCanvas({
                   onUpdateLayout(material.id, { z: Date.now() });
                   const handleMove = (moveEvent: MouseEvent) => {
                     onUpdateLayout(material.id, {
-                      width: Math.max(220, Math.min(420, startWidth + (moveEvent.clientX - startX))),
+                      width: Math.max(220, Math.min(460, startWidth + (moveEvent.clientX - startX) / canvasScale)),
                     });
                   };
                   const handleUp = () => {
@@ -1709,7 +1781,13 @@ function ReactorDayCanvas({
             </motion.article>
           );
         })}
-        <div className="reactor-canvas-composer">
+        <div
+          className="reactor-canvas-composer"
+          style={{
+            left: `${dockPosition.x}px`,
+            top: `${dockPosition.y}px`,
+          }}
+        >
           {isComposerOpen ? (
             <ReactorComposer
               dock
@@ -1726,11 +1804,42 @@ function ReactorDayCanvas({
               onSaveMaterial={onSaveMaterial}
             />
           ) : (
-            <button className="reactor-capture-prompt" onClick={() => onOpenComposer("idea", dayKey)}>
+            <button
+              className="reactor-capture-prompt"
+              onClick={() => onOpenComposer("idea", dayKey)}
+              onMouseDown={(event) => {
+                if (!(event.target as HTMLElement).closest(".reactor-capture-handle")) {
+                  return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                const startX = event.clientX;
+                const startY = event.clientY;
+                const origin = dockPosition;
+
+                const handleMove = (moveEvent: MouseEvent) => {
+                  setDockPosition({
+                    x: Math.max(24, origin.x + (moveEvent.clientX - startX) / canvasScale),
+                    y: Math.max(24, origin.y + (moveEvent.clientY - startY) / canvasScale),
+                  });
+                };
+
+                const handleUp = () => {
+                  window.removeEventListener("mousemove", handleMove);
+                  window.removeEventListener("mouseup", handleUp);
+                };
+
+                window.addEventListener("mousemove", handleMove);
+                window.addEventListener("mouseup", handleUp);
+              }}
+            >
+              <span className="reactor-capture-handle" />
               <span className="reactor-capture-title">Paste, drop, or write</span>
               <span className="reactor-capture-meta">Links become previews. Images become image cards.</span>
             </button>
           )}
+        </div>
         </div>
       </div>
     </section>
@@ -1759,6 +1868,11 @@ function ReactorMaterialCard({
   const cardMeta = material.type === "link"
     ? material.meta?.siteName ?? material.meta?.sourceUrl ?? material.note
     : material.note;
+  const [imageVisible, setImageVisible] = useState(Boolean(imageUrl));
+
+  useEffect(() => {
+    setImageVisible(Boolean(imageUrl));
+  }, [imageUrl]);
 
   return (
     <article
@@ -1778,9 +1892,14 @@ function ReactorMaterialCard({
       </div>
       <button className="entry-delete" onClick={onDelete}>×</button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
-      {imageUrl ? (
+      {imageUrl && imageVisible ? (
         <div className={`reactor-card-image ${material.type === "link" ? "reactor-card-image-link" : ""}`}>
-          <img src={imageUrl} alt={cardTitle} />
+          <img src={imageUrl} alt={cardTitle} onError={() => setImageVisible(false)} />
+        </div>
+      ) : material.type === "link" ? (
+        <div className="reactor-card-link-fallback">
+          <span className="reactor-card-link-favicon">{(material.meta?.siteName ?? "Link").slice(0, 1)}</span>
+          <span>{material.meta?.siteName ?? "Link preview unavailable"}</span>
         </div>
       ) : null}
       <p className="reactor-card-title">{cardTitle}</p>
@@ -2403,6 +2522,71 @@ function defaultReactorLayout(index: number): BoardLayout {
     width: 258,
     z: index + 1,
   };
+}
+
+function findOpenReactorLayout(
+  existingLayouts: Record<string, BoardLayout>,
+  material: ReactorDay["materials"][number],
+  index: number,
+): BoardLayout {
+  const width = defaultReactorCardWidth(material);
+  const height = defaultReactorCardHeight(material);
+  const placements = Object.values(existingLayouts);
+  const columns = [48, 340, 632, 924, 1216];
+
+  for (let row = 0; row < 8; row += 1) {
+    const y = 72 + row * 220;
+
+    for (const x of columns) {
+      const candidate = { x, y, width, z: placements.length + index + 1 };
+      if (!isReactorLayoutOccupied(candidate, height, placements)) {
+        return candidate;
+      }
+    }
+  }
+
+  return {
+    x: 48 + (index % 4) * 286,
+    y: 72 + Math.floor(index / 4) * 220,
+    width,
+    z: placements.length + index + 1,
+  };
+}
+
+function defaultReactorCardWidth(material: ReactorDay["materials"][number]) {
+  if (material.type === "image") {
+    return 300;
+  }
+  if (material.type === "link") {
+    return 284;
+  }
+  return 258;
+}
+
+function defaultReactorCardHeight(material: ReactorDay["materials"][number]) {
+  if (material.type === "image") {
+    return 284;
+  }
+  if (material.type === "link") {
+    return material.meta?.previewImageUrl ? 276 : 228;
+  }
+  return 186;
+}
+
+function isReactorLayoutOccupied(
+  candidate: BoardLayout,
+  candidateHeight: number,
+  layouts: BoardLayout[],
+) {
+  return layouts.some((layout) => {
+    const layoutHeight = 230;
+    return !(
+      candidate.x + candidate.width + 24 < layout.x ||
+      layout.x + layout.width + 24 < candidate.x ||
+      candidate.y + candidateHeight + 24 < layout.y ||
+      layout.y + layoutHeight + 24 < candidate.y
+    );
+  });
 }
 
 function buildReactorWeeklySummary(board: ReactorBoard | null) {
