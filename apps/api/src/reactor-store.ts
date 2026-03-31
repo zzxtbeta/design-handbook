@@ -2,7 +2,17 @@ import { desc, eq, gte, inArray } from "drizzle-orm";
 import { reactorMaterials } from "@handbook/db";
 import { db } from "./db";
 
-export type ReactorMaterialType = "diary" | "idea" | "prompt" | "link" | "sample";
+export type ReactorMaterialType = "diary" | "idea" | "prompt" | "link" | "sample" | "image";
+
+export interface ReactorMaterialMeta {
+  sourceUrl?: string;
+  previewTitle?: string;
+  siteName?: string;
+  previewImageUrl?: string;
+  imageUrl?: string;
+  imageWidth?: number | null;
+  imageHeight?: number | null;
+}
 
 export interface ReactorMaterialRecord {
   id: string;
@@ -11,6 +21,7 @@ export interface ReactorMaterialRecord {
   content: string;
   note: string;
   manualTags: string[];
+  meta: ReactorMaterialMeta | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,6 +67,7 @@ export async function createReactorMaterial(input: {
   note?: string;
   manualTags?: string[];
   dayKey?: string;
+  meta?: ReactorMaterialMeta | null;
 }) {
   const timestamp = new Date();
   const dayKey = input.dayKey ?? localDayKey(timestamp);
@@ -67,6 +79,7 @@ export async function createReactorMaterial(input: {
       content: input.content.trim(),
       note: input.note?.trim() ?? "",
       manualTags: normalizeTags(input.manualTags ?? []),
+      meta: input.meta ?? null,
       createdAt: timestamp,
       updatedAt: timestamp,
     })
@@ -81,6 +94,7 @@ export async function updateReactorMaterial(
     content?: string;
     note?: string;
     manualTags?: string[];
+    meta?: ReactorMaterialMeta | null;
   },
 ) {
   const [updated] = await db
@@ -89,6 +103,7 @@ export async function updateReactorMaterial(
       content: patch.content?.trim(),
       note: patch.note?.trim(),
       manualTags: patch.manualTags ? normalizeTags(patch.manualTags) : undefined,
+      meta: patch.meta,
       updatedAt: new Date(),
     })
     .where(eq(reactorMaterials.id, materialId))
@@ -124,6 +139,7 @@ function mapMaterial(row: typeof reactorMaterials.$inferSelect): ReactorMaterial
     content: row.content,
     note: row.note,
     manualTags: Array.isArray(row.manualTags) ? row.manualTags : [],
+    meta: row.meta && typeof row.meta === "object" ? (row.meta as ReactorMaterialMeta) : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

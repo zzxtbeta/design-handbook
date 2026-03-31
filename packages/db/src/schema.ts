@@ -43,6 +43,7 @@ export const reactorMaterialTypeEnum = pgEnum("reactor_material_type", [
   "prompt",
   "link",
   "sample",
+  "image",
 ]);
 
 export const weeks = pgTable("weeks", {
@@ -113,6 +114,15 @@ export const reactorMaterials = pgTable("reactor_materials", {
   content: text("content").notNull(),
   note: text("note").notNull().default(""),
   manualTags: jsonb("manual_tags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  meta: jsonb("meta").$type<{
+    sourceUrl?: string;
+    previewTitle?: string;
+    siteName?: string;
+    previewImageUrl?: string;
+    imageUrl?: string;
+    imageWidth?: number | null;
+    imageHeight?: number | null;
+  }>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

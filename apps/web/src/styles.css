@@ -1158,15 +1158,35 @@ img {
   color: rgba(76, 56, 42, 0.58);
 }
 
+.reactor-card-image {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(246, 244, 239, 0.9);
+  border: 1px solid rgba(112, 84, 59, 0.05);
+  aspect-ratio: 1.35 / 1;
+}
+
+.reactor-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.reactor-card-image-link {
+  aspect-ratio: 1.7 / 1;
+  margin-bottom: 2px;
+}
+
 .reactor-compose-panel {
   display: grid;
   gap: 12px;
   padding: 16px 16px 14px;
   border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 249, 222, 0.98), rgba(251, 239, 186, 0.98));
-  border: 1px solid rgba(157, 132, 81, 0.14);
-  box-shadow: 0 18px 28px rgba(97, 74, 44, 0.14);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(157, 132, 81, 0.09);
+  box-shadow: 0 18px 28px rgba(97, 74, 44, 0.08);
 }
 
 .reactor-compose-panel-compact {
@@ -1185,6 +1205,15 @@ img {
   background: rgba(255, 247, 210, 0.72);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
   rotate: -4deg;
+}
+
+.reactor-compose-panel-dock {
+  gap: 10px;
+  padding: 14px;
+  border-radius: 22px;
+  box-shadow:
+    0 20px 36px rgba(71, 49, 35, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .reactor-compose-header,
@@ -1213,7 +1242,7 @@ img {
 }
 
 .reactor-compose-textarea {
-  min-height: 132px;
+  min-height: 108px;
   padding: 16px 18px;
   resize: vertical;
   line-height: 1.7;
@@ -1602,9 +1631,10 @@ img {
 
 .reactor-canvas-composer {
   position: absolute;
-  left: 44px;
-  top: 34px;
-  width: min(320px, calc(100% - 104px));
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(460px, calc(100% - 96px));
   z-index: 4;
   filter: drop-shadow(0 24px 44px rgba(71, 49, 35, 0.1));
 }
@@ -1616,6 +1646,31 @@ img {
 
 .reactor-board-card:hover {
   filter: drop-shadow(0 24px 30px rgba(71, 49, 35, 0.08));
+}
+
+.reactor-capture-prompt {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 16px 20px;
+  border: 1px solid rgba(112, 84, 59, 0.09);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 28px rgba(71, 49, 35, 0.08);
+  text-align: left;
+  cursor: pointer;
+}
+
+.reactor-capture-title {
+  font-family: "Bradley Hand", "Marker Felt", "Segoe Print", cursive;
+  font-size: 1.1rem;
+  color: rgba(53, 39, 31, 0.88);
+}
+
+.reactor-capture-meta {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.82rem;
+  color: rgba(76, 56, 42, 0.56);
 }
 
 .top-tool:disabled {

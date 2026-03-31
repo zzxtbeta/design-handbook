@@ -36,6 +36,13 @@
       "when": 1774922400000,
       "tag": "0004_reactor_board",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774969500000,
+      "tag": "0005_reactor_rich_materials",
+      "breakpoints": true
     }
   ]
 }

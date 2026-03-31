@@ -6,6 +6,7 @@ import cors from "cors";
 import { generateDesignTerms } from "./ai";
 import { config } from "./config";
 import { deleteStoredImage, saveImageDataUrl } from "./image-storage";
+import { fetchLinkPreview } from "./link-preview";
 import {
   createReactorMaterial,
   deleteReactorMaterial,
@@ -76,22 +77,59 @@ app.get("/api/reactor/days", async (request, response) => {
 });
 
 app.post("/api/reactor/materials", async (request, response) => {
-  const { type, content, note, manualTags, dayKey } = request.body;
+  const { type, content, note, manualTags, dayKey, meta, imageDataUrl } = request.body;
 
-  if (typeof type !== "string" || typeof content !== "string" || content.trim() === "") {
+  if (typeof type !== "string") {
     response.status(400).json({
-      error: "type and non-empty content are required.",
+      error: "type is required.",
     });
     return;
+  }
+
+  if (type !== "image" && (typeof content !== "string" || content.trim() === "")) {
+    response.status(400).json({
+      error: "non-empty content is required.",
+    });
+    return;
+  }
+
+  let resolvedMeta =
+    meta && typeof meta === "object" && !Array.isArray(meta)
+      ? { ...(meta as Record<string, unknown>) }
+      : null;
+  let resolvedContent = typeof content === "string" ? content : "";
+
+  if (type === "link" && resolvedMeta?.sourceUrl && typeof resolvedMeta.sourceUrl === "string") {
+    const preview = await fetchLinkPreview(resolvedMeta.sourceUrl);
+    resolvedMeta = {
+      ...resolvedMeta,
+      ...preview,
+    };
+    resolvedContent = preview.previewTitle ?? resolvedContent ?? preview.sourceUrl;
+  }
+
+  if (type === "image") {
+    if (typeof imageDataUrl !== "string" || imageDataUrl.trim() === "") {
+      response.status(400).json({ error: "imageDataUrl is required for image materials." });
+      return;
+    }
+
+    const image = await saveImageDataUrl({ imageDataUrl });
+    resolvedMeta = {
+      ...resolvedMeta,
+      imageUrl: image.publicUrl,
+    };
+    resolvedContent = resolvedContent.trim() || "Image";
   }
 
   response.status(201).json(
     await createReactorMaterial({
       type: type as Parameters<typeof createReactorMaterial>[0]["type"],
-      content,
+      content: resolvedContent,
       note: typeof note === "string" ? note : "",
       manualTags: Array.isArray(manualTags) ? manualTags.filter((tag) => typeof tag === "string") : [],
       dayKey: typeof dayKey === "string" ? dayKey : undefined,
+      meta: resolvedMeta as Parameters<typeof createReactorMaterial>[0]["meta"],
     }),
   );
 });
@@ -103,6 +141,10 @@ app.patch("/api/reactor/materials/:id", async (request, response) => {
     manualTags: Array.isArray(request.body.manualTags)
       ? request.body.manualTags.filter((tag: unknown) => typeof tag === "string")
       : undefined,
+    meta:
+      request.body.meta && typeof request.body.meta === "object" && !Array.isArray(request.body.meta)
+        ? request.body.meta
+        : undefined,
   });
 
   if (!updated) {
@@ -119,6 +161,10 @@ app.delete("/api/reactor/materials/:id", async (request, response) => {
   if (!deleted) {
     response.status(404).json({ error: "Material not found." });
     return;
+  }
+
+  if (deleted.meta?.imageUrl) {
+    await deleteStoredImage(deleted.meta.imageUrl);
   }
 
   response.json(deleted);

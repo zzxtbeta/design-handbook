@@ -35,7 +35,17 @@ export interface WeekData {
   entries: WeekEntry[];
 }
 
-export type ReactorMaterialType = "diary" | "idea" | "prompt" | "link" | "sample";
+export type ReactorMaterialType = "diary" | "idea" | "prompt" | "link" | "sample" | "image";
+
+export interface ReactorMaterialMeta {
+  sourceUrl?: string;
+  previewTitle?: string;
+  siteName?: string;
+  previewImageUrl?: string;
+  imageUrl?: string;
+  imageWidth?: number | null;
+  imageHeight?: number | null;
+}
 
 export interface ReactorMaterial {
   id: string;
@@ -44,6 +54,7 @@ export interface ReactorMaterial {
   content: string;
   note: string;
   manualTags: string[];
+  meta: ReactorMaterialMeta | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -4,6 +4,7 @@ import type {
   DaySlot,
   ReactorBoard,
   ReactorDay,
+  ReactorMaterialMeta,
   ReactorMaterialType,
   WeekData,
   WeekEntry,
@@ -192,15 +193,70 @@ export function App() {
   }, [activeReactorDayKey, reactorLayouts]);
 
   useEffect(() => {
-    function handlePaste(event: ClipboardEvent) {
+    async function handlePaste(event: ClipboardEvent) {
       if (!event.clipboardData) {
         return;
       }
 
-      const imageItem = [...event.clipboardData.items].find((item) =>
-        item.type.startsWith("image/"),
-      );
+      const target = event.target as HTMLElement | null;
+      if (isEditableTarget(target)) {
+        return;
+      }
 
+      if (boardMode === "reactor" && reactorViewMode === "day") {
+        const imageItem = [...event.clipboardData.items].find((item) => item.type.startsWith("image/"));
+        const textValue = event.clipboardData.getData("text/plain").trim();
+
+        if (imageItem) {
+          const file = imageItem.getAsFile();
+          if (!file) {
+            return;
+          }
+
+          event.preventDefault();
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const imageDataUrl = String(reader.result ?? "");
+            const dimensions = await readImageSize(imageDataUrl);
+            await createReactorMaterialRequest({
+              dayKey: activeReactorDayKey,
+              type: "image",
+              content: "Image",
+              imageDataUrl,
+              meta: {
+                imageWidth: dimensions.width,
+                imageHeight: dimensions.height,
+              },
+            });
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+
+        if (textValue) {
+          event.preventDefault();
+          await createReactorMaterialRequest(
+            isProbablyUrl(textValue)
+              ? {
+                  dayKey: activeReactorDayKey,
+                  type: "link",
+                  content: textValue,
+                  meta: {
+                    sourceUrl: normalizeUrl(textValue),
+                  },
+                }
+              : {
+                  dayKey: activeReactorDayKey,
+                  type: textValue.includes("\n") ? "diary" : "idea",
+                  content: textValue,
+                },
+          );
+        }
+
+        return;
+      }
+
+      const imageItem = [...event.clipboardData.items].find((item) => item.type.startsWith("image/"));
       if (!imageItem) {
         return;
       }
@@ -224,7 +280,7 @@ export function App() {
 
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-  }, [activeDay, week]);
+  }, [activeDay, week, boardMode, reactorViewMode, activeReactorDayKey]);
 
   useEffect(() => {
     const activeProcessingCount = week
@@ -401,36 +457,51 @@ export function App() {
     }
 
     try {
-      setIsSavingMaterial(true);
+      await createReactorMaterialRequest({
+        dayKey: composerDayKey,
+        type: composerType,
+        content: composerContent,
+        note: composerNote,
+        manualTags: composerTagsDraft
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      });
+
+      setComposerContent("");
+      setComposerNote("");
+      setComposerTagsDraft("");
+      setIsComposerOpen(false);
+    } catch (error) {
+      console.error("[web] handleSaveMaterial failed", error);
+      setReactorError("Could not save this note. Please try again.");
+    }
+  }
+
+  async function createReactorMaterialRequest(input: {
+    dayKey: string;
+    type: ReactorMaterialType;
+    content: string;
+    note?: string;
+    manualTags?: string[];
+    meta?: ReactorMaterialMeta | null;
+    imageDataUrl?: string;
+  }) {
+    setIsSavingMaterial(true);
+    try {
       const response = await fetch("/api/reactor/materials", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          dayKey: composerDayKey,
-          type: composerType,
-          content: composerContent,
-          note: composerNote,
-          manualTags: composerTagsDraft
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
-        }),
+        body: JSON.stringify(input),
       });
 
       if (!response.ok) {
         throw new Error(`Reactor create failed with status ${response.status}`);
       }
 
-      setComposerContent("");
-      setComposerNote("");
-      setComposerTagsDraft("");
-      setIsComposerOpen(false);
       await loadReactorBoard();
-    } catch (error) {
-      console.error("[web] handleSaveMaterial failed", error);
-      setReactorError("Could not save this note. Please try again.");
     } finally {
       setIsSavingMaterial(false);
     }
@@ -1337,6 +1408,7 @@ function ReactorBoardView({
 
 function ReactorComposer({
   compact = false,
+  dock = false,
   composerType,
   composerContent,
   composerNote,
@@ -1350,6 +1422,7 @@ function ReactorComposer({
   onSaveMaterial,
 }: {
   compact?: boolean;
+  dock?: boolean;
   composerType: ReactorMaterialType;
   composerContent: string;
   composerNote: string;
@@ -1363,7 +1436,11 @@ function ReactorComposer({
   onSaveMaterial: () => void;
 }) {
   return (
-    <section className={`reactor-compose-panel ${compact ? "reactor-compose-panel-compact" : ""}`}>
+    <section
+      className={`reactor-compose-panel ${compact ? "reactor-compose-panel-compact" : ""} ${
+        dock ? "reactor-compose-panel-dock" : ""
+      }`}
+    >
       <div className="reactor-compose-header">
         <strong>{labelForMaterialType(composerType)}</strong>
         <button className="ghost-action" onClick={onCloseComposer}>Close</button>
@@ -1383,7 +1460,7 @@ function ReactorComposer({
         className="reactor-compose-textarea"
         value={composerContent}
         onChange={(event) => onComposerContentChange(event.target.value)}
-        placeholder="Write the line you do not want to lose."
+        placeholder={dock ? "Paste a link, image, or thought..." : "Write the line you do not want to lose."}
       />
       <input
         className="reactor-compose-input"
@@ -1557,28 +1634,10 @@ function ReactorDayCanvas({
         </div>
         <div className="day-canvas-actions">
           <button className="nav-button" onClick={onBack}>Back to Week</button>
-          <button className="today-button" onClick={() => onOpenComposer("diary", dayKey)}>New Note</button>
+          <button className="today-button" onClick={() => onOpenComposer("idea", dayKey)}>Capture</button>
         </div>
       </header>
       <div className="day-canvas-board reactor-canvas-board">
-        {isComposerOpen ? (
-          <div className="reactor-canvas-composer">
-            <ReactorComposer
-              compact
-              composerType={composerType}
-              composerContent={composerContent}
-              composerNote={composerNote}
-              composerTagsDraft={composerTagsDraft}
-              isSavingMaterial={isSavingMaterial}
-              onCloseComposer={onCloseComposer}
-              onComposerTypeChange={onComposerTypeChange}
-              onComposerContentChange={onComposerContentChange}
-              onComposerNoteChange={onComposerNoteChange}
-              onComposerTagsChange={onComposerTagsChange}
-              onSaveMaterial={onSaveMaterial}
-            />
-          </div>
-        ) : null}
         {materials.map((material, index) => {
           const layout = layouts[material.id] ?? defaultReactorLayout(index);
           return (
@@ -1650,6 +1709,29 @@ function ReactorDayCanvas({
             </motion.article>
           );
         })}
+        <div className="reactor-canvas-composer">
+          {isComposerOpen ? (
+            <ReactorComposer
+              dock
+              composerType={composerType}
+              composerContent={composerContent}
+              composerNote={composerNote}
+              composerTagsDraft={composerTagsDraft}
+              isSavingMaterial={isSavingMaterial}
+              onCloseComposer={onCloseComposer}
+              onComposerTypeChange={onComposerTypeChange}
+              onComposerContentChange={onComposerContentChange}
+              onComposerNoteChange={onComposerNoteChange}
+              onComposerTagsChange={onComposerTagsChange}
+              onSaveMaterial={onSaveMaterial}
+            />
+          ) : (
+            <button className="reactor-capture-prompt" onClick={() => onOpenComposer("idea", dayKey)}>
+              <span className="reactor-capture-title">Paste, drop, or write</span>
+              <span className="reactor-capture-meta">Links become previews. Images become image cards.</span>
+            </button>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -1668,6 +1750,15 @@ function ReactorMaterialCard({
 }) {
   const pet = petForMaterial(material);
   const weekCardStyle = weekMode ? reactorWeekCardStyle(material, index) : undefined;
+  const imageUrl = material.meta?.imageUrl ?? material.meta?.previewImageUrl ?? null;
+  const cardTitle = material.type === "link"
+    ? material.meta?.previewTitle ?? material.content
+    : material.type === "image"
+      ? material.note || material.content
+      : material.content;
+  const cardMeta = material.type === "link"
+    ? material.meta?.siteName ?? material.meta?.sourceUrl ?? material.note
+    : material.note;
 
   return (
     <article
@@ -1687,8 +1778,13 @@ function ReactorMaterialCard({
       </div>
       <button className="entry-delete" onClick={onDelete}>×</button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
-      <p className="reactor-card-title">{material.content}</p>
-      {!weekMode && material.note ? <p className="reactor-card-meta">{material.note}</p> : null}
+      {imageUrl ? (
+        <div className={`reactor-card-image ${material.type === "link" ? "reactor-card-image-link" : ""}`}>
+          <img src={imageUrl} alt={cardTitle} />
+        </div>
+      ) : null}
+      <p className="reactor-card-title">{cardTitle}</p>
+      {!weekMode && cardMeta ? <p className="reactor-card-meta">{cardMeta}</p> : null}
     </article>
   );
 }
@@ -2206,6 +2302,7 @@ function labelForMaterialType(type: ReactorMaterialType) {
     prompt: "Prompt",
     link: "Link",
     sample: "Sample",
+    image: "Image",
   }[type];
 }
 
@@ -2341,6 +2438,32 @@ function monthDayLabel(date: Date) {
     month: "short",
     day: "numeric",
   });
+}
+
+function isEditableTarget(target: HTMLElement | null) {
+  if (!target) {
+    return false;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+  return tagName === "input" || tagName === "textarea" || target.isContentEditable;
+}
+
+function isProbablyUrl(input: string) {
+  try {
+    new URL(input);
+    return true;
+  } catch {
+    return /^(https?:\/\/|www\.)/i.test(input);
+  }
+}
+
+function normalizeUrl(input: string) {
+  try {
+    return new URL(input).toString();
+  } catch {
+    return new URL(`https://${input}`).toString();
+  }
 }
 
 function entryDecoration(index: number) {
