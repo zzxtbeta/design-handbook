@@ -10,12 +10,12 @@ import type {
 } from "./types";
 
 const dayGroups = [
-  ["mon", "周一"],
-  ["tue", "周二"],
-  ["wed", "周三"],
-  ["thu", "周四"],
-  ["fri", "周五"],
-  ["weekend", "周末"],
+  ["mon", "Mon"],
+  ["tue", "Tue"],
+  ["wed", "Wed"],
+  ["thu", "Thu"],
+  ["fri", "Fri"],
+  ["weekend", "Weekend"],
 ] as const;
 
 type ViewMode = "week" | "day";
@@ -627,8 +627,8 @@ export function App() {
             </h1>
             <p className="date-range">
               {boardMode === "aesthetic"
-                ? week?.label ?? "Visual references, mood, and interface language."
-                : "A daily whiteboard for loose notes, links, prompts, and unfinished thoughts."}
+                ? week?.label ?? "Weekly Board"
+                : "Loose notes, kept tidy."}
             </p>
           </div>
           <div className="week-actions">
@@ -655,7 +655,7 @@ export function App() {
                     ‹
                   </button>
                   <button className="today-button" onClick={handleFocusTodayBoard}>
-                    {week ? `Week ${week.weekNumber}` : "Open Board"}
+                    {week ? `Week ${week.weekNumber}` : "打开"}
                   </button>
                   <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value + 1)}>
                     ›
@@ -669,7 +669,7 @@ export function App() {
               <button
                 className="top-tool icon-tool"
                 onClick={() => setAppearance((current) => (current === "light" ? "dark" : "light"))}
-                aria-label="切换明暗主题"
+                aria-label="Toggle theme"
               >
                 ☾
               </button>
@@ -681,11 +681,13 @@ export function App() {
           <span className="view-copy">
             {boardMode === "aesthetic"
               ? viewMode === "week"
+                ? "Week View"
+                : `${labelForDay(activeDay)}`
+              : viewMode === "week"
                 ? "Weekly Board"
-                : `Focused ${labelForDay(activeDay)}`
-              : "Daily whiteboards for unfinished thoughts"}
+                : "Focused Day"}
           </span>
-          {copiedTerm ? <span className="copied-inline">已复制</span> : null}
+          {copiedTerm ? <span className="copied-inline">Copied</span> : null}
         </section>
 
         <motion.section
@@ -1192,8 +1194,7 @@ function ReactorBoardView({
     <section className="reactor-shell">
       <header className="reactor-header">
         <div>
-          <p className="reactor-kicker">Weekly Reactor</p>
-          <h2>Loose notes settle into the week.</h2>
+          <h2>把零散念头放进这一周。</h2>
         </div>
       </header>
 
@@ -1258,7 +1259,7 @@ function ReactorBoardView({
       {error ? (
         <div className="reactor-status reactor-status-error">
           <span>{error}</span>
-          <button className="ghost-action" onClick={onRetry}>Retry</button>
+          <button className="ghost-action" onClick={onRetry}>重试</button>
         </div>
       ) : null}
     </section>
@@ -1318,7 +1319,7 @@ function ReactorComposer({
     <section className={`reactor-compose-panel ${compact ? "reactor-compose-panel-compact" : ""}`}>
       <div className="reactor-compose-header">
         <strong>{labelForMaterialType(composerType)}</strong>
-        <button className="ghost-action" onClick={onCloseComposer}>Close</button>
+        <button className="ghost-action" onClick={onCloseComposer}>关闭</button>
       </div>
       <div className="reactor-compose-types">
         {(["diary", "idea", "prompt", "link", "sample"] as ReactorMaterialType[]).map((type) => (
@@ -1335,24 +1336,24 @@ function ReactorComposer({
         className="reactor-compose-textarea"
         value={composerContent}
         onChange={(event) => onComposerContentChange(event.target.value)}
-        placeholder="Write the line you don't want to lose..."
+        placeholder="写下这句别丢掉的话"
       />
       <input
         className="reactor-compose-input"
         value={composerNote}
         onChange={(event) => onComposerNoteChange(event.target.value)}
-        placeholder="Why keep it?"
+        placeholder="为什么留它"
       />
       <input
         className="reactor-compose-input"
         value={composerTagsDraft}
         onChange={(event) => onComposerTagsChange(event.target.value)}
-        placeholder="tags, comma separated"
+        placeholder="标签，用逗号分隔"
       />
       <div className="reactor-compose-actions">
-        <button className="top-tool" onClick={onCloseComposer}>Cancel</button>
+        <button className="top-tool" onClick={onCloseComposer}>取消</button>
         <button className="today-button" onClick={onSaveMaterial} disabled={isSavingMaterial}>
-          {isSavingMaterial ? "Saving..." : "Save Material"}
+          {isSavingMaterial ? "保存中..." : "保存"}
         </button>
       </div>
     </section>
@@ -1505,11 +1506,11 @@ function ReactorDayCanvas({
       <header className="day-canvas-header">
         <div>
           <p className="day-canvas-kicker">Focused Day</p>
-          <h2>{formatDayKey(dayKey)} · Creator Reactor</h2>
+          <h2>{formatDayKey(dayKey)} · 当日白板</h2>
         </div>
         <div className="day-canvas-actions">
-          <button className="nav-button" onClick={onBack}>Back to Week</button>
-          <button className="today-button" onClick={() => onOpenComposer("diary", dayKey)}>New Note</button>
+          <button className="nav-button" onClick={onBack}>回到本周</button>
+          <button className="today-button" onClick={() => onOpenComposer("diary", dayKey)}>新建</button>
         </div>
       </header>
       <div className="day-canvas-board reactor-canvas-board">
@@ -1642,7 +1643,7 @@ function ReactorMaterialCard({
       <button className="entry-delete" onClick={onDelete}>×</button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
       <p className="reactor-card-title">{material.content}</p>
-      {material.note ? <p className="reactor-card-meta">{material.note}</p> : null}
+      {!weekMode && material.note ? <p className="reactor-card-meta">{material.note}</p> : null}
     </article>
   );
 }
@@ -1694,10 +1695,10 @@ function BoardUnavailable({
       <p>{message}</p>
       <div className="board-unavailable-actions">
         <button className="today-button" onClick={onOpenReactor}>
-          Open Reactor
+          打开反应堆
         </button>
         <button className="top-tool" onClick={onRetry}>
-          Retry
+          重试
         </button>
       </div>
     </section>
@@ -2072,12 +2073,12 @@ function JournalCard({
 
 function labelForDay(day: DaySlot) {
   return {
-    mon: "周一",
-    tue: "周二",
-    wed: "周三",
-    thu: "周四",
-    fri: "周五",
-    weekend: "周末",
+    mon: "Mon",
+    tue: "Tue",
+    wed: "Wed",
+    thu: "Thu",
+    fri: "Fri",
+    weekend: "Weekend",
   }[day];
 }
 
