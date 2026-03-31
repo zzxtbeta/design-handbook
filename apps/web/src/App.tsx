@@ -35,27 +35,29 @@ interface ReactorPet {
   rarity: "common" | "rare" | "legendary";
   bubble: "cloud" | "notch" | "soft" | "ticket" | "star";
   mode: "peek" | "perch" | "float";
+  species: "fox" | "sprout" | "moth" | "slime" | "pup" | "owl";
+  palette: [string, string, string];
 }
 
 const reactorPets: ReactorPet[] = [
-  { id: "mochi", rarity: "common", bubble: "cloud", mode: "peek" },
-  { id: "mint", rarity: "common", bubble: "soft", mode: "perch" },
-  { id: "pebble", rarity: "common", bubble: "ticket", mode: "peek" },
-  { id: "pip", rarity: "common", bubble: "notch", mode: "float" },
-  { id: "lulu", rarity: "common", bubble: "cloud", mode: "perch" },
-  { id: "bobo", rarity: "common", bubble: "soft", mode: "peek" },
-  { id: "pico", rarity: "common", bubble: "ticket", mode: "float" },
-  { id: "toto", rarity: "common", bubble: "star", mode: "peek" },
-  { id: "nori", rarity: "common", bubble: "cloud", mode: "float" },
-  { id: "mugi", rarity: "common", bubble: "notch", mode: "perch" },
-  { id: "yuzu", rarity: "common", bubble: "soft", mode: "float" },
-  { id: "kiki", rarity: "common", bubble: "star", mode: "perch" },
-  { id: "momo", rarity: "rare", bubble: "cloud", mode: "float" },
-  { id: "sumi", rarity: "rare", bubble: "ticket", mode: "perch" },
-  { id: "puff", rarity: "rare", bubble: "soft", mode: "peek" },
-  { id: "beta", rarity: "rare", bubble: "star", mode: "float" },
-  { id: "nova", rarity: "legendary", bubble: "notch", mode: "float" },
-  { id: "gigi", rarity: "legendary", bubble: "cloud", mode: "perch" },
+  { id: "mochi", rarity: "common", bubble: "cloud", mode: "peek", species: "slime", palette: ["#f1dfb6", "#d8bd7a", "#513927"] },
+  { id: "mint", rarity: "common", bubble: "soft", mode: "perch", species: "sprout", palette: ["#d2e7c8", "#90b77d", "#41563a"] },
+  { id: "pebble", rarity: "common", bubble: "ticket", mode: "peek", species: "pup", palette: ["#e1d2c5", "#bc8d63", "#5a3f31"] },
+  { id: "pip", rarity: "common", bubble: "notch", mode: "float", species: "moth", palette: ["#ead8ee", "#b291cc", "#523e63"] },
+  { id: "lulu", rarity: "common", bubble: "cloud", mode: "perch", species: "fox", palette: ["#f6d9cb", "#d47e66", "#5f372f"] },
+  { id: "bobo", rarity: "common", bubble: "soft", mode: "peek", species: "owl", palette: ["#d9d9ef", "#8f90c6", "#404069"] },
+  { id: "pico", rarity: "common", bubble: "ticket", mode: "float", species: "slime", palette: ["#d4e3db", "#82ab96", "#355346"] },
+  { id: "toto", rarity: "common", bubble: "star", mode: "peek", species: "pup", palette: ["#f2dfc8", "#ca9f6a", "#614734"] },
+  { id: "nori", rarity: "common", bubble: "cloud", mode: "float", species: "moth", palette: ["#d4ebe3", "#87b3a6", "#365249"] },
+  { id: "mugi", rarity: "common", bubble: "notch", mode: "perch", species: "fox", palette: ["#f0deb1", "#d19b4f", "#66461f"] },
+  { id: "yuzu", rarity: "common", bubble: "soft", mode: "float", species: "sprout", palette: ["#f4e6b7", "#d8b85c", "#63512a"] },
+  { id: "kiki", rarity: "common", bubble: "star", mode: "perch", species: "owl", palette: ["#e0d5eb", "#a88dbe", "#4b3f60"] },
+  { id: "momo", rarity: "rare", bubble: "cloud", mode: "float", species: "fox", palette: ["#ffd7e3", "#ea8da8", "#65364a"] },
+  { id: "sumi", rarity: "rare", bubble: "ticket", mode: "perch", species: "pup", palette: ["#dce4ef", "#89a6c9", "#334b63"] },
+  { id: "puff", rarity: "rare", bubble: "soft", mode: "peek", species: "slime", palette: ["#ece6ff", "#b9a6ff", "#51426e"] },
+  { id: "beta", rarity: "rare", bubble: "star", mode: "float", species: "moth", palette: ["#daf4e4", "#7cc79b", "#2e5b44"] },
+  { id: "nova", rarity: "legendary", bubble: "notch", mode: "float", species: "sprout", palette: ["#ffe7a8", "#f7b63f", "#77531d"] },
+  { id: "gigi", rarity: "legendary", bubble: "cloud", mode: "perch", species: "owl", palette: ["#fff0b9", "#f3c44d", "#70541e"] },
 ];
 
 export function App() {
@@ -1396,9 +1398,14 @@ function ReactorDayColumn({
 }) {
   const visibleMaterials = day.materials.slice(0, 3);
   const hiddenCount = Math.max(0, day.materials.length - visibleMaterials.length);
+  const colonyPets = visibleMaterials.map((material) => petForMaterial(material));
+  const hasLegendary = colonyPets.some((pet) => pet.rarity === "legendary");
+  const hasRareEvent = hasLegendary || colonyPets.filter((pet) => pet.rarity === "rare").length >= 2;
 
   return (
-    <section className="day-column reactor-day-column">
+    <section
+      className={`day-column reactor-day-column ${hasRareEvent ? "reactor-day-column-event" : ""}`}
+    >
       <header className="day-header reactor-day-column-header">
         <button className="day-jump-target" onClick={() => onOpenDay(day.dayKey)}>
           <div className="day-number">{formatDayKey(day.dayKey).split(" / ")[1] ?? ""}</div>
@@ -1406,6 +1413,21 @@ function ReactorDayColumn({
         </button>
         <button className="day-open-button" onClick={() => onOpenComposer("idea", day.dayKey)}>＋</button>
       </header>
+      {colonyPets.length > 1 ? (
+        <div className="reactor-day-colony" aria-hidden="true">
+          {colonyPets.slice(0, 4).map((pet, index) => (
+            <div
+              key={`${pet.id}-${index}`}
+              className={`reactor-day-colony-member reactor-day-colony-member-${index} ${
+                hasRareEvent ? "reactor-day-colony-member-event" : ""
+              }`}
+            >
+              <PixelPetSprite pet={pet} size={20} />
+            </div>
+          ))}
+          {hasRareEvent ? <span className="reactor-day-colony-spark" /> : null}
+        </div>
+      ) : null}
       <div className="reactor-day-stack">
         {isComposerOpen ? (
           <ReactorComposer
@@ -1614,7 +1636,7 @@ function ReactorMaterialCard({
     <article
       className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)} ${
         weekMode ? "reactor-card-week" : "reactor-card-canvas"
-      } reactor-pet-${pet.id} reactor-bubble-${pet.bubble}`}
+      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity}`}
       style={weekCardStyle}
     >
       <div className={`tape tape-${entryDecoration(index)}`} />
@@ -1622,15 +1644,44 @@ function ReactorMaterialCard({
       <div className="paper-clip" />
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
       <div className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity}`} aria-hidden="true">
-        <span className="reactor-pet-body" />
-        <span className="reactor-pet-eye reactor-pet-eye-left" />
-        <span className="reactor-pet-eye reactor-pet-eye-right" />
+        <PixelPetSprite pet={pet} size={weekMode ? 26 : 30} />
       </div>
       <button className="entry-delete" onClick={onDelete}>×</button>
       <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
       <p className="reactor-card-title">{material.content}</p>
       {material.note ? <p className="reactor-card-meta">{material.note}</p> : null}
     </article>
+  );
+}
+
+function PixelPetSprite({
+  pet,
+  size,
+}: {
+  pet: ReactorPet;
+  size: number;
+}) {
+  const pixels = spriteForPet(pet);
+
+  return (
+    <svg
+      className={`reactor-pet-sprite reactor-pet-sprite-${pet.id}`}
+      viewBox="0 0 16 16"
+      width={size}
+      height={size}
+      aria-hidden="true"
+    >
+      {pixels.map((pixel, index) => (
+        <rect
+          key={`${pet.id}-${index}-${pixel.x}-${pixel.y}`}
+          x={pixel.x}
+          y={pixel.y}
+          width="1"
+          height="1"
+          fill={pixel.fill}
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -2243,7 +2294,7 @@ function petForMaterial(material: ReactorDay["materials"][number]) {
 
 function reactorWeekCardStyle(material: ReactorDay["materials"][number], index: number) {
   const contentLength = material.content.trim().length + material.note.trim().length * 0.65;
-  const width = Math.max(54, Math.min(86, 60 + Math.min(contentLength, 72) * 0.26));
+  const width = Math.max(46, Math.min(74, 50 + Math.min(contentLength, 72) * 0.2));
   const align = ["start", "center", "end"][index % 3] as "start" | "center" | "end";
 
   return {
@@ -2260,6 +2311,131 @@ function hashString(value: string) {
   }
 
   return hash;
+}
+
+function spriteForPet(pet: ReactorPet) {
+  const [base, accent, shade] = pet.palette;
+  const eye = "#2f241f";
+  const pixels: Array<{ x: number; y: number; fill: string }> = [];
+
+  const paint = (coords: Array<[number, number]>, fill: string) => {
+    coords.forEach(([x, y]) => {
+      pixels.push({ x, y, fill });
+    });
+  };
+
+  const speciesPixels: Record<ReactorPet["species"], Array<[number, number]>> = {
+    slime: [
+      [5, 3], [6, 3], [7, 3], [8, 3], [9, 3],
+      [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4],
+      [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5],
+      [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6],
+      [4, 7], [5, 7], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7],
+      [4, 8], [5, 8], [6, 8], [7, 8], [8, 8], [9, 8], [10, 8],
+      [5, 9], [6, 9], [7, 9], [8, 9], [9, 9],
+    ],
+    fox: [
+      [4, 2], [8, 2],
+      [3, 3], [4, 3], [5, 3], [7, 3], [8, 3], [9, 3],
+      [3, 4], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4],
+      [2, 5], [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5],
+      [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6],
+      [3, 7], [4, 7], [5, 7], [6, 7], [7, 7], [8, 7], [9, 7],
+      [4, 8], [5, 8], [6, 8], [7, 8], [8, 8],
+      [8, 9], [9, 9], [10, 9],
+    ],
+    sprout: [
+      [7, 1], [8, 1],
+      [6, 2], [7, 2], [8, 2], [9, 2],
+      [6, 3], [7, 3], [8, 3], [9, 3],
+      [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4],
+      [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5],
+      [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6],
+      [5, 7], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7],
+      [6, 8], [7, 8], [8, 8], [9, 8],
+    ],
+    moth: [
+      [6, 2], [9, 2],
+      [4, 3], [5, 3], [6, 3], [9, 3], [10, 3], [11, 3],
+      [3, 4], [4, 4], [5, 4], [6, 4], [9, 4], [10, 4], [11, 4], [12, 4],
+      [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5],
+      [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6],
+      [5, 7], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7],
+      [6, 8], [7, 8], [8, 8], [9, 8],
+    ],
+    pup: [
+      [4, 3], [8, 3],
+      [3, 4], [4, 4], [5, 4], [7, 4], [8, 4], [9, 4],
+      [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5],
+      [2, 6], [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6],
+      [2, 7], [3, 7], [4, 7], [5, 7], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7],
+      [3, 8], [4, 8], [5, 8], [6, 8], [7, 8], [8, 8], [9, 8],
+      [3, 9], [8, 9],
+    ],
+    owl: [
+      [5, 2], [8, 2],
+      [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3],
+      [3, 4], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4],
+      [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5],
+      [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6],
+      [4, 7], [5, 7], [6, 7], [7, 7], [8, 7], [9, 7],
+      [5, 8], [6, 8], [7, 8], [8, 8],
+      [4, 9], [8, 9],
+    ],
+  };
+
+  const accentPixels: Partial<Record<ReactorPet["species"], Array<[number, number]>>> = {
+    slime: [[5, 4], [9, 4], [6, 9], [8, 9]],
+    fox: [[4, 3], [8, 3], [9, 9], [10, 9]],
+    sprout: [[7, 1], [8, 1], [6, 2], [9, 2]],
+    moth: [[4, 4], [11, 4], [5, 7], [10, 7]],
+    pup: [[4, 3], [8, 3], [3, 9], [8, 9]],
+    owl: [[5, 2], [8, 2], [4, 9], [8, 9]],
+  };
+
+  const shadePixels: Partial<Record<ReactorPet["species"], Array<[number, number]>>> = {
+    slime: [[4, 7], [10, 7], [5, 8], [9, 8]],
+    fox: [[3, 5], [9, 5], [4, 8], [7, 8]],
+    sprout: [[5, 6], [10, 6], [6, 7], [9, 7]],
+    moth: [[6, 5], [9, 5], [7, 6], [8, 6]],
+    pup: [[3, 6], [9, 6], [4, 7], [8, 7]],
+    owl: [[4, 5], [9, 5], [5, 7], [8, 7]],
+  };
+
+  paint(speciesPixels[pet.species], base);
+  paint(accentPixels[pet.species] ?? [], accent);
+  paint(shadePixels[pet.species] ?? [], shade);
+
+  if (pet.species === "fox" || pet.species === "pup" || pet.species === "owl") {
+    paint(
+      [
+        [5, 5],
+        [8, 5],
+      ],
+      eye,
+    );
+  } else {
+    paint(
+      [
+        [6, 5],
+        [8, 5],
+      ],
+      eye,
+    );
+  }
+
+  if (pet.rarity === "legendary") {
+    paint(
+      [
+        [12, 2],
+        [11, 3],
+        [12, 4],
+      ],
+      "#f7d56d",
+    );
+  }
+
+  return pixels;
 }
 
 function formatDayKey(dayKey: string) {
