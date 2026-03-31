@@ -30,6 +30,14 @@ const reactorQuickTags = [
   "Prompt",
 ] as const;
 
+const reactorWhyKeepPresets = [
+  "Worth revisiting",
+  "Use later",
+  "Strong angle",
+  "Good reference",
+  "Keep the tone",
+] as const;
+
 type ViewMode = "week" | "day";
 type BoardMode = "aesthetic" | "reactor";
 
@@ -405,6 +413,7 @@ export function App() {
       ),
     [reactorBoard],
   );
+  const editingMaterial = editingMaterialId ? reactorMaterialsById.get(editingMaterialId) ?? null : null;
 
   const activeEntries = week
     ? week.entries.filter((entry) => entry.daySlot === activeDay)
@@ -469,6 +478,7 @@ export function App() {
   function openComposer(type: ReactorMaterialType, dayKey = activeReactorDayKey) {
     setComposerType(type);
     setComposerDayKey(dayKey);
+    setComposerTagsDraft(defaultMaterialTags(type).join(", "));
     setIsComposerOpen(true);
   }
 
@@ -515,7 +525,13 @@ export function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          ...input,
+          manualTags:
+            input.manualTags && input.manualTags.length > 0
+              ? input.manualTags
+              : defaultMaterialTags(input.type),
+        }),
       });
 
       if (!response.ok) {
@@ -556,7 +572,9 @@ export function App() {
 
     setEditingMaterialId(materialId);
     setEditingNoteDraft(material.note ?? "");
-    setEditingTagsDraft((material.manualTags ?? []).join(", "));
+    setEditingTagsDraft(
+      (material.manualTags?.length ? material.manualTags : defaultMaterialTags(material.type)).join(", "),
+    );
   }
 
   async function handleSaveMaterialEdit() {
@@ -1124,12 +1142,53 @@ export function App() {
                   <strong>Refine note</strong>
                   <button className="ghost-action" onClick={() => setEditingMaterialId(null)}>Close</button>
                 </div>
+                {editingMaterial ? (
+                  <div className="reactor-edit-meta">
+                    <span className="reactor-edit-meta-label">{labelForMaterialType(editingMaterial.type)}</span>
+                    {editingMaterial.type === "link" ? (
+                      <>
+                        <p className="reactor-edit-content">{editingMaterial.content}</p>
+                        <a
+                          className="reactor-edit-link"
+                          href={editingMaterial.meta?.sourceUrl ?? "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {editingMaterial.meta?.sourceUrl ?? editingMaterial.content}
+                        </a>
+                      </>
+                    ) : editingMaterial.type === "image" ? (
+                      <button
+                        className="reactor-edit-image"
+                        onClick={() => window.open(editingMaterial.meta?.imageUrl, "_blank", "noopener,noreferrer")}
+                      >
+                        {editingMaterial.meta?.imageUrl ? (
+                          <img src={editingMaterial.meta.imageUrl} alt={editingMaterial.content} />
+                        ) : null}
+                        <span>Open image</span>
+                      </button>
+                    ) : (
+                      <p className="reactor-edit-content">{editingMaterial.content}</p>
+                    )}
+                  </div>
+                ) : null}
                 <textarea
                   className="reactor-compose-textarea"
                   value={editingNoteDraft}
                   onChange={(event) => setEditingNoteDraft(event.target.value)}
                   placeholder="Add a quick note"
                 />
+                <div className="reactor-quick-tags">
+                  {reactorWhyKeepPresets.map((preset) => (
+                    <button
+                      key={preset}
+                      className={`top-tool ${editingNoteDraft === preset ? "active" : ""}`}
+                      onClick={() => setEditingNoteDraft(preset)}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
                 <input
                   className="reactor-compose-input"
                   value={editingTagsDraft}
@@ -1565,6 +1624,7 @@ function ReactorComposer({
   onComposerContentChange,
   onComposerNoteChange,
   onComposerTagsChange,
+  onApplyNotePreset,
   onSaveMaterial,
 }: {
   compact?: boolean;
@@ -1579,6 +1639,7 @@ function ReactorComposer({
   onComposerContentChange: (value: string) => void;
   onComposerNoteChange: (value: string) => void;
   onComposerTagsChange: (value: string) => void;
+  onApplyNotePreset: (value: string) => void;
   onSaveMaterial: () => void;
 }) {
   return (
@@ -1615,6 +1676,17 @@ function ReactorComposer({
         onChange={(event) => onComposerNoteChange(event.target.value)}
         placeholder="Why keep it"
       />
+      <div className="reactor-quick-tags">
+        {reactorWhyKeepPresets.map((preset) => (
+          <button
+            key={preset}
+            className={`top-tool ${composerNote === preset ? "active" : ""}`}
+            onClick={() => onApplyNotePreset(preset)}
+          >
+            {preset}
+          </button>
+        ))}
+      </div>
       <input
         className="reactor-compose-input"
         value={composerTagsDraft}
@@ -1701,6 +1773,7 @@ function ReactorDayColumn({
             onComposerContentChange={onComposerContentChange}
             onComposerNoteChange={onComposerNoteChange}
             onComposerTagsChange={onComposerTagsChange}
+            onApplyNotePreset={onComposerNoteChange}
             onSaveMaterial={onSaveMaterial}
           />
         ) : null}
@@ -1969,6 +2042,7 @@ function ReactorDayCanvas({
               onComposerContentChange={onComposerContentChange}
               onComposerNoteChange={onComposerNoteChange}
               onComposerTagsChange={onComposerTagsChange}
+              onApplyNotePreset={onComposerNoteChange}
               onSaveMaterial={onSaveMaterial}
             />
           ) : (
@@ -2091,6 +2165,10 @@ function ReactorMaterialCard({
       {!weekMode && cardMeta ? <p className="reactor-card-meta">{cardMeta}</p> : null}
     </article>
   );
+}
+
+function defaultMaterialTags(type: ReactorMaterialType) {
+  return [labelForMaterialType(type)];
 }
 
 function PixelPetSprite({

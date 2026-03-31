@@ -467,8 +467,8 @@ img {
 
 .entry-delete {
   position: absolute;
-  top: -10px;
-  right: -10px;
+  top: 10px;
+  right: 10px;
   z-index: 5;
   width: 22px;
   height: 22px;
@@ -484,8 +484,8 @@ img {
 
 .entry-edit {
   position: absolute;
-  top: -10px;
-  right: 18px;
+  top: 10px;
+  right: 40px;
   z-index: 5;
   border: 0;
   border-radius: 999px;
@@ -1246,6 +1246,65 @@ img {
   box-shadow: 0 10px 18px rgba(106, 153, 116, 0.12);
 }
 
+.reactor-edit-meta {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(250, 247, 241, 0.9);
+  border: 1px solid rgba(112, 84, 59, 0.06);
+}
+
+.reactor-edit-meta-label {
+  justify-self: start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.72rem;
+  color: rgba(76, 56, 42, 0.62);
+}
+
+.reactor-edit-content {
+  margin: 0;
+  font-family: "Bradley Hand", "Marker Felt", "Segoe Print", cursive;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: rgba(53, 39, 31, 0.9);
+}
+
+.reactor-edit-link {
+  color: rgba(91, 74, 62, 0.78);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.84rem;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.reactor-edit-image {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.reactor-edit-image img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: 14px;
+  display: block;
+}
+
+.reactor-edit-image span {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.82rem;
+  color: rgba(76, 56, 42, 0.66);
+}
+
 .reactor-card-link-fallback {
   display: flex;
   align-items: center;
@@ -1469,7 +1528,7 @@ img {
   position: relative;
   min-height: 138px;
   overflow: visible;
-  padding-top: 26px;
+  padding-top: 40px;
 }
 
 .reactor-card-week {
@@ -1592,6 +1651,12 @@ img {
 }
 
 .reactor-card-material .entry-delete {
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.reactor-card-material .entry-edit {
   opacity: 0;
   transform: translateY(-2px);
   transition: opacity 140ms ease, transform 140ms ease;
