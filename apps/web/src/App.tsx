@@ -2088,6 +2088,31 @@ function ReactorDayCanvas({
 
     return childIdsByParent.has(focused.id) ? focused.id : null;
   }, [childIdsByParent, focusedMaterialId, materials]);
+  const focusedGroupOffsets = useMemo(() => {
+    if (!focusedGroupRootId || !focusedMaterialId) {
+      return new Map<string, { x: number; y: number }>();
+    }
+
+    const groupIds = [focusedGroupRootId, ...(childIdsByParent.get(focusedGroupRootId) ?? [])];
+    const focusedIndex = groupIds.indexOf(focusedMaterialId);
+    const offsets = new Map<string, { x: number; y: number }>();
+
+    groupIds.forEach((id, index) => {
+      if (id === focusedMaterialId) {
+        offsets.set(id, { x: 0, y: -10 });
+        return;
+      }
+
+      const direction = index < focusedIndex ? -1 : 1;
+      const distance = Math.abs(index - focusedIndex);
+      offsets.set(id, {
+        x: direction * Math.min(92, 46 + distance * 24),
+        y: 18 + Math.min(28, distance * 10),
+      });
+    });
+
+    return offsets;
+  }, [childIdsByParent, focusedGroupRootId, focusedMaterialId]);
 
   useEffect(() => {
     const nextLayouts = normalizeSubsetLayouts({
@@ -2453,6 +2478,7 @@ function ReactorDayCanvas({
                 (material.parentId === focusedGroupRootId || material.id === focusedGroupRootId) &&
                 focusedMaterialId !== material.id,
             );
+          const focusOffset = focusedGroupOffsets.get(material.id) ?? { x: 0, y: 0 };
           return (
             <motion.article
               key={material.id}
@@ -2465,7 +2491,8 @@ function ReactorDayCanvas({
               animate={{
                 opacity: isBackgrounded ? 0.72 : 1,
                 scale: isFocused ? 1.03 : isBackgrounded ? 0.96 : 1,
-                y: isFocused ? -6 : isBackgrounded ? 6 : 0,
+                x: focusOffset.x,
+                y: (isFocused ? -6 : isBackgrounded ? 6 : 0) + focusOffset.y,
               }}
               transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.7 }}
               style={{
