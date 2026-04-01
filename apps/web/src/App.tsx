@@ -1931,6 +1931,13 @@ function ReactorDayCanvas({
     [dayKey, selectedExportMaterials],
   );
 
+  function handleOrganizeCanvas() {
+    const nextLayouts = organizeReactorLayouts(materials, layouts);
+    Object.entries(nextLayouts).forEach(([materialId, next]) => {
+      onUpdateLayout(materialId, next);
+    });
+  }
+
   return (
     <section className="day-canvas">
       <header className="day-canvas-header">
@@ -1940,7 +1947,12 @@ function ReactorDayCanvas({
         </div>
         <div className="day-canvas-actions">
           <button className="nav-button" onClick={onBack}>Back to Week</button>
+          <button className="nav-button" onClick={handleOrganizeCanvas}>
+            <span className="nav-button-icon" aria-hidden="true">☷</span>
+            Organize
+          </button>
           <button className="nav-button" onClick={() => setExportOpen((value) => !value)}>
+            <span className="nav-button-icon" aria-hidden="true">↓</span>
             Download
           </button>
           <div className="canvas-zoom-controls">
@@ -2316,6 +2328,95 @@ function ReactorMaterialCard({
 
 function defaultMaterialTags(type: ReactorMaterialType) {
   return [labelForMaterialTypeZh(type)];
+}
+
+function meaningfulTagForMaterial(material: ReactorMaterial) {
+  const reserved = new Set([
+    labelForMaterialType(material.type).toLowerCase(),
+    labelForMaterialTypeZh(material.type).toLowerCase(),
+  ]);
+
+  const tag = material.manualTags.find((entry) => {
+    const normalized = entry.trim().toLowerCase();
+    return normalized && !reserved.has(normalized);
+  });
+
+  return tag ?? labelForMaterialTypeZh(material.type);
+}
+
+function organizeReactorLayouts(
+  materials: ReactorMaterial[],
+  currentLayouts: Record<string, BoardLayout>,
+) {
+  const grouped = new Map<string, ReactorMaterial[]>();
+
+  materials.forEach((material) => {
+    const key = meaningfulTagForMaterial(material);
+    const current = grouped.get(key) ?? [];
+    current.push(material);
+    grouped.set(key, current);
+  });
+
+  const orderedGroups = [...grouped.entries()].sort((left, right) => {
+    if (right[1].length !== left[1].length) {
+      return right[1].length - left[1].length;
+    }
+    return left[0].localeCompare(right[0], "zh-Hans-CN");
+  });
+
+  let cursorX = 120;
+  let cursorY = 120;
+  let rowHeight = 0;
+  const canvasMaxWidth = 3600;
+  const nextLayouts: Record<string, BoardLayout> = {};
+
+  orderedGroups.forEach(([_, group], groupIndex) => {
+    const items = [...group].sort((left, right) => {
+      if (Number(right.important) !== Number(left.important)) {
+        return Number(right.important) - Number(left.important);
+      }
+      return left.content.localeCompare(right.content, "zh-Hans-CN");
+    });
+
+    const columnWidth = 300;
+    const columnGap = 34;
+    const groupWidth = items.length > 1 ? columnWidth * 2 + columnGap : columnWidth;
+    const xLimit = cursorX + groupWidth;
+
+    if (xLimit > canvasMaxWidth) {
+      cursorX = 120;
+      cursorY += rowHeight + 88;
+      rowHeight = 0;
+    }
+
+    const columnHeights = [cursorY, cursorY];
+    items.forEach((material, itemIndex) => {
+      const height = defaultReactorCardHeight(material);
+      const columnIndex = columnHeights[0] <= columnHeights[1] ? 0 : 1;
+      const useSingleColumn = items.length === 1;
+      const x = cursorX + (useSingleColumn ? 0 : columnIndex * (columnWidth + columnGap));
+      const y = useSingleColumn ? columnHeights[0] : columnHeights[columnIndex];
+
+      nextLayouts[material.id] = {
+        ...(currentLayouts[material.id] ?? defaultReactorLayout(itemIndex)),
+        x,
+        y,
+        width: Math.max(260, Math.min(340, currentLayouts[material.id]?.width ?? columnWidth)),
+        z: groupIndex * 10 + itemIndex + 1,
+      };
+
+      columnHeights[useSingleColumn ? 0 : columnIndex] = y + height + 28;
+      if (useSingleColumn) {
+        columnHeights[1] = columnHeights[0];
+      }
+    });
+
+    const groupHeight = Math.max(...columnHeights) - cursorY;
+    rowHeight = Math.max(rowHeight, groupHeight);
+    cursorX += groupWidth + 72;
+  });
+
+  return nextLayouts;
 }
 
 function buildReactorMarkdownExport(dayKey: string, materials: ReactorMaterial[]) {

@@ -1061,6 +1061,15 @@ img {
   color: rgba(77, 58, 46, 0.72);
 }
 
+.nav-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  margin-right: 0.28rem;
+  opacity: 0.72;
+}
+
 .canvas-zoom-controls {
   display: inline-flex;
   align-items: center;
