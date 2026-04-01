@@ -1140,6 +1140,12 @@ img {
   color: rgba(58, 41, 32, 0.84);
 }
 
+.reactor-diary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .reactor-diary-textarea {
   width: 100%;
   min-height: 220px;
@@ -2024,6 +2030,10 @@ img {
   box-shadow: 0 14px 24px rgba(71, 49, 35, 0.07);
 }
 
+.reactor-pocket-bar-diary {
+  margin-top: 14px;
+}
+
 .reactor-pocket-count {
   display: inline-grid;
   place-items: center;
@@ -2054,25 +2064,6 @@ img {
     inset 0 -36px 80px rgba(169, 144, 118, 0.06);
 }
 
-.reactor-card-pocket::after {
-  content: "";
-  position: absolute;
-  inset: 8px;
-  border-radius: 20px;
-  border: 1px dashed transparent;
-  transition: border-color 180ms ease, background 180ms ease;
-  pointer-events: none;
-}
-
-.reactor-card-pocket:hover::after {
-  border-color: rgba(164, 145, 121, 0.18);
-}
-
-.reactor-card-selected::after {
-  border-color: rgba(160, 133, 78, 0.42);
-  background: rgba(250, 247, 238, 0.22);
-}
-
 .reactor-pocket-result {
   width: min(680px, calc(100vw - 48px));
   display: grid;
@@ -2101,6 +2092,32 @@ img {
   font-size: 0.78rem;
   line-height: 1.6;
   color: rgba(56, 42, 34, 0.8);
+}
+
+.reactor-card-pocket {
+  transition: filter 180ms ease, transform 180ms ease;
+}
+
+.reactor-card-pocket:hover {
+  filter: saturate(1.02);
+}
+
+.reactor-pet-pocketed {
+  filter: drop-shadow(0 6px 14px rgba(245, 199, 92, 0.22));
+}
+
+.reactor-pet-pocketed .reactor-pet-sprite {
+  animation-duration: 1.2s;
+  transform: translateY(-1px) scale(1.03);
+}
+
+.reactor-pet-pocket-mark {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  font-size: 0.72rem;
+  color: rgba(214, 171, 73, 0.9);
+  text-shadow: 0 2px 6px rgba(255, 245, 216, 0.8);
 }
 
 .reactor-canvas-board:active {

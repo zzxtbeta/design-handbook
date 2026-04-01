@@ -2049,10 +2049,6 @@ function ReactorDayCanvas({
             <span className="nav-button-icon" aria-hidden="true">☷</span>
             Organize
           </button>
-          <button className={`nav-button ${pocketOpen ? "active" : ""}`} onClick={() => setPocketOpen((value) => !value)}>
-            <span className="nav-button-icon" aria-hidden="true">✦</span>
-            Pocket
-          </button>
           <button className="nav-button" onClick={() => setExportOpen((value) => !value)}>
             <span className="nav-button-icon" aria-hidden="true">↓</span>
             Download
@@ -2121,21 +2117,6 @@ function ReactorDayCanvas({
           </div>
         </section>
       ) : null}
-      <section className="reactor-diary-panel">
-        <div className="reactor-diary-header">
-          <div>
-            <span className="reactor-side-kicker">Diary</span>
-            <strong>Write before sorting.</strong>
-          </div>
-          <button className="ghost-action" onClick={onSaveDiary}>保存日记</button>
-        </div>
-        <textarea
-          className="reactor-diary-textarea"
-          value={diaryDraft}
-          onChange={(event) => onDiaryChange(event.target.value)}
-          placeholder="Write the scattered parts of today before you try to explain them."
-        />
-      </section>
       <div className="reactor-canvas-stage">
       <div
         className="day-canvas-board reactor-canvas-board"
@@ -2178,20 +2159,6 @@ function ReactorDayCanvas({
         }}
       >
         <div className="reactor-canvas-toolbar">
-          {pocketOpen ? (
-            <div className="reactor-pocket-bar">
-              <button
-                className={`top-tool ${includeDiaryInAi ? "active" : ""}`}
-                onClick={() => setIncludeDiaryInAi((value) => !value)}
-              >
-                Diary
-              </button>
-              <span className="reactor-pocket-count">{selectedAiIds.length}</span>
-              <button className="today-button" onClick={() => void handleGenerateStoryline()} disabled={isGeneratingStoryline}>
-                {isGeneratingStoryline ? "..." : "Prompt"}
-              </button>
-            </div>
-          ) : null}
           <button
             className={`reactor-canvas-fab ${isComposerOpen ? "active" : ""}`}
             onClick={() => (isComposerOpen ? onCloseComposer() : onOpenComposer("idea", dayKey))}
@@ -2322,6 +2289,43 @@ function ReactorDayCanvas({
         </div>
       </div>
       </div>
+      <section className="reactor-diary-panel">
+        <div className="reactor-diary-header">
+          <div>
+            <span className="reactor-side-kicker">Diary</span>
+            <strong>Write before sorting.</strong>
+          </div>
+          <div className="reactor-diary-actions">
+            <button
+              className={`top-tool ${pocketOpen ? "active" : ""}`}
+              onClick={() => setPocketOpen((value) => !value)}
+            >
+              Pocket
+            </button>
+            <button className="ghost-action" onClick={onSaveDiary}>保存日记</button>
+          </div>
+        </div>
+        <textarea
+          className="reactor-diary-textarea"
+          value={diaryDraft}
+          onChange={(event) => onDiaryChange(event.target.value)}
+          placeholder="Write the scattered parts of today before you try to explain them."
+        />
+        {pocketOpen ? (
+          <div className="reactor-pocket-bar reactor-pocket-bar-diary">
+            <button
+              className={`top-tool ${includeDiaryInAi ? "active" : ""}`}
+              onClick={() => setIncludeDiaryInAi((value) => !value)}
+            >
+              Diary
+            </button>
+            <span className="reactor-pocket-count">{selectedAiIds.length}</span>
+            <button className="today-button" onClick={() => void handleGenerateStoryline()} disabled={isGeneratingStoryline}>
+              {isGeneratingStoryline ? "..." : "Prompt"}
+            </button>
+          </div>
+        ) : null}
+      </section>
       {storylineInsight ? (
         <div className="summary-overlay" onClick={() => setStorylineInsight(null)}>
           <section className="reactor-pocket-result" onClick={(event) => event.stopPropagation()}>
@@ -2430,22 +2434,23 @@ function ReactorMaterialCard({
 
   return (
     <article
-      className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)} ${
+        className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)} ${
         weekMode ? "reactor-card-week" : "reactor-card-canvas"
-      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity} ${
-        selected ? "reactor-card-selected" : ""
-      } ${pocketMode ? "reactor-card-pocket" : ""}`}
+      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity} ${pocketMode ? "reactor-card-pocket" : ""}`}
       style={weekCardStyle}
     >
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
       <div
         className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
           weekMode ? "reactor-pet-week" : "reactor-pet-canvas"
-        } ${material.important ? "reactor-pet-important" : ""}`}
+        } ${material.important ? "reactor-pet-important" : ""} ${
+          selected && pocketMode ? "reactor-pet-pocketed" : ""
+        }`}
         aria-hidden="true"
       >
         <PixelPetSprite pet={pet} size={weekMode ? 54 : 60} />
         {material.important ? <span className="reactor-pet-crown" aria-hidden="true">✦</span> : null}
+        {selected && pocketMode ? <span className="reactor-pet-pocket-mark" aria-hidden="true">✦</span> : null}
       </div>
       <button
         className={`entry-important ${material.important ? "active" : ""}`}
