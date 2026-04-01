@@ -2258,30 +2258,56 @@ function ReactorMaterialCard({
       <span className="reactor-card-type">{labelForMaterialTypeZh(material.type)}</span>
       {material.type === "link" && material.meta?.sourceUrl ? (
         <button
-          className={`reactor-card-link-copy ${copiedLink ? "copied" : ""}`}
+          className={`reactor-card-link-site ${copiedLink ? "copied" : ""}`}
           onClick={(event) => {
             event.stopPropagation();
             void navigator.clipboard.writeText(material.meta?.sourceUrl ?? "");
             setCopiedLink(true);
           }}
           aria-label="Copy original link"
-          title="Copy link"
+          title={copiedLink ? "Copied" : "Copy link"}
         >
-          {copiedLink ? "Copied" : "Copy Link"}
+          <span className="reactor-card-link-favicon">{(material.meta?.siteName ?? "Link").slice(0, 1)}</span>
+          <span>{material.meta?.siteName ?? "Link"}</span>
         </button>
       ) : null}
-      {imageUrl && imageVisible ? (
-        <div className={`reactor-card-image ${material.type === "link" ? "reactor-card-image-link" : ""}`}>
-          <img src={imageUrl} alt={cardTitle} onError={() => setImageVisible(false)} />
-        </div>
-      ) : material.type === "link" ? (
-        <div className="reactor-card-link-fallback">
-          <span className="reactor-card-link-favicon">{(material.meta?.siteName ?? "Link").slice(0, 1)}</span>
-          <span>{material.meta?.siteName ?? "Link preview unavailable"}</span>
-        </div>
-      ) : null}
-      <p className="reactor-card-title">{cardTitle}</p>
-      {!weekMode && cardMeta ? <p className="reactor-card-meta">{cardMeta}</p> : null}
+      {material.type === "link" && material.meta?.sourceUrl ? (
+        <a
+          className="reactor-card-link-open"
+          href={material.meta.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {imageUrl && imageVisible ? (
+            <div className="reactor-card-image reactor-card-image-link">
+              <img src={imageUrl} alt={cardTitle} onError={() => setImageVisible(false)} />
+            </div>
+          ) : (
+            <div className="reactor-card-link-fallback">
+              <span className="reactor-card-link-favicon">{(material.meta?.siteName ?? "Link").slice(0, 1)}</span>
+              <span>{material.meta?.siteName ?? "Link preview unavailable"}</span>
+            </div>
+          )}
+          <p className="reactor-card-title">{cardTitle}</p>
+          {!weekMode && cardMeta ? <p className="reactor-card-meta">{cardMeta}</p> : null}
+        </a>
+      ) : (
+        <>
+          {imageUrl && imageVisible ? (
+            <div className={`reactor-card-image ${material.type === "link" ? "reactor-card-image-link" : ""}`}>
+              <img src={imageUrl} alt={cardTitle} onError={() => setImageVisible(false)} />
+            </div>
+          ) : material.type === "link" ? (
+            <div className="reactor-card-link-fallback">
+              <span className="reactor-card-link-favicon">{(material.meta?.siteName ?? "Link").slice(0, 1)}</span>
+              <span>{material.meta?.siteName ?? "Link preview unavailable"}</span>
+            </div>
+          ) : null}
+          <p className="reactor-card-title">{cardTitle}</p>
+          {!weekMode && cardMeta ? <p className="reactor-card-meta">{cardMeta}</p> : null}
+        </>
+      )}
     </article>
   );
 }
