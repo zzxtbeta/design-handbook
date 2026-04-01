@@ -106,9 +106,7 @@ const toolsCatalog: Array<{
       "把文章正文替换进 <user_content> 标签",
       "丢给 Gemini / Claude / 豆包这类可预览 HTML 的模型",
     ],
-    prompt: `**Article Styling Prompt 
-
-你是一位精通 HTML/CSS 的前端开发与网页布局专家。你的任务是将用户提供的文章内容按照以下样式规范生成完整的HTML页面。页面应呈现为深色背景中的白色卡片，具有现代感和良好的阅读体验。
+    prompt: `你是一位精通 HTML/CSS 的前端开发与网页布局专家。你的任务是将用户提供的文章内容按照以下样式规范生成完整的HTML页面。页面应呈现为深色背景中的白色卡片，具有现代感和良好的阅读体验。
 
 ## 一、整体布局
 
@@ -1176,16 +1174,6 @@ export function App() {
           >
             ◎
           </button>
-          {boardMode === "reactor" && reactorViewMode === "day" ? (
-            <button
-              className={`board-side-button ${reactorExportOpen ? "active" : ""}`}
-              onClick={() => setReactorExportOpen((value) => !value)}
-              title="Download"
-              aria-label="Download"
-            >
-              ↓
-            </button>
-          ) : null}
           <button
             className="board-side-button"
             onClick={() => setAppearance((current) => (current === "light" ? "dark" : "light"))}
@@ -2410,6 +2398,14 @@ function ReactorDayCanvas({
           <button className="nav-button" onClick={handleOrganizeCanvas}>
             <span className="nav-button-icon" aria-hidden="true">☷</span>
             Organize
+          </button>
+          <button
+            className={`nav-button icon-only ${exportOpen ? "active" : ""}`}
+            onClick={onToggleExportOpen}
+            title="Download"
+            aria-label="Download"
+          >
+            ↓
           </button>
           <div className="canvas-zoom-controls">
             <button className="nav-button" onClick={() => setCanvasScale((value) => Math.max(0.65, value - 0.1))}>－</button>
