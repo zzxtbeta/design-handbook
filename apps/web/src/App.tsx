@@ -861,15 +861,13 @@ export function App() {
         <header className="topbar">
           <div className="title-block">
             <h1>
-              {boardMode === "aesthetic"
-                ? week
-                  ? `Week ${week.weekNumber}`
-                  : "Aesthetic Board"
-                : "Creator Reactor"}
+              {boardMode === "aesthetic" ? "Aesthetic Board" : "Creator Reactor"}
             </h1>
-            {boardMode === "reactor" ? (
-              <span className="title-side-note">Drop loose thoughts into the week.</span>
-            ) : null}
+            <span className="title-side-note">
+              {boardMode === "reactor"
+                ? "Drop loose thoughts into the week."
+                : "Collect visual cues into the week."}
+            </span>
             <p className="date-range">
               {boardMode === "aesthetic"
                 ? week?.label ?? "Weekly Board"
@@ -883,7 +881,7 @@ export function App() {
                   ‹
                 </button>
                 <button
-                  className="today-button"
+                  className="today-button week-chip-button"
                   onClick={() => {
                     setWeekOffset(0);
                     if (boardMode === "aesthetic") {
@@ -3114,27 +3112,21 @@ function JournalCard({
             {isExpanded ? (
               <div className="term-hover-list is-open">
                 {terms.map((term, termIndex) => (
-                  <div key={term.id} className="term-pill-row">
-                    <div
-                      className="term-pill floating"
-                      style={{
-                        width: `${Math.max(72, 100 - termIndex * 4)}%`,
-                      }}
-                    >
-                      <span>{term.term}</span>
-                    </div>
-                    <button
-                      className="term-action"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void onCopyTerm(term.term);
-                      }}
-                      title={`复制关键词 ${term.term}`}
-                      aria-label={`复制关键词 ${term.term}`}
-                    >
-                      <span className="term-copy">⧉</span>
-                    </button>
-                  </div>
+                  <button
+                    key={term.id}
+                    className="term-pill floating"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void onCopyTerm(term.term);
+                    }}
+                    title={`复制关键词 ${term.term}`}
+                    style={{
+                      marginTop: termIndex === 0 ? 0 : undefined,
+                    }}
+                  >
+                    <span>{term.term}</span>
+                    <span className="term-copy">⧉</span>
+                  </button>
                 ))}
               </div>
             ) : (
