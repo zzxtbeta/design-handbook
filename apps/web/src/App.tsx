@@ -2525,7 +2525,6 @@ function ReactorMaterialCard({
       >
         ×
       </button>
-      <span className="reactor-card-type">{labelForMaterialTypeZh(material.type)}</span>
       {material.type === "link" && material.meta?.sourceUrl ? (
         <a
           className="reactor-card-link-open"
@@ -2578,6 +2577,9 @@ function ReactorMaterialCard({
           </button>
         </div>
       ) : null}
+      <span className="reactor-card-type reactor-card-type-footer">
+        {labelForMaterialType(material.type).toLowerCase()}
+      </span>
     </article>
   );
 }

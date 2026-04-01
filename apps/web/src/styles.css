@@ -1344,8 +1344,8 @@ img {
 
 .reactor-card {
   display: grid;
-  gap: 10px;
-  padding: 16px 16px 14px;
+  gap: 8px;
+  padding: 18px 18px 26px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(112, 84, 59, 0.05);
@@ -1379,34 +1379,18 @@ img {
 }
 
 .reactor-card-type {
-  display: inline-flex;
-  width: fit-content;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 1);
-  box-shadow:
-    0 5px 12px rgba(71, 49, 35, 0.035),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.72rem;
-  color: rgba(76, 56, 42, 0.62);
+  pointer-events: none;
 }
 
-.reactor-bubble-soft .reactor-card-type {
-  border-radius: 16px 16px 16px 10px;
-}
-
-.reactor-bubble-ticket .reactor-card-type {
-  border-radius: 12px;
-  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
-}
-
-.reactor-bubble-star .reactor-card-type {
-  border-radius: 18px 12px 18px 12px;
-}
-
-.reactor-bubble-notch .reactor-card-type {
-  border-radius: 14px 14px 14px 6px;
+.reactor-card-type-footer {
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  font-family: "Bradley Hand", "Marker Felt", "Segoe Print", cursive;
+  font-size: 0.84rem;
+  letter-spacing: 0.02em;
+  color: rgba(110, 91, 77, 0.58);
+  opacity: 0.9;
 }
 
 .reactor-card-title,
@@ -1415,29 +1399,38 @@ img {
 }
 
 .reactor-card-title {
-  font-family: "Bradley Hand", "Marker Felt", "Segoe Print", cursive;
-  font-size: 1.08rem;
-  line-height: 1.35;
-  color: rgba(53, 39, 31, 0.92);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: rgba(54, 41, 33, 0.9);
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 }
 
 .reactor-card-meta {
   font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   line-height: 1.45;
-  color: rgba(76, 56, 42, 0.58);
+  color: rgba(94, 74, 60, 0.46);
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .reactor-card-note-preview {
   position: absolute;
   left: 16px;
-  right: 16px;
-  bottom: 16px;
+  right: 72px;
+  bottom: 14px;
   z-index: 3;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(10px);
-  box-shadow: 0 12px 22px rgba(71, 49, 35, 0.08);
+  box-shadow: 0 10px 18px rgba(71, 49, 35, 0.06);
   opacity: 0;
   transform: translateY(8px);
   transition:
@@ -1456,8 +1449,8 @@ img {
 .reactor-card-note-toggle {
   display: grid;
   width: 100%;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 8px 10px;
   border: 0;
   border-radius: inherit;
   background: transparent;
@@ -1472,8 +1465,8 @@ img {
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.78rem;
-  line-height: 1.55;
+  font-size: 0.74rem;
+  line-height: 1.5;
 }
 
 .reactor-card-note-preview.open .reactor-card-note-toggle span:first-child {
@@ -1483,8 +1476,8 @@ img {
 .reactor-card-note-hint {
   justify-self: end;
   font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.68rem;
-  color: rgba(106, 84, 66, 0.58);
+  font-size: 0.64rem;
+  color: rgba(116, 95, 78, 0.52);
 }
 
 .reactor-card-image {
@@ -1510,7 +1503,7 @@ img {
 
 .reactor-card-link-open {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   color: inherit;
   text-decoration: none;
 }
