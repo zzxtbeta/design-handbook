@@ -2093,8 +2093,19 @@ function ReactorDayCanvas({
       return new Map<string, { x: number; y: number }>();
     }
 
+    const focusedMaterial = materials.find((material) => material.id === focusedMaterialId);
+    const focusedIndexInMaterials = materials.findIndex((material) => material.id === focusedMaterialId);
+    const focusedLayout =
+      focusedMaterial &&
+      (layouts[focusedMaterialId] ?? defaultReactorLayout(Math.max(0, focusedIndexInMaterials)));
+    if (!focusedMaterial || !focusedLayout) {
+      return new Map<string, { x: number; y: number }>();
+    }
+
+    const focusedHeight = defaultReactorCardHeight(focusedMaterial);
+    const focusedCenterX = focusedLayout.x + focusedLayout.width / 2;
+    const focusedCenterY = focusedLayout.y + focusedHeight / 2;
     const groupIds = [focusedGroupRootId, ...(childIdsByParent.get(focusedGroupRootId) ?? [])];
-    const focusedIndex = groupIds.indexOf(focusedMaterialId);
     const offsets = new Map<string, { x: number; y: number }>();
 
     groupIds.forEach((id, index) => {
@@ -2103,16 +2114,46 @@ function ReactorDayCanvas({
         return;
       }
 
-      const direction = index < focusedIndex ? -1 : 1;
-      const distance = Math.abs(index - focusedIndex);
+      const material = materials.find((entry) => entry.id === id);
+      const materialIndex = materials.findIndex((entry) => entry.id === id);
+      const layout =
+        material &&
+        (layouts[id] ?? defaultReactorLayout(Math.max(0, materialIndex)));
+
+      if (!material || !layout) {
+        offsets.set(id, { x: 0, y: 0 });
+        return;
+      }
+
+      const height = defaultReactorCardHeight(material);
+      const overlapX =
+        Math.min(focusedLayout.x + focusedLayout.width, layout.x + layout.width) -
+        Math.max(focusedLayout.x, layout.x);
+      const overlapY =
+        Math.min(focusedLayout.y + focusedHeight, layout.y + height) -
+        Math.max(focusedLayout.y, layout.y);
+
+      const direction = layout.x + layout.width / 2 < focusedCenterX ? -1 : 1;
+      const distance = index + 1;
+      const xShift =
+        overlapX > 0 && overlapY > -12
+          ? overlapX + 64 + distance * 12
+          : 38 + distance * 12;
+      const yShift =
+        overlapX > 0 && overlapY > 0
+          ? Math.max(24, overlapY * 0.35)
+          : Math.abs(layout.y + height / 2 - focusedCenterY) < height * 0.5
+            ? 20
+            : 0;
+
       offsets.set(id, {
-        x: direction * Math.min(92, 46 + distance * 24),
-        y: 18 + Math.min(28, distance * 10),
+        x: direction * xShift,
+        y: yShift,
       });
     });
 
     return offsets;
-  }, [childIdsByParent, focusedGroupRootId, focusedMaterialId]);
+  }, [childIdsByParent, focusedGroupRootId, focusedMaterialId, layouts, materials]);
 
   useEffect(() => {
     const nextLayouts = normalizeSubsetLayouts({
