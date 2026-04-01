@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type {
   DaySlot,
   ReactorBoard,
@@ -1625,7 +1626,9 @@ export function App() {
                           </div>
                         ))}
                       </div>
-                      <pre className="tool-prompt-preview">{tool.prompt}</pre>
+                      <div className="tool-prompt-preview tool-prompt-markdown">
+                        {renderToolPromptMarkdown(tool.prompt)}
+                      </div>
                       <div className="tool-actions">
                         <button
                           className={`today-button ${copiedToolPrompt === tool.id ? "active" : ""}`}
@@ -3572,6 +3575,157 @@ function visibleTerms(entry: WeekEntry) {
 function entryRotation(index: number) {
   const angles = [-3, 2, -1, 3, -2];
   return angles[index % angles.length];
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const output: ReactNode[] = [];
+  const pattern = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let tokenIndex = 0;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      output.push(text.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+    if (token.startsWith("**") && token.endsWith("**")) {
+      output.push(<strong key={`strong-${tokenIndex++}`}>{token.slice(2, -2)}</strong>);
+    } else if (token.startsWith("`") && token.endsWith("`")) {
+      output.push(<code key={`code-${tokenIndex++}`}>{token.slice(1, -1)}</code>);
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    output.push(text.slice(lastIndex));
+  }
+
+  return output;
+}
+
+function renderToolPromptMarkdown(markdown: string): ReactNode[] {
+  const lines = markdown.split("\n");
+  const nodes: ReactNode[] = [];
+  let paragraphBuffer: string[] = [];
+  let listBuffer: string[] = [];
+  let codeBuffer: string[] = [];
+  let inCodeBlock = false;
+
+  function flushParagraph() {
+    if (paragraphBuffer.length === 0) {
+      return;
+    }
+
+    const text = paragraphBuffer.join(" ").trim();
+    if (text) {
+      nodes.push(<p key={`p-${nodes.length}`}>{renderInlineMarkdown(text)}</p>);
+    }
+    paragraphBuffer = [];
+  }
+
+  function flushList() {
+    if (listBuffer.length === 0) {
+      return;
+    }
+
+    nodes.push(
+      <ul key={`ul-${nodes.length}`}>
+        {listBuffer.map((item, index) => (
+          <li key={`${item}-${index}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ul>,
+    );
+    listBuffer = [];
+  }
+
+  function flushCode() {
+    if (codeBuffer.length === 0) {
+      return;
+    }
+
+    nodes.push(
+      <pre key={`pre-${nodes.length}`} className="tool-prompt-code">
+        <code>{codeBuffer.join("\n")}</code>
+      </pre>,
+    );
+    codeBuffer = [];
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+
+    if (line.startsWith("```")) {
+      flushParagraph();
+      flushList();
+      if (inCodeBlock) {
+        flushCode();
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeBuffer.push(rawLine);
+      continue;
+    }
+
+    if (!line.trim()) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    if (line.startsWith("---")) {
+      flushParagraph();
+      flushList();
+      nodes.push(<hr key={`hr-${nodes.length}`} />);
+      continue;
+    }
+
+    if (line.startsWith("### ")) {
+      flushParagraph();
+      flushList();
+      nodes.push(<h3 key={`h3-${nodes.length}`}>{renderInlineMarkdown(line.slice(4))}</h3>);
+      continue;
+    }
+
+    if (line.startsWith("## ")) {
+      flushParagraph();
+      flushList();
+      nodes.push(<h2 key={`h2-${nodes.length}`}>{renderInlineMarkdown(line.slice(3))}</h2>);
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      flushParagraph();
+      listBuffer.push(line.replace(/^[-*]\s+/, ""));
+      continue;
+    }
+
+    if (line.startsWith("|") && line.endsWith("|")) {
+      flushParagraph();
+      flushList();
+      nodes.push(
+        <p key={`table-${nodes.length}`} className="tool-prompt-table-line">
+          {line}
+        </p>,
+      );
+      continue;
+    }
+
+    paragraphBuffer.push(line.trim());
+  }
+
+  flushParagraph();
+  flushList();
+  flushCode();
+
+  return nodes;
 }
 
 function entryStyle(index: number, daySlot: DaySlot, entry: WeekEntry, resizedWidth?: number) {

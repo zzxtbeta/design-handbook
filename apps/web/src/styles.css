@@ -420,12 +420,86 @@ img {
   border-radius: 22px;
   background: rgba(252, 250, 246, 0.95);
   border: 1px solid rgba(215, 198, 178, 0.42);
+  color: rgba(55, 42, 33, 0.86);
+}
+
+.tool-prompt-markdown {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.92rem;
+  line-height: 1.72;
+}
+
+.tool-prompt-markdown h2,
+.tool-prompt-markdown h3,
+.tool-prompt-markdown p,
+.tool-prompt-markdown ul,
+.tool-prompt-markdown hr,
+.tool-prompt-markdown pre {
+  margin: 0;
+}
+
+.tool-prompt-markdown h2 {
+  margin-top: 16px;
+  font-size: 1.02rem;
+  color: rgba(49, 34, 24, 0.94);
+}
+
+.tool-prompt-markdown h3 {
+  margin-top: 14px;
+  font-size: 0.95rem;
+  color: rgba(72, 53, 40, 0.88);
+}
+
+.tool-prompt-markdown p + p,
+.tool-prompt-markdown p + ul,
+.tool-prompt-markdown ul + p,
+.tool-prompt-markdown ul + ul,
+.tool-prompt-markdown hr + h2,
+.tool-prompt-markdown hr + p,
+.tool-prompt-markdown pre + p,
+.tool-prompt-markdown p + pre {
+  margin-top: 10px;
+}
+
+.tool-prompt-markdown ul {
+  padding-left: 20px;
+  color: rgba(70, 52, 40, 0.82);
+}
+
+.tool-prompt-markdown li + li {
+  margin-top: 6px;
+}
+
+.tool-prompt-markdown code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(239, 231, 219, 0.72);
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.84em;
+}
+
+.tool-prompt-code {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(246, 241, 233, 0.92);
+  border: 1px solid rgba(218, 200, 180, 0.45);
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.65;
-  color: rgba(55, 42, 33, 0.86);
   font-family: "SFMono-Regular", "Menlo", monospace;
-  font-size: 0.8rem;
+  font-size: 0.79rem;
+  line-height: 1.68;
+}
+
+.tool-prompt-table-line {
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.78rem;
+  color: rgba(101, 82, 69, 0.84);
+}
+
+.tool-prompt-markdown hr {
+  border: 0;
+  border-top: 1px solid rgba(206, 189, 172, 0.5);
+  margin-top: 14px;
 }
 
 .tool-actions {
