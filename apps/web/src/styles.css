@@ -482,23 +482,68 @@ img {
   cursor: pointer;
 }
 
-.entry-edit {
+.entry-menu {
   position: absolute;
   top: 10px;
   right: 40px;
   z-index: 5;
-  border: 0;
-  border-radius: 999px;
-  padding: 5px 10px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 16px rgba(86, 46, 46, 0.12);
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.72rem;
-  color: rgba(82, 64, 49, 0.74);
   opacity: 0;
   transform: translateY(-2px);
   transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.entry-menu.open {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.entry-menu-trigger {
+  border: 0;
+  border-radius: 999px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 9px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 16px rgba(86, 46, 46, 0.12);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1rem;
+  line-height: 1;
+  color: rgba(82, 64, 49, 0.74);
   cursor: pointer;
+}
+
+.entry-menu-panel {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 118px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(214, 199, 183, 0.7);
+  box-shadow: 0 16px 28px rgba(71, 49, 35, 0.12);
+}
+
+.entry-menu-item {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  text-align: left;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.8rem;
+  color: rgba(82, 64, 49, 0.8);
+  cursor: pointer;
+}
+
+.entry-menu-item:hover {
+  background: rgba(247, 242, 234, 0.9);
+}
+
+.entry-menu-item.copied {
+  color: rgba(63, 110, 72, 0.92);
 }
 
 .entry-important {
@@ -544,11 +589,11 @@ img {
   opacity: 1;
 }
 
-.entry-card:hover .entry-edit,
-.entry-card:focus-within .entry-edit,
-.day-board-card:hover .entry-edit,
-.reactor-board-card:hover .entry-edit,
-.reactor-card:hover .entry-edit {
+.entry-card:hover .entry-menu,
+.entry-card:focus-within .entry-menu,
+.day-board-card:hover .entry-menu,
+.reactor-board-card:hover .entry-menu,
+.reactor-card:hover .entry-menu {
   opacity: 1;
   transform: translateY(0);
 }
@@ -1269,40 +1314,6 @@ img {
   margin-bottom: 2px;
 }
 
-.reactor-card-link-site {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  justify-self: start;
-  margin-top: -4px;
-  padding: 7px 12px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 14px rgba(71, 49, 35, 0.05);
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.72rem;
-  color: rgba(76, 56, 42, 0.66);
-  cursor: pointer;
-  transition:
-    transform 140ms ease,
-    box-shadow 140ms ease,
-    background 140ms ease,
-    color 140ms ease,
-    opacity 140ms ease;
-}
-
-.reactor-card-link-site:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 18px rgba(71, 49, 35, 0.08);
-}
-
-.reactor-card-link-site.copied {
-  background: rgba(234, 245, 233, 0.96);
-  color: rgba(63, 110, 72, 0.92);
-  box-shadow: 0 10px 18px rgba(106, 153, 116, 0.12);
-}
-
 .reactor-card-link-open {
   display: grid;
   gap: 10px;
@@ -1760,7 +1771,7 @@ img {
   transition: opacity 140ms ease, transform 140ms ease;
 }
 
-.reactor-card-material .entry-edit {
+.reactor-card-material .entry-menu {
   opacity: 0;
   transform: translateY(-2px);
   transition: opacity 140ms ease, transform 140ms ease;

@@ -2196,6 +2196,8 @@ function ReactorMaterialCard({
     : material.note;
   const [imageVisible, setImageVisible] = useState(Boolean(imageUrl));
   const [copiedLink, setCopiedLink] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setImageVisible(Boolean(imageUrl));
@@ -2209,6 +2211,31 @@ function ReactorMaterialCard({
     const timeout = window.setTimeout(() => setCopiedLink(false), 1200);
     return () => window.clearTimeout(timeout);
   }, [copiedLink]);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuOpen]);
 
   return (
     <article
@@ -2237,15 +2264,50 @@ function ReactorMaterialCard({
       >
         ★
       </button>
-      <button
-        className="entry-edit"
-        onClick={(event) => {
-          event.stopPropagation();
-          onEdit();
-        }}
+      <div
+        ref={menuRef}
+        className={`entry-menu ${menuOpen ? "open" : ""}`}
+        onClick={(event) => event.stopPropagation()}
       >
-        Edit
-      </button>
+        <button
+          className="entry-menu-trigger"
+          onClick={(event) => {
+            event.stopPropagation();
+            setMenuOpen((value) => !value);
+          }}
+          aria-label="Open card menu"
+          title="More"
+        >
+          ⋯
+        </button>
+        {menuOpen ? (
+          <div className="entry-menu-panel">
+            <button
+              className="entry-menu-item"
+              onClick={(event) => {
+                event.stopPropagation();
+                setMenuOpen(false);
+                onEdit();
+              }}
+            >
+              编辑
+            </button>
+            {material.type === "link" && material.meta?.sourceUrl ? (
+              <button
+                className={`entry-menu-item ${copiedLink ? "copied" : ""}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void navigator.clipboard.writeText(material.meta?.sourceUrl ?? "");
+                  setCopiedLink(true);
+                  setMenuOpen(false);
+                }}
+              >
+                {copiedLink ? "已复制链接" : "复制链接"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       <button
         className="entry-delete"
         onClick={(event) => {
@@ -2256,21 +2318,6 @@ function ReactorMaterialCard({
         ×
       </button>
       <span className="reactor-card-type">{labelForMaterialTypeZh(material.type)}</span>
-      {material.type === "link" && material.meta?.sourceUrl ? (
-        <button
-          className={`reactor-card-link-site ${copiedLink ? "copied" : ""}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            void navigator.clipboard.writeText(material.meta?.sourceUrl ?? "");
-            setCopiedLink(true);
-          }}
-          aria-label="Copy original link"
-          title={copiedLink ? "Copied" : "Copy link"}
-        >
-          <span className="reactor-card-link-favicon">{(material.meta?.siteName ?? "Link").slice(0, 1)}</span>
-          <span>{material.meta?.siteName ?? "Link"}</span>
-        </button>
-      ) : null}
       {material.type === "link" && material.meta?.sourceUrl ? (
         <a
           className="reactor-card-link-open"
