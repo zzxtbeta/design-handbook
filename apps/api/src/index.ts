@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import express from "express";
 import cors from "cors";
-import { generateDesignTerms, generateReactorClusterInsight } from "./ai";
+import { generateDesignTerms, generateReactorClusterInsight, generateReactorStorylineInsight } from "./ai";
 import { config } from "./config";
 import { deleteStoredImage, saveImageDataUrl, saveRemoteImageUrl } from "./image-storage";
 import { fetchLinkPreview } from "./link-preview";
@@ -194,6 +194,34 @@ app.post("/api/reactor/assist/cluster", async (request, response) => {
   }
 
   response.json(await generateReactorClusterInsight({ materials }));
+});
+
+app.post("/api/reactor/assist/storyline", async (request, response) => {
+  const diary = typeof request.body?.diary === "string" ? request.body.diary.slice(0, 6000) : "";
+  const materials = Array.isArray(request.body?.materials)
+    ? request.body.materials
+        .filter((material: unknown) => material && typeof material === "object")
+        .map((material: unknown) => {
+          const record = material as Record<string, unknown>;
+          return {
+            type: typeof record.type === "string" ? record.type : "idea",
+            content: typeof record.content === "string" ? record.content.slice(0, 500) : "",
+            note: typeof record.note === "string" ? record.note.slice(0, 220) : "",
+            tags: Array.isArray(record.tags)
+              ? record.tags.filter((tag): tag is string => typeof tag === "string").slice(0, 8)
+              : [],
+            important: Boolean(record.important),
+          };
+        })
+        .filter((material: { content: string }) => material.content.trim())
+    : [];
+
+  if (!diary.trim() && materials.length === 0) {
+    response.status(400).json({ error: "Diary or materials are required." });
+    return;
+  }
+
+  response.json(await generateReactorStorylineInsight({ diary, materials }));
 });
 
 app.delete("/api/reactor/materials/:id", async (request, response) => {

@@ -39,6 +39,13 @@ const reactorWhyKeepPresets = [
   "Keep the tone",
 ] as const;
 
+interface ReactorStorylineInsight {
+  title: string;
+  summary: string;
+  structure: string[];
+  nextStep: string;
+}
+
 type ViewMode = "week" | "day";
 type BoardMode = "aesthetic" | "reactor";
 
@@ -95,6 +102,7 @@ export function App() {
   const [reactorViewMode, setReactorViewMode] = useState<ViewMode>("week");
   const [activeReactorDayKey, setActiveReactorDayKey] = useState(todayDateKey());
   const [reactorLayouts, setReactorLayouts] = useState<Record<string, BoardLayout>>({});
+  const [reactorDiaryDraft, setReactorDiaryDraft] = useState("");
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [composerType, setComposerType] = useState<ReactorMaterialType>("diary");
   const [composerDayKey, setComposerDayKey] = useState(todayDateKey());
@@ -212,6 +220,10 @@ export function App() {
 
     setReactorLayouts(merged);
   }, [activeReactorDayKey, reactorBoard]);
+
+  useEffect(() => {
+    setReactorDiaryDraft(window.localStorage.getItem(reactorDiaryStorageKey(activeReactorDayKey)) ?? "");
+  }, [activeReactorDayKey]);
 
   useEffect(() => {
     if (Object.keys(reactorLayouts).length === 0) {
@@ -623,6 +635,11 @@ export function App() {
     } finally {
       setIsSavingMaterialEdit(false);
     }
+  }
+
+  function handleSaveReactorDiary() {
+    window.localStorage.setItem(reactorDiaryStorageKey(activeReactorDayKey), reactorDiaryDraft);
+    setReactorFeedback("日记已保存");
   }
 
   function handleApplyQuickTag(tag: string) {
@@ -1107,6 +1124,7 @@ export function App() {
                   composerTagsDraft={composerTagsDraft}
                   isSavingMaterial={isSavingMaterial}
                   feedback={reactorFeedback}
+                  diaryDraft={reactorDiaryDraft}
                   onRetry={() => void loadReactorBoard()}
                   onOpenComposer={openComposer}
                   onDeleteMaterial={(id) => void handleDeleteMaterial(id)}
@@ -1118,6 +1136,8 @@ export function App() {
                   }}
                   onBackToWeek={() => setReactorViewMode("week")}
                   onCloseComposer={() => setIsComposerOpen(false)}
+                  onSaveDiary={handleSaveReactorDiary}
+                  onDiaryChange={setReactorDiaryDraft}
                   onComposerTypeChange={setComposerType}
                   onComposerContentChange={setComposerContent}
                   onComposerNoteChange={setComposerNote}
@@ -1512,6 +1532,7 @@ function ReactorBoardView({
   composerTagsDraft,
   isSavingMaterial,
   feedback,
+  diaryDraft,
   onRetry,
   onOpenComposer,
   onDeleteMaterial,
@@ -1520,6 +1541,8 @@ function ReactorBoardView({
   onOpenDay,
   onBackToWeek,
   onCloseComposer,
+  onSaveDiary,
+  onDiaryChange,
   onComposerTypeChange,
   onComposerContentChange,
   onComposerNoteChange,
@@ -1542,6 +1565,7 @@ function ReactorBoardView({
   composerTagsDraft: string;
   isSavingMaterial: boolean;
   feedback: string | null;
+  diaryDraft: string;
   onRetry: () => void;
   onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
   onDeleteMaterial: (materialId: string) => void;
@@ -1550,6 +1574,8 @@ function ReactorBoardView({
   onOpenDay: (dayKey: string) => void;
   onBackToWeek: () => void;
   onCloseComposer: () => void;
+  onSaveDiary: () => void;
+  onDiaryChange: (value: string) => void;
   onComposerTypeChange: (type: ReactorMaterialType) => void;
   onComposerContentChange: (value: string) => void;
   onComposerNoteChange: (value: string) => void;
@@ -1641,6 +1667,7 @@ function ReactorBoardView({
       materials={activeMaterials}
       layouts={layouts}
       feedback={feedback}
+      diaryDraft={diaryDraft}
       isComposerOpen={isComposerOpen}
       composerType={composerType}
       composerContent={composerContent}
@@ -1654,6 +1681,8 @@ function ReactorBoardView({
       onToggleImportant={onToggleImportant}
       onUpdateLayout={onUpdateLayout}
       onCloseComposer={onCloseComposer}
+      onSaveDiary={onSaveDiary}
+      onDiaryChange={onDiaryChange}
       onComposerTypeChange={onComposerTypeChange}
       onComposerContentChange={onComposerContentChange}
       onComposerNoteChange={onComposerNoteChange}
@@ -1706,7 +1735,7 @@ function ReactorComposer({
         <button className="ghost-action" onClick={onCloseComposer}>关闭</button>
       </div>
       <div className="reactor-compose-types">
-        {(["diary", "idea", "prompt", "link", "sample"] as ReactorMaterialType[]).map((type) => (
+        {(["idea", "prompt", "link", "sample"] as ReactorMaterialType[]).map((type) => (
           <button
             key={type}
             className={`top-tool ${composerType === type ? "active" : ""}`}
@@ -1866,6 +1895,7 @@ function ReactorDayCanvas({
   materials,
   layouts,
   feedback,
+  diaryDraft,
   isComposerOpen,
   composerType,
   composerContent,
@@ -1879,6 +1909,8 @@ function ReactorDayCanvas({
   onToggleImportant,
   onUpdateLayout,
   onCloseComposer,
+  onSaveDiary,
+  onDiaryChange,
   onComposerTypeChange,
   onComposerContentChange,
   onComposerNoteChange,
@@ -1889,6 +1921,7 @@ function ReactorDayCanvas({
   materials: ReactorDay["materials"];
   layouts: Record<string, BoardLayout>;
   feedback: string | null;
+  diaryDraft: string;
   isComposerOpen: boolean;
   composerType: ReactorMaterialType;
   composerContent: string;
@@ -1902,6 +1935,8 @@ function ReactorDayCanvas({
   onToggleImportant: (materialId: string) => void;
   onUpdateLayout: (materialId: string, next: Partial<BoardLayout>) => void;
   onCloseComposer: () => void;
+  onSaveDiary: () => void;
+  onDiaryChange: (value: string) => void;
   onComposerTypeChange: (type: ReactorMaterialType) => void;
   onComposerContentChange: (value: string) => void;
   onComposerNoteChange: (value: string) => void;
@@ -1912,11 +1947,17 @@ function ReactorDayCanvas({
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
   const [exportOpen, setExportOpen] = useState(false);
+  const [aiStudioOpen, setAiStudioOpen] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
+  const [selectedAiIds, setSelectedAiIds] = useState<string[]>([]);
+  const [includeDiaryInAi, setIncludeDiaryInAi] = useState(true);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const [isGeneratingStoryline, setIsGeneratingStoryline] = useState(false);
+  const [storylineInsight, setStorylineInsight] = useState<ReactorStorylineInsight | null>(null);
 
   useEffect(() => {
     setSelectedExportIds(materials.map((material) => material.id));
+    setSelectedAiIds(materials.filter((material) => material.important).map((material) => material.id));
   }, [dayKey, materials]);
 
   useEffect(() => {
@@ -1936,12 +1977,53 @@ function ReactorDayCanvas({
     () => buildReactorMarkdownExport(dayKey, selectedExportMaterials),
     [dayKey, selectedExportMaterials],
   );
+  const selectedAiMaterials = useMemo(
+    () => materials.filter((material) => selectedAiIds.includes(material.id)),
+    [materials, selectedAiIds],
+  );
 
   function handleOrganizeCanvas() {
     const nextLayouts = organizeReactorLayouts(materials, layouts);
     Object.entries(nextLayouts).forEach(([materialId, next]) => {
       onUpdateLayout(materialId, next);
     });
+  }
+
+  async function handleGenerateStoryline() {
+    if (!includeDiaryInAi && selectedAiMaterials.length === 0) {
+      return;
+    }
+
+    try {
+      setIsGeneratingStoryline(true);
+      const response = await fetch("/api/reactor/assist/storyline", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          diary: includeDiaryInAi ? diaryDraft : "",
+          materials: selectedAiMaterials.map((material) => ({
+            type: material.type,
+            content: material.content,
+            note: material.note,
+            tags: material.manualTags,
+            important: material.important,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Storyline assist failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as ReactorStorylineInsight;
+      setStorylineInsight(data);
+    } catch (error) {
+      console.error("[web] handleGenerateStoryline failed", error);
+    } finally {
+      setIsGeneratingStoryline(false);
+    }
   }
 
   return (
@@ -1957,6 +2039,10 @@ function ReactorDayCanvas({
           <button className="nav-button" onClick={handleOrganizeCanvas}>
             <span className="nav-button-icon" aria-hidden="true">☷</span>
             Organize
+          </button>
+          <button className="nav-button" onClick={() => setAiStudioOpen((value) => !value)}>
+            <span className="nav-button-icon" aria-hidden="true">✦</span>
+            AI Studio
           </button>
           <button className="nav-button" onClick={() => setExportOpen((value) => !value)}>
             <span className="nav-button-icon" aria-hidden="true">↓</span>
@@ -2026,6 +2112,86 @@ function ReactorDayCanvas({
           </div>
         </section>
       ) : null}
+      <div className="reactor-day-support-grid">
+        <section className="reactor-diary-panel">
+          <div className="reactor-diary-header">
+            <div>
+              <span className="reactor-side-kicker">Diary</span>
+              <strong>Write before sorting.</strong>
+            </div>
+            <button className="ghost-action" onClick={onSaveDiary}>保存日记</button>
+          </div>
+          <textarea
+            className="reactor-diary-textarea"
+            value={diaryDraft}
+            onChange={(event) => onDiaryChange(event.target.value)}
+            placeholder="Write the scattered parts of today before you try to explain them."
+          />
+        </section>
+        {aiStudioOpen ? (
+          <section className="reactor-ai-studio">
+            <div className="reactor-ai-studio-header">
+              <div>
+                <span className="reactor-side-kicker">AI Studio</span>
+                <strong>Your material editor.</strong>
+              </div>
+              <button className="ghost-action" onClick={() => setAiStudioOpen(false)}>关闭</button>
+            </div>
+            <label className="reactor-ai-toggle">
+              <input
+                type="checkbox"
+                checked={includeDiaryInAi}
+                onChange={(event) => setIncludeDiaryInAi(event.target.checked)}
+              />
+              <span>带上今日日记</span>
+            </label>
+            <div className="reactor-ai-list">
+              {materials.map((material) => (
+                <label key={material.id} className="reactor-ai-item">
+                  <input
+                    type="checkbox"
+                    checked={selectedAiIds.includes(material.id)}
+                    onChange={() =>
+                      setSelectedAiIds((current) =>
+                        current.includes(material.id)
+                          ? current.filter((id) => id !== material.id)
+                          : [...current, material.id],
+                      )
+                    }
+                  />
+                  <span className="reactor-ai-item-type">{labelForMaterialTypeZh(material.type)}</span>
+                  <span className="reactor-ai-item-title">{material.content}</span>
+                </label>
+              ))}
+            </div>
+            <div className="reactor-ai-actions">
+              <button className="today-button" onClick={() => void handleGenerateStoryline()} disabled={isGeneratingStoryline}>
+                {isGeneratingStoryline ? "整理中..." : "整理成结构"}
+              </button>
+            </div>
+            {storylineInsight ? (
+              <div className="reactor-ai-result">
+                <strong>{storylineInsight.title}</strong>
+                <p>{storylineInsight.summary}</p>
+                <ol>
+                  {storylineInsight.structure.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ol>
+                <span>{storylineInsight.nextStep}</span>
+              </div>
+            ) : null}
+          </section>
+        ) : (
+          <section className="reactor-ai-studio reactor-ai-studio-empty">
+            <div>
+              <span className="reactor-side-kicker">AI Studio</span>
+              <strong>Clip diary and notes into a thread.</strong>
+            </div>
+            <button className="top-tool" onClick={() => setAiStudioOpen(true)}>Open</button>
+          </section>
+        )}
+      </div>
       <div
         className="day-canvas-board reactor-canvas-board"
         onWheel={(event) => {
@@ -3166,6 +3332,10 @@ function emptyReactorDay(slot: DaySlot): ReactorDay {
 
 function reactorLayoutStorageKey(dayKey: string) {
   return `creator-reactor-layout:${dayKey}`;
+}
+
+function reactorDiaryStorageKey(dayKey: string) {
+  return `creator-reactor-diary:${dayKey}`;
 }
 
 function readStoredJson<T>(key: string, fallback: T) {
