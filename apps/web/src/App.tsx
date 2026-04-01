@@ -102,6 +102,7 @@ export function App() {
   const [composerNote, setComposerNote] = useState("");
   const [composerTagsDraft, setComposerTagsDraft] = useState("");
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+  const [reactorFeedback, setReactorFeedback] = useState<string | null>(null);
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
   const [editingImportant, setEditingImportant] = useState(false);
   const [editingNoteDraft, setEditingNoteDraft] = useState("");
@@ -176,6 +177,15 @@ export function App() {
       JSON.stringify(boardLayouts),
     );
   }, [activeDay, boardLayouts, week]);
+
+  useEffect(() => {
+    if (!reactorFeedback) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setReactorFeedback(null), 1400);
+    return () => window.clearTimeout(timeout);
+  }, [reactorFeedback]);
 
   useEffect(() => {
     if (!week) {
@@ -479,7 +489,7 @@ export function App() {
   function openComposer(type: ReactorMaterialType, dayKey = activeReactorDayKey) {
     setComposerType(type);
     setComposerDayKey(dayKey);
-    setComposerTagsDraft(defaultMaterialTags(type).join(", "));
+    setComposerTagsDraft("");
     setIsComposerOpen(true);
   }
 
@@ -505,6 +515,7 @@ export function App() {
       setComposerNote("");
       setComposerTagsDraft("");
       setIsComposerOpen(false);
+      setReactorFeedback("已保存");
     } catch (error) {
       console.error("[web] handleSaveMaterial failed", error);
       setReactorError("Could not save this note. Please try again.");
@@ -531,10 +542,7 @@ export function App() {
         body: JSON.stringify({
           ...input,
           important: Boolean(input.important),
-          manualTags:
-            input.manualTags && input.manualTags.length > 0
-              ? input.manualTags
-              : defaultMaterialTags(input.type),
+          manualTags: input.manualTags ?? [],
         }),
       });
 
@@ -577,9 +585,7 @@ export function App() {
     setEditingMaterialId(materialId);
     setEditingImportant(Boolean(material.important));
     setEditingNoteDraft(material.note ?? "");
-    setEditingTagsDraft(
-      (material.manualTags?.length ? material.manualTags : defaultMaterialTags(material.type)).join(", "),
-    );
+    setEditingTagsDraft(material.manualTags?.join(", ") ?? "");
   }
 
   async function handleSaveMaterialEdit() {
@@ -609,6 +615,7 @@ export function App() {
       }
 
       setEditingMaterialId(null);
+      setReactorFeedback("已保存");
       await loadReactorBoard();
     } catch (error) {
       console.error("[web] handleSaveMaterialEdit failed", error);
@@ -1099,6 +1106,7 @@ export function App() {
                   composerNote={composerNote}
                   composerTagsDraft={composerTagsDraft}
                   isSavingMaterial={isSavingMaterial}
+                  feedback={reactorFeedback}
                   onRetry={() => void loadReactorBoard()}
                   onOpenComposer={openComposer}
                   onDeleteMaterial={(id) => void handleDeleteMaterial(id)}
@@ -1211,7 +1219,7 @@ export function App() {
                   className="reactor-compose-textarea"
                   value={editingNoteDraft}
                   onChange={(event) => setEditingNoteDraft(event.target.value)}
-                  placeholder="Add a quick note"
+                  placeholder="Why keep it"
                 />
                 <div className="reactor-quick-tags">
                   {reactorWhyKeepPresets.map((preset) => (
@@ -1228,7 +1236,7 @@ export function App() {
                   className="reactor-compose-input"
                   value={editingTagsDraft}
                   onChange={(event) => setEditingTagsDraft(event.target.value)}
-                  placeholder="Tags, comma separated"
+                  placeholder="Optional tags"
                 />
                 <div className="reactor-quick-tags">
                   {reactorQuickTags.map((tag) => (
@@ -1503,6 +1511,7 @@ function ReactorBoardView({
   composerNote,
   composerTagsDraft,
   isSavingMaterial,
+  feedback,
   onRetry,
   onOpenComposer,
   onDeleteMaterial,
@@ -1532,6 +1541,7 @@ function ReactorBoardView({
   composerNote: string;
   composerTagsDraft: string;
   isSavingMaterial: boolean;
+  feedback: string | null;
   onRetry: () => void;
   onOpenComposer: (type: ReactorMaterialType, dayKey?: string) => void;
   onDeleteMaterial: (materialId: string) => void;
@@ -1549,6 +1559,7 @@ function ReactorBoardView({
 }) {
   return viewMode === "week" ? (
     <section className="reactor-shell">
+      {feedback ? <div className="reactor-feedback-toast">{feedback}</div> : null}
       <header className="reactor-header">
         <div>
           <h2>Drop loose thoughts into the week.</h2>
@@ -1629,6 +1640,7 @@ function ReactorBoardView({
       day={activeDay}
       materials={activeMaterials}
       layouts={layouts}
+      feedback={feedback}
       isComposerOpen={isComposerOpen}
       composerType={composerType}
       composerContent={composerContent}
@@ -1731,7 +1743,7 @@ function ReactorComposer({
         className="reactor-compose-input"
         value={composerTagsDraft}
         onChange={(event) => onComposerTagsChange(event.target.value)}
-        placeholder="Tags, comma separated"
+        placeholder="Optional tags"
       />
       <div className="reactor-compose-actions">
         <button className="top-tool" onClick={onCloseComposer}>取消</button>
@@ -1853,6 +1865,7 @@ function ReactorDayCanvas({
   day,
   materials,
   layouts,
+  feedback,
   isComposerOpen,
   composerType,
   composerContent,
@@ -1875,6 +1888,7 @@ function ReactorDayCanvas({
   day: ReactorDay | undefined;
   materials: ReactorDay["materials"];
   layouts: Record<string, BoardLayout>;
+  feedback: string | null;
   isComposerOpen: boolean;
   composerType: ReactorMaterialType;
   composerContent: string;
@@ -1932,6 +1946,7 @@ function ReactorDayCanvas({
 
   return (
     <section className="day-canvas">
+      {feedback ? <div className="reactor-feedback-toast reactor-feedback-toast-day">{feedback}</div> : null}
       <header className="day-canvas-header">
         <div>
           <p className="day-canvas-kicker">Focused Day</p>
@@ -2208,7 +2223,10 @@ function ReactorMaterialCard({
       return undefined;
     }
 
-    const timeout = window.setTimeout(() => setCopiedLink(false), 1200);
+    const timeout = window.setTimeout(() => {
+      setCopiedLink(false);
+      setMenuOpen(false);
+    }, 1000);
     return () => window.clearTimeout(timeout);
   }, [copiedLink]);
 
@@ -2299,7 +2317,6 @@ function ReactorMaterialCard({
                   event.stopPropagation();
                   void navigator.clipboard.writeText(material.meta?.sourceUrl ?? "");
                   setCopiedLink(true);
-                  setMenuOpen(false);
                 }}
               >
                 {copiedLink ? "已复制链接" : "复制链接"}
@@ -2359,8 +2376,8 @@ function ReactorMaterialCard({
   );
 }
 
-function defaultMaterialTags(type: ReactorMaterialType) {
-  return [labelForMaterialTypeZh(type)];
+function defaultMaterialTags(_type: ReactorMaterialType) {
+  return [];
 }
 
 function meaningfulTagForMaterial(material: ReactorMaterial) {

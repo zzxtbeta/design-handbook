@@ -544,6 +544,7 @@ img {
 
 .entry-menu-item.copied {
   color: rgba(63, 110, 72, 0.92);
+  background: rgba(234, 245, 233, 0.96);
 }
 
 .entry-important {
@@ -1328,6 +1329,25 @@ img {
 .reactor-card-link-open:hover .reactor-card-image,
 .reactor-card-link-open:hover .reactor-card-link-fallback {
   box-shadow: 0 12px 22px rgba(71, 49, 35, 0.06);
+}
+
+.reactor-feedback-toast {
+  position: fixed;
+  top: 88px;
+  right: 28px;
+  z-index: 40;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(214, 199, 183, 0.65);
+  box-shadow: 0 16px 28px rgba(71, 49, 35, 0.08);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.82rem;
+  color: rgba(82, 64, 49, 0.82);
+}
+
+.reactor-feedback-toast-day {
+  top: 102px;
 }
 
 .reactor-edit-meta {
