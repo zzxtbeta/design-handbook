@@ -47,7 +47,7 @@ interface ReactorStorylineInsight {
 
 type ViewMode = "week" | "day";
 type BoardMode = "aesthetic" | "reactor";
-type ToolId = "xhs-layout";
+type ToolId = "xhs-layout" | "screenshot-rebuild";
 
 interface BoardLayout {
   x: number;
@@ -94,19 +94,19 @@ const toolsCatalog: Array<{
   eyebrow: string;
   summary: string;
   prompt: string;
+  steps: string[];
 }> = [
   {
     id: "xhs-layout",
     eyebrow: "Layout Prompt",
     title: "小红书长文排版",
     summary: "把文章内容塞进一个高保真的 HTML 排版 prompt，复制给更强 AI 直接出可截图发布的页面。",
-    prompt: `以下是PDF中的完整文字内容：
-
----
-
-**Article Styling Prompt 251103｜lbog (miaomiao)**
-
-复制以下prompt
+    steps: [
+      "复制这份 prompt 全文",
+      "把文章正文替换进 <user_content> 标签",
+      "丢给 Gemini / Claude / 豆包这类可预览 HTML 的模型",
+    ],
+    prompt: `**Article Styling Prompt 
 
 你是一位精通 HTML/CSS 的前端开发与网页布局专家。你的任务是将用户提供的文章内容按照以下样式规范生成完整的HTML页面。页面应呈现为深色背景中的白色卡片，具有现代感和良好的阅读体验。
 
@@ -249,6 +249,71 @@ box-shadow:
 \`\`\`
 
 请开始生成完整的HTML文件`,
+  },
+  {
+    id: "screenshot-rebuild",
+    eyebrow: "Reverse Prompt",
+    title: "截图逆向还原网页",
+    summary: "把你喜欢的截图和这份 prompt 一起丢给 AI，让它高保真还原成可继续改内容的网页模板。",
+    steps: [
+      "准备一张你喜欢的网页或排版截图",
+      "把截图和这份 prompt 一起发给 Gemini / Claude 这类能生成网页的模型",
+      "让 AI 先还原网页，再继续改内容做封面、卡片或海报",
+    ],
+    prompt: `你是一名资深的前端逆向工程专家，具备设计系统思维。你擅长从各类网页截图中逆向推导完整实现：精确还原视觉设计（HTML/CSS），从静态画面推断交互逻辑与状态变化（必要时使用JavaScript），并识别设计系统的完整性与合理性。你的目标是创建一个在视觉保真度、功能完整性和用户体验上都高度还原原始设计的网页实现。
+
+请仔细观察所提供的网页截图（可能是组件、卡片、页面布局或文字排版等）。你的任务是：通过系统化的逆向工程分析，完整还原截图中的视觉元素、配色，并推断必要的交互行为，最终生成一个完整且可运行的HTML页面（包含CSS样式，必要时包含JavaScript交互）。你生成的网页需要在视觉保真度、功能完整性和使用流畅度上都高度还原原始设计。
+
+在给出最终代码之前，请使用下面的思考步骤进行系统化分析：
+
+## 系统分析步骤：
+
+1. 整体结构与布局分析：
+- 确定主要的布局体系（flexbox、grid、float 等）
+- 判断容器结构与内容层级
+- 估算各部分的尺寸与比例
+- 识别间距模式及 margin/padding 系统
+
+2. 视觉设计系统分析：
+- 提取配色方案（背景、文字、边框、阴影等）
+- 分析字体系统（字体族、字号、字重、行高）
+- 识别圆角、阴影及其他视觉特效
+- 观察图标风格与图像处理方式
+
+3. 组件与交互分析：
+- 识别页面中的 UI 组件及其状态
+- 推测悬停（hover）、聚焦（focus）或动画效果
+- 分析响应式设计的可能线索
+- 判断交互性元素的类型与功能
+
+4. 技术实现策略：
+- 选择合适的 HTML 语义结构
+- 规划 CSS 架构与组织方式
+- 判断可能使用的 CSS 框架或设计体系
+- 考虑可用的现代 CSS 特性（如变量、grid、clamp 等）
+
+5. 上下文与设计意图推断：
+- 用途与交互语境识别（Functional Context）：包括该网页的应用场景，核心任务、信息流动方式、功能实用性
+- 设计体系与风格映射（Design System Mapping）：包括该设计是否遵循特定的设计体系（如 Material Design、Notion/Obsidian 风格、Neumorphism、Skeuomorphism 等）。从布局、留白、组件、层次等特征判断该体系中其他相关的细节设置。
+- 目标受众与体验意图（Audience & UX Intent）：根据视觉气质与内容表达方式推断目标受众，从中提炼受众需要的功能、体验、美学感受如何与整体视觉/交互相符。
+- 排版原则的语言适配（Typography Principle Localization）：当截图内容为纯英文文本时，识别其遵循的西文排版原则（如行高比例、字间距系统、段落韵律等），并将这些原则转换为中文排版的对等实现。例如：英文的 line-height: 1.5 对应中文的 1.7-1.8；英文的紧凑字距对应中文需保留更宽松的字间呼吸空间。目标是保持跨语言场景下一致的阅读舒适度和视觉韵律。
+
+## 基于上述分析，请生成一个完整的 HTML 文件，需包括以下内容：
+
+1. 语义化的 HTML 结构 —— 准确反映内容层级；
+2. 完整的 CSS 样式 —— 内嵌于 <style> 标签中，高度还原视觉设计；
+3. 适度的响应式设计 —— 适配不同屏幕尺寸；
+4. 可访问性特征 —— 包含合理的 alt 文本和语义标记。
+
+### 实现要求：
+- 使用现代 CSS 技术（flexbox、grid、自定义属性等）；
+- 实现截图中可推测的悬停状态与交互反馈；
+- 在间距、颜色与排版上做到像素级还原；
+- 采用语义化的 HTML 元素以提升可访问性；
+- 在 CSS 中添加注释，解释关键设计决策；
+- 对截图中未能明确的细节做出合理假设。
+
+现在，请你开始思考，然后生成html文件`,
   },
 ];
 
@@ -1565,18 +1630,12 @@ export function App() {
                       <h2>{tool.title}</h2>
                       <p>{tool.summary}</p>
                       <div className="tool-steps">
-                        <div className="tool-step">
-                          <strong>1</strong>
-                          <span>复制这份 prompt 全文</span>
-                        </div>
-                        <div className="tool-step">
-                          <strong>2</strong>
-                          <span>{"把文章正文替换进 <user_content> 标签"}</span>
-                        </div>
-                        <div className="tool-step">
-                          <strong>3</strong>
-                          <span>丢给 Gemini / Claude / 豆包这类可预览 HTML 的模型</span>
-                        </div>
+                        {tool.steps.map((step, index) => (
+                          <div key={step} className="tool-step">
+                            <strong>{index + 1}</strong>
+                            <span>{step}</span>
+                          </div>
+                        ))}
                       </div>
                       <pre className="tool-prompt-preview">{tool.prompt}</pre>
                       <div className="tool-actions">
