@@ -2434,23 +2434,22 @@ function ReactorMaterialCard({
 
   return (
     <article
-        className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)} ${
+      className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)} ${
         weekMode ? "reactor-card-week" : "reactor-card-canvas"
-      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity} ${pocketMode ? "reactor-card-pocket" : ""}`}
+      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity} ${
+        pocketMode ? "reactor-card-pocket" : ""
+      } ${selected && pocketMode ? "reactor-card-selected" : ""}`}
       style={weekCardStyle}
     >
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
       <div
         className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
           weekMode ? "reactor-pet-week" : "reactor-pet-canvas"
-        } ${material.important ? "reactor-pet-important" : ""} ${
-          selected && pocketMode ? "reactor-pet-pocketed" : ""
-        }`}
+        } ${material.important ? "reactor-pet-important" : ""}`}
         aria-hidden="true"
       >
         <PixelPetSprite pet={pet} size={weekMode ? 54 : 60} />
         {material.important ? <span className="reactor-pet-crown" aria-hidden="true">✦</span> : null}
-        {selected && pocketMode ? <span className="reactor-pet-pocket-mark" aria-hidden="true">✦</span> : null}
       </div>
       <button
         className={`entry-important ${material.important ? "active" : ""}`}
