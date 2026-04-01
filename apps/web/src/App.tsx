@@ -32,11 +32,11 @@ const reactorQuickTags = [
 ] as const;
 
 const reactorWhyKeepPresets = [
-  "值得再看",
-  "以后会用",
-  "角度很强",
-  "可作参考",
-  "语气很好",
+  "Worth revisiting",
+  "Use later",
+  "Strong angle",
+  "Good reference",
+  "Keep the tone",
 ] as const;
 
 type ViewMode = "week" | "day";
@@ -47,23 +47,6 @@ interface BoardLayout {
   y: number;
   width: number;
   z: number;
-}
-
-interface ReactorCluster {
-  id: string;
-  materialIds: string[];
-  suggestion: string;
-  note: string;
-  bounds: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  };
-  links: Array<{
-    from: { x: number; y: number };
-    to: { x: number; y: number };
-  }>;
 }
 
 type WeekCardSizes = Record<string, number>;
@@ -1224,12 +1207,11 @@ export function App() {
                     )}
                   </div>
                 ) : null}
-                <label className="reactor-field-label">备注</label>
                 <textarea
                   className="reactor-compose-textarea"
                   value={editingNoteDraft}
                   onChange={(event) => setEditingNoteDraft(event.target.value)}
-                  placeholder="补一句备注，说明为什么留下它"
+                  placeholder="Add a quick note"
                 />
                 <div className="reactor-quick-tags">
                   {reactorWhyKeepPresets.map((preset) => (
@@ -1242,18 +1224,11 @@ export function App() {
                     </button>
                   ))}
                 </div>
-                <button
-                  className={`reactor-important-toggle ${editingImportant ? "active" : ""}`}
-                  onClick={() => setEditingImportant((value) => !value)}
-                >
-                  {editingImportant ? "已标为重要" : "标为重要"}
-                </button>
-                <label className="reactor-field-label">标签</label>
                 <input
                   className="reactor-compose-input"
                   value={editingTagsDraft}
                   onChange={(event) => setEditingTagsDraft(event.target.value)}
-                  placeholder="标签，用逗号分隔"
+                  placeholder="Tags, comma separated"
                 />
                 <div className="reactor-quick-tags">
                   {reactorQuickTags.map((tag) => (
@@ -1729,19 +1704,17 @@ function ReactorComposer({
           </button>
         ))}
       </div>
-      <label className="reactor-field-label">内容</label>
       <textarea
         className="reactor-compose-textarea"
         value={composerContent}
         onChange={(event) => onComposerContentChange(event.target.value)}
-        placeholder={dock ? "粘贴链接、图片或一条想法" : "写下这条你不想丢掉的内容"}
+        placeholder={dock ? "Paste a link, image, or thought..." : "Write the line you do not want to lose."}
       />
-      <label className="reactor-field-label">备注</label>
       <input
         className="reactor-compose-input"
         value={composerNote}
         onChange={(event) => onComposerNoteChange(event.target.value)}
-        placeholder="为什么留它"
+        placeholder="Why keep it"
       />
       <div className="reactor-quick-tags">
         {reactorWhyKeepPresets.map((preset) => (
@@ -1754,12 +1727,11 @@ function ReactorComposer({
           </button>
         ))}
       </div>
-      <label className="reactor-field-label">标签</label>
       <input
         className="reactor-compose-input"
         value={composerTagsDraft}
         onChange={(event) => onComposerTagsChange(event.target.value)}
-        placeholder="标签，用逗号分隔"
+        placeholder="Tags, comma separated"
       />
       <div className="reactor-compose-actions">
         <button className="top-tool" onClick={onCloseComposer}>取消</button>
@@ -1929,39 +1901,6 @@ function ReactorDayCanvas({
   const [exportOpen, setExportOpen] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<Record<string, ReactorClusterSuggestion>>({});
-  const [loadingClusterId, setLoadingClusterId] = useState<string | null>(null);
-  const clusters = useMemo(
-    () => buildReactorClusters(materials, layouts),
-    [materials, layouts],
-  );
-  const clusteredMaterialIds = useMemo(
-    () => new Set(clusters.flatMap((cluster) => cluster.materialIds)),
-    [clusters],
-  );
-  const clusterRoleByMaterial = useMemo(() => {
-    const map = new Map<string, "solo" | "left" | "middle" | "right">();
-    clusters.forEach((cluster) => {
-      const ordered = [...cluster.materialIds].sort((leftId, rightId) => {
-        const leftLayout = layouts[leftId] ?? defaultReactorLayout(0);
-        const rightLayout = layouts[rightId] ?? defaultReactorLayout(0);
-        return leftLayout.x - rightLayout.x;
-      });
-      ordered.forEach((materialId, index) => {
-        if (ordered.length === 1) {
-          map.set(materialId, "solo");
-        } else if (index === 0) {
-          map.set(materialId, "left");
-        } else if (index === ordered.length - 1) {
-          map.set(materialId, "right");
-        } else {
-          map.set(materialId, "middle");
-        }
-      });
-      });
-    return map;
-  }, [clusters, layouts]);
-
   useEffect(() => {
     setDockPosition(readStoredJson(`creator-reactor-dock:${dayKey}`, { x: 420, y: 720 }));
   }, [dayKey]);
@@ -1991,82 +1930,6 @@ function ReactorDayCanvas({
     () => buildReactorMarkdownExport(dayKey, selectedExportMaterials),
     [dayKey, selectedExportMaterials],
   );
-
-  async function handleAskClusterAi(cluster: ReactorCluster) {
-    try {
-      setLoadingClusterId(cluster.id);
-      const response = await fetch("/api/reactor/assist/cluster", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          materials: cluster.materialIds
-            .map((materialId) => materials.find((material) => material.id === materialId))
-            .filter(Boolean)
-            .map((material) => ({
-              type: material?.type,
-              content: material?.content,
-              note: material?.note,
-              tags: material?.manualTags,
-              important: material?.important,
-            })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Cluster AI failed with status ${response.status}`);
-      }
-
-      const data = (await response.json()) as ReactorClusterSuggestion;
-      setAiSuggestions((current) => ({
-        ...current,
-        [cluster.id]: data,
-      }));
-    } catch (error) {
-      console.error("[web] handleAskClusterAi failed", error);
-    } finally {
-      setLoadingClusterId(null);
-    }
-  }
-
-  function handleClusterDrag(cluster: ReactorCluster, event: React.MouseEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest(".reactor-cluster-ai")) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const startingLayouts = Object.fromEntries(
-      cluster.materialIds.map((materialId, order) => [
-        materialId,
-        layouts[materialId] ?? defaultReactorLayout(order),
-      ]),
-    );
-    cluster.materialIds.forEach((materialId, order) => {
-      onUpdateLayout(materialId, { z: Date.now() + order });
-    });
-
-      const handleMove = (moveEvent: MouseEvent) => {
-        cluster.materialIds.forEach((materialId) => {
-          const current = startingLayouts[materialId];
-          onUpdateLayout(materialId, {
-            x: current.x + (moveEvent.clientX - startX) / canvasScale,
-            y: current.y + (moveEvent.clientY - startY) / canvasScale,
-          });
-        });
-      };
-
-    const handleUp = () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-    };
-
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-  }
 
   return (
     <section className="day-canvas">
@@ -2190,61 +2053,12 @@ function ReactorDayCanvas({
             transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`,
           }}
         >
-        {clusters.map((cluster) => (
-          <div
-            key={cluster.id}
-            className="reactor-cluster-halo"
-            style={{
-              left: `${cluster.bounds.left}px`,
-              top: `${cluster.bounds.top}px`,
-              width: `${cluster.bounds.width}px`,
-              height: `${cluster.bounds.height}px`,
-            }}
-          >
-            <div className="reactor-cluster-links" aria-hidden="true">
-              <svg
-                width={cluster.bounds.width}
-                height={cluster.bounds.height}
-                viewBox={`0 0 ${cluster.bounds.width} ${cluster.bounds.height}`}
-              >
-                {cluster.links.map((link, index) => (
-                  <line
-                    key={`${cluster.id}-${index}`}
-                    x1={link.from.x - cluster.bounds.left}
-                    y1={link.from.y - cluster.bounds.top}
-                    x2={link.to.x - cluster.bounds.left}
-                    y2={link.to.y - cluster.bounds.top}
-                  />
-                ))}
-              </svg>
-            </div>
-            <div className="reactor-cluster-note" onMouseDown={(event) => handleClusterDrag(cluster, event)}>
-              <strong>{aiSuggestions[cluster.id]?.title ?? cluster.suggestion}</strong>
-              <span>{aiSuggestions[cluster.id]?.note ?? cluster.note}</span>
-              {aiSuggestions[cluster.id]?.subsetHint ? (
-                <em>{aiSuggestions[cluster.id]?.subsetHint}</em>
-              ) : null}
-              <button
-                className="reactor-cluster-ai"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void handleAskClusterAi(cluster);
-                }}
-                disabled={loadingClusterId === cluster.id}
-              >
-                {loadingClusterId === cluster.id ? "思考中..." : "AI整理"}
-              </button>
-            </div>
-          </div>
-        ))}
         {materials.map((material, index) => {
           const layout = layouts[material.id] ?? defaultReactorLayout(index);
           return (
             <motion.article
               key={material.id}
-              className={`day-board-card reactor-board-card ${
-                clusteredMaterialIds.has(material.id) ? "reactor-board-card-clustered" : ""
-              }`}
+              className="day-board-card reactor-board-card"
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.7 }}
@@ -2288,8 +2102,6 @@ function ReactorDayCanvas({
               <ReactorMaterialCard
                 material={material}
                 index={index}
-                clustered={clusteredMaterialIds.has(material.id)}
-                clusterRole={clusterRoleByMaterial.get(material.id) ?? "solo"}
                 onDelete={() => onDeleteMaterial(material.id)}
                 onEdit={() => onEditMaterial(material.id)}
                 onToggleImportant={() => onToggleImportant(material.id)}
@@ -2388,8 +2200,6 @@ function ReactorMaterialCard({
   material,
   index,
   weekMode = false,
-  clustered = false,
-  clusterRole = "solo",
   onDelete,
   onEdit,
   onToggleImportant,
@@ -2397,8 +2207,6 @@ function ReactorMaterialCard({
   material: ReactorDay["materials"][number];
   index: number;
   weekMode?: boolean;
-  clustered?: boolean;
-  clusterRole?: "solo" | "left" | "middle" | "right";
   onDelete: () => void;
   onEdit: () => void;
   onToggleImportant: () => void;
@@ -2441,13 +2249,10 @@ function ReactorMaterialCard({
       <div
         className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
           weekMode ? "reactor-pet-week" : "reactor-pet-canvas"
-        } ${clustered ? "reactor-pet-clustered" : ""} ${
-          material.important ? "reactor-pet-important" : ""
-        } reactor-pet-cluster-${clusterRole}`}
+        } ${material.important ? "reactor-pet-important" : ""}`}
         aria-hidden="true"
       >
         <PixelPetSprite pet={pet} size={weekMode ? 54 : 60} />
-        {clustered ? <span className="reactor-pet-chirp" aria-hidden="true" /> : null}
         {material.important ? <span className="reactor-pet-crown" aria-hidden="true">✦</span> : null}
       </div>
       <button
@@ -2478,7 +2283,7 @@ function ReactorMaterialCard({
       >
         ×
       </button>
-      <span className="reactor-card-type">{labelForMaterialType(material.type)}</span>
+      <span className="reactor-card-type">{labelForMaterialTypeZh(material.type)}</span>
       {material.type === "link" && material.meta?.sourceUrl ? (
         <button
           className={`reactor-card-link-copy ${copiedLink ? "copied" : ""}`}
@@ -2511,157 +2316,6 @@ function ReactorMaterialCard({
 
 function defaultMaterialTags(type: ReactorMaterialType) {
   return [labelForMaterialTypeZh(type)];
-}
-
-function buildReactorClusters(
-  materials: ReactorDay["materials"],
-  layouts: Record<string, BoardLayout>,
-): ReactorCluster[] {
-  const nodes = materials.map((material, index) => {
-    const layout = layouts[material.id] ?? defaultReactorLayout(index);
-    const height = defaultReactorCardHeight(material);
-    return {
-      material,
-      layout,
-      height,
-      center: {
-        x: layout.x + layout.width / 2,
-        y: layout.y + height / 2,
-      },
-    };
-  });
-
-  const adjacency = new Map<string, Set<string>>();
-  const links: Array<{ from: string; to: string }> = [];
-
-  for (let index = 0; index < nodes.length; index += 1) {
-    for (let inner = index + 1; inner < nodes.length; inner += 1) {
-      const left = nodes[index];
-      const right = nodes[inner];
-      const dx = Math.abs(left.center.x - right.center.x);
-      const dy = Math.abs(left.center.y - right.center.y);
-
-      if (dx > 360 || dy > 300) {
-        continue;
-      }
-
-      const sameTag = sharedMeaningfulTags(left.material, right.material).length > 0;
-      const sameType = left.material.type === right.material.type;
-      const nearEnough = Math.hypot(dx, dy) < (sameTag || sameType ? 320 : 240);
-
-      if (!nearEnough) {
-        continue;
-      }
-
-      if (!adjacency.has(left.material.id)) adjacency.set(left.material.id, new Set());
-      if (!adjacency.has(right.material.id)) adjacency.set(right.material.id, new Set());
-      adjacency.get(left.material.id)?.add(right.material.id);
-      adjacency.get(right.material.id)?.add(left.material.id);
-      links.push({ from: left.material.id, to: right.material.id });
-    }
-  }
-
-  const visited = new Set<string>();
-  const clusters: ReactorCluster[] = [];
-
-  for (const node of nodes) {
-    if (visited.has(node.material.id) || !adjacency.has(node.material.id)) {
-      continue;
-    }
-
-    const queue = [node.material.id];
-    const ids: string[] = [];
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (!current || visited.has(current)) {
-        continue;
-      }
-      visited.add(current);
-      ids.push(current);
-      adjacency.get(current)?.forEach((next) => {
-        if (!visited.has(next)) queue.push(next);
-      });
-    }
-
-    if (ids.length < 2) {
-      continue;
-    }
-
-    const clusterNodes = nodes.filter((entry) => ids.includes(entry.material.id));
-    const left = Math.min(...clusterNodes.map((entry) => entry.layout.x)) - 28;
-    const top = Math.min(...clusterNodes.map((entry) => entry.layout.y)) - 34;
-    const right =
-      Math.max(...clusterNodes.map((entry) => entry.layout.x + entry.layout.width)) + 28;
-    const bottom =
-      Math.max(...clusterNodes.map((entry) => entry.layout.y + entry.height)) + 34;
-    const suggestion = summarizeCluster(clusterNodes.map((entry) => entry.material));
-    const clusterLinks = links
-      .filter((link) => ids.includes(link.from) && ids.includes(link.to))
-      .map((link) => {
-        const fromNode = clusterNodes.find((entry) => entry.material.id === link.from);
-        const toNode = clusterNodes.find((entry) => entry.material.id === link.to);
-        return fromNode && toNode
-          ? {
-              from: fromNode.center,
-              to: toNode.center,
-            }
-          : null;
-      })
-      .filter(Boolean) as ReactorCluster["links"];
-
-    clusters.push({
-      id: ids.join("-"),
-      materialIds: ids,
-      suggestion: suggestion.title,
-      note: suggestion.note,
-      bounds: {
-        left,
-        top,
-        width: right - left,
-        height: bottom - top,
-      },
-      links: clusterLinks,
-    });
-  }
-
-  return clusters;
-}
-
-function summarizeCluster(materials: ReactorDay["materials"]) {
-  const tags = materials.flatMap((material) =>
-    (material.manualTags ?? []).filter((tag) => {
-      const normalized = tag.trim().toLowerCase();
-      return (
-        normalized &&
-        normalized !== labelForMaterialType(material.type).toLowerCase() &&
-        normalized !== labelForMaterialTypeZh(material.type).toLowerCase()
-      );
-    }),
-  );
-  const tagCount = new Map<string, number>();
-  tags.forEach((tag) => tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1));
-  const topTag = Array.from(tagCount.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-  const types = Array.from(new Set(materials.map((material) => labelForMaterialType(material.type))));
-
-  if (topTag) {
-    return {
-      title: topTag,
-      note: "这几条素材已经开始指向同一个方向了，值得先收在一起。",
-    };
-  }
-
-  if (types.length === 1) {
-    return {
-      title: `${types[0]}主线`,
-      note: "同类素材正在聚起来，可以先把它们收成一个小主题。",
-    };
-  }
-
-  return {
-    title: "可能是一条主线",
-    note: "不同碎片已经开始指向同一个想法，可以继续往下收拢。",
-  };
 }
 
 function buildReactorMarkdownExport(dayKey: string, materials: ReactorMaterial[]) {
@@ -2746,32 +2400,6 @@ function downloadTextFile(filename: string, contents: string) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
-}
-
-interface ReactorClusterSuggestion {
-  title: string;
-  note: string;
-  subsetHint: string | null;
-}
-
-function sharedMeaningfulTags(
-  left: ReactorDay["materials"][number],
-  right: ReactorDay["materials"][number],
-) {
-  const leftTags = new Set(
-    (left.manualTags ?? [])
-      .map((tag) => tag.trim().toLowerCase())
-      .filter(
-        (tag) =>
-          tag &&
-          tag !== labelForMaterialType(left.type).toLowerCase() &&
-          tag !== labelForMaterialTypeZh(left.type).toLowerCase(),
-      ),
-  );
-
-  return (right.manualTags ?? [])
-    .map((tag) => tag.trim().toLowerCase())
-    .filter((tag) => leftTags.has(tag));
 }
 
 function PixelPetSprite({
