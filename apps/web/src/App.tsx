@@ -2552,6 +2552,10 @@ function ReactorDayCanvas({
                 const startY = event.clientY;
                 const startLeft = layout.x;
                 const startTop = layout.y;
+                const rootId = material.parentId ?? (childIds.length > 0 ? material.id : null);
+                const groupIds = rootId
+                  ? [rootId, ...(childIdsByParent.get(rootId) ?? [])]
+                  : [material.id];
                 const childLayouts = Object.fromEntries(
                   childIds.map((childId, order) => [
                     childId,
@@ -2562,9 +2566,17 @@ function ReactorDayCanvas({
                 let finalDx = 0;
                 let finalDy = 0;
                 setFocusedMaterialId(material.id);
-                onUpdateLayout(material.id, { z: Date.now() });
+                const baseZ = Date.now();
+                groupIds
+                  .filter((id) => id !== material.id)
+                  .forEach((id, order) => {
+                    onUpdateLayout(id, { z: baseZ - (groupIds.length - order) });
+                  });
+                onUpdateLayout(material.id, { z: baseZ + 100 });
                 childIds.forEach((childId, order) => {
-                  onUpdateLayout(childId, { z: Date.now() + order + 1 });
+                  if (childId !== material.id) {
+                    onUpdateLayout(childId, { z: baseZ - order });
+                  }
                 });
 
                 const handleMove = (moveEvent: MouseEvent) => {
