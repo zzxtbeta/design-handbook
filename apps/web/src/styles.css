@@ -2168,6 +2168,17 @@ img {
   filter: drop-shadow(0 24px 30px rgba(71, 49, 35, 0.08));
 }
 
+.reactor-board-card-active {
+  filter: drop-shadow(0 26px 38px rgba(71, 49, 35, 0.14));
+}
+
+.reactor-board-card-active .reactor-card {
+  transform: translateY(-2px);
+  box-shadow:
+    0 22px 40px rgba(71, 49, 35, 0.12),
+    0 0 0 1px rgba(221, 206, 183, 0.42);
+}
+
 .reactor-board-card-clustered {
   filter: drop-shadow(0 16px 24px rgba(137, 165, 141, 0.08));
 }

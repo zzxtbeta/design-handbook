@@ -2018,6 +2018,7 @@ function ReactorDayCanvas({
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, ReactorClusterSuggestion>>({});
   const [loadingClusterId, setLoadingClusterId] = useState<string | null>(null);
+  const [focusedMaterialId, setFocusedMaterialId] = useState<string | null>(null);
   const clusters = useMemo(
     () => buildReactorClusters(materials, layouts),
     [materials, layouts],
@@ -2432,7 +2433,9 @@ function ReactorDayCanvas({
               key={material.id}
               className={`day-board-card reactor-board-card ${
                 clusteredMaterialIds.has(material.id) ? "reactor-board-card-clustered" : ""
-              } ${material.parentId ? "reactor-board-card-subset" : ""}`}
+              } ${material.parentId ? "reactor-board-card-subset" : ""} ${
+                focusedMaterialId === material.id ? "reactor-board-card-active" : ""
+              }`}
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               style={{
@@ -2460,6 +2463,7 @@ function ReactorDayCanvas({
                 let moved = false;
                 let finalDx = 0;
                 let finalDy = 0;
+                setFocusedMaterialId(material.id);
                 onUpdateLayout(material.id, { z: Date.now() });
                 childIds.forEach((childId, order) => {
                   onUpdateLayout(childId, { z: Date.now() + order + 1 });
