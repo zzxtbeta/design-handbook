@@ -103,7 +103,7 @@ export function App() {
   const [reactorLayouts, setReactorLayouts] = useState<Record<string, BoardLayout>>({});
   const [reactorDiaryDraft, setReactorDiaryDraft] = useState("");
   const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const [composerType, setComposerType] = useState<ReactorMaterialType>("diary");
+  const [composerType, setComposerType] = useState<ReactorMaterialType>("idea");
   const [composerDayKey, setComposerDayKey] = useState(todayDateKey());
   const [composerContent, setComposerContent] = useState("");
   const [composerNote, setComposerNote] = useState("");
@@ -290,7 +290,7 @@ export function App() {
                 }
               : {
                   dayKey: activeReactorDayKey,
-                  type: textValue.includes("\n") ? "diary" : "idea",
+                  type: "idea",
                   content: textValue,
                 },
           );
@@ -1949,7 +1949,6 @@ function ReactorDayCanvas({
   const [pocketOpen, setPocketOpen] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
   const [selectedAiIds, setSelectedAiIds] = useState<string[]>([]);
-  const [includeDiaryInAi, setIncludeDiaryInAi] = useState(true);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const [copiedStudioPrompt, setCopiedStudioPrompt] = useState(false);
   const [isGeneratingStoryline, setIsGeneratingStoryline] = useState(false);
@@ -1999,7 +1998,7 @@ function ReactorDayCanvas({
   }
 
   async function handleGenerateStoryline() {
-    if (!includeDiaryInAi && selectedAiMaterials.length === 0) {
+    if (!diaryDraft.trim() && selectedAiMaterials.length === 0) {
       return;
     }
 
@@ -2011,7 +2010,7 @@ function ReactorDayCanvas({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          diary: includeDiaryInAi ? diaryDraft : "",
+          diary: diaryDraft,
           materials: selectedAiMaterials.map((material) => ({
             type: material.type,
             content: material.content,
@@ -2117,9 +2116,9 @@ function ReactorDayCanvas({
           </div>
         </section>
       ) : null}
-      <div className="reactor-canvas-stage">
+      <div className={`reactor-canvas-stage ${pocketOpen ? "reactor-canvas-stage-generate" : ""}`}>
       <div
-        className="day-canvas-board reactor-canvas-board"
+        className={`day-canvas-board reactor-canvas-board ${pocketOpen ? "reactor-canvas-board-generate" : ""}`}
         onWheel={(event) => {
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
@@ -2197,7 +2196,9 @@ function ReactorDayCanvas({
           return (
             <motion.article
               key={material.id}
-              className="day-board-card reactor-board-card"
+              className={`day-board-card reactor-board-card ${
+                selectedAiIds.includes(material.id) && pocketOpen ? "reactor-board-card-selected" : ""
+              }`}
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.7 }}
@@ -2217,6 +2218,7 @@ function ReactorDayCanvas({
                   return;
                 }
 
+                onUpdateLayout(material.id, { z: Date.now() + 1000 });
                 setSelectedAiIds((current) =>
                   current.includes(material.id)
                     ? current.filter((id) => id !== material.id)
@@ -2296,13 +2298,7 @@ function ReactorDayCanvas({
             <strong>Write before sorting.</strong>
           </div>
           <div className="reactor-diary-actions">
-            <button
-              className={`top-tool ${pocketOpen ? "active" : ""}`}
-              onClick={() => setPocketOpen((value) => !value)}
-            >
-              Pocket
-            </button>
-            <button className="ghost-action" onClick={onSaveDiary}>保存日记</button>
+            <button className="ghost-action" onClick={onSaveDiary}>Save diary</button>
           </div>
         </div>
         <textarea
@@ -2311,30 +2307,42 @@ function ReactorDayCanvas({
           onChange={(event) => onDiaryChange(event.target.value)}
           placeholder="Write the scattered parts of today before you try to explain them."
         />
-        {pocketOpen ? (
-          <div className="reactor-pocket-bar reactor-pocket-bar-diary">
-            <button
-              className={`top-tool ${includeDiaryInAi ? "active" : ""}`}
-              onClick={() => setIncludeDiaryInAi((value) => !value)}
-            >
-              Diary
-            </button>
-            <span className="reactor-pocket-count">{selectedAiIds.length}</span>
-            <button className="today-button" onClick={() => void handleGenerateStoryline()} disabled={isGeneratingStoryline}>
-              {isGeneratingStoryline ? "..." : "Prompt"}
-            </button>
+        <div className="reactor-diary-footer">
+          <div className={`reactor-generate-dock reactor-generate-dock-inline ${pocketOpen ? "open" : ""}`}>
+            {pocketOpen ? (
+              <>
+                <span className="reactor-pocket-count" aria-label={`${selectedAiIds.length} selected materials`}>
+                  📎 {selectedAiIds.length}
+                </span>
+                <button
+                  className="today-button"
+                  onClick={() => void handleGenerateStoryline()}
+                  disabled={isGeneratingStoryline || (!diaryDraft.trim() && selectedAiIds.length === 0)}
+                >
+                  {isGeneratingStoryline ? "..." : "Start"}
+                </button>
+                <button className="top-tool" onClick={() => setPocketOpen(false)}>Close</button>
+              </>
+            ) : (
+              <button
+                className="today-button reactor-generate-trigger"
+                onClick={() => setPocketOpen(true)}
+              >
+                Generate
+              </button>
+            )}
           </div>
-        ) : null}
+        </div>
       </section>
       {storylineInsight ? (
         <div className="summary-overlay" onClick={() => setStorylineInsight(null)}>
           <section className="reactor-pocket-result" onClick={(event) => event.stopPropagation()}>
             <div className="reactor-ai-studio-header">
               <div>
-                <span className="reactor-side-kicker">Pocket</span>
+                <span className="reactor-side-kicker">Generate</span>
                 <strong>{storylineInsight.title}</strong>
               </div>
-              <button className="ghost-action" onClick={() => setStorylineInsight(null)}>关闭</button>
+              <button className="ghost-action" onClick={() => setStorylineInsight(null)}>Close</button>
             </div>
             <p>{storylineInsight.intent}</p>
             <pre>{storylineInsight.prompt}</pre>
@@ -2346,7 +2354,7 @@ function ReactorDayCanvas({
                   setCopiedStudioPrompt(true);
                 }}
               >
-                {copiedStudioPrompt ? "已复制 Prompt" : "复制 Prompt"}
+                {copiedStudioPrompt ? "Copied" : "Copy prompt"}
               </button>
             </div>
           </section>
@@ -2389,6 +2397,7 @@ function ReactorMaterialCard({
   const [imageVisible, setImageVisible] = useState(Boolean(imageUrl));
   const [copiedLink, setCopiedLink] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -2402,7 +2411,6 @@ function ReactorMaterialCard({
 
     const timeout = window.setTimeout(() => {
       setCopiedLink(false);
-      setMenuOpen(false);
     }, 1000);
     return () => window.clearTimeout(timeout);
   }, [copiedLink]);
@@ -2439,17 +2447,21 @@ function ReactorMaterialCard({
       } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity} ${
         pocketMode ? "reactor-card-pocket" : ""
       } ${selected && pocketMode ? "reactor-card-selected" : ""}`}
+      onMouseLeave={() => setNoteOpen(false)}
       style={weekCardStyle}
     >
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
       <div
         className={`reactor-pet reactor-pet-${pet.mode} reactor-pet-rarity-${pet.rarity} ${
           weekMode ? "reactor-pet-week" : "reactor-pet-canvas"
-        } ${material.important ? "reactor-pet-important" : ""}`}
+        } ${material.important ? "reactor-pet-important" : ""} ${
+          selected && pocketMode ? "reactor-pet-pocketed" : ""
+        }`}
         aria-hidden="true"
       >
         <PixelPetSprite pet={pet} size={weekMode ? 54 : 60} />
         {material.important ? <span className="reactor-pet-crown" aria-hidden="true">✦</span> : null}
+        {selected && pocketMode ? <span className="reactor-pet-pocket-mark" aria-hidden="true">✦</span> : null}
       </div>
       <button
         className={`entry-important ${material.important ? "active" : ""}`}
@@ -2498,7 +2510,7 @@ function ReactorMaterialCard({
                   setCopiedLink(true);
                 }}
               >
-                {copiedLink ? "已复制链接" : "复制链接"}
+                {copiedLink ? "Copied" : "Copy link"}
               </button>
             ) : null}
           </div>
@@ -2551,6 +2563,21 @@ function ReactorMaterialCard({
           {!weekMode && cardMeta ? <p className="reactor-card-meta">{cardMeta}</p> : null}
         </>
       )}
+      {!weekMode && material.note ? (
+        <div className={`reactor-card-note-preview ${noteOpen ? "open" : ""}`}>
+          <button
+            className="reactor-card-note-toggle"
+            onClick={(event) => {
+              event.stopPropagation();
+              setNoteOpen((value) => !value);
+            }}
+            title={material.note}
+          >
+            <span>{noteOpen ? material.note : reactorNotePreview(material.note)}</span>
+            <span className="reactor-card-note-hint">{noteOpen ? "Hide" : "Note"}</span>
+          </button>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -2703,8 +2730,6 @@ function materialToMarkdown(material: ReactorMaterial) {
 
 function pluralLabelForMaterialType(type: ReactorMaterialType) {
   switch (type) {
-    case "diary":
-      return "Diary";
     case "idea":
       return "Ideas";
     case "prompt":
@@ -3349,6 +3374,10 @@ function reactorLayoutStorageKey(dayKey: string) {
 
 function reactorDiaryStorageKey(dayKey: string) {
   return `creator-reactor-diary:${dayKey}`;
+}
+
+function reactorNotePreview(note: string) {
+  return note.length > 80 ? `${note.slice(0, 80).trim()}…` : note;
 }
 
 function readStoredJson<T>(key: string, fallback: T) {

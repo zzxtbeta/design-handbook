@@ -1161,6 +1161,12 @@ img {
   line-height: 2.05;
 }
 
+.reactor-diary-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 .reactor-ai-actions {
   display: flex;
   justify-content: flex-end;
@@ -1362,6 +1368,16 @@ img {
     inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
+.reactor-card.reactor-card-selected,
+.reactor-card.reactor-card-selected:hover,
+.reactor-card.reactor-card-selected:focus-within {
+  box-shadow:
+    0 24px 38px rgba(71, 49, 35, 0.1),
+    0 0 0 2px rgba(166, 196, 188, 0.92),
+    0 0 0 8px rgba(233, 245, 242, 0.94),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
 .reactor-card-type {
   display: inline-flex;
   width: fit-content;
@@ -1410,6 +1426,65 @@ img {
   font-size: 0.8rem;
   line-height: 1.45;
   color: rgba(76, 56, 42, 0.58);
+}
+
+.reactor-card-note-preview {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 22px rgba(71, 49, 35, 0.08);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.reactor-card:hover .reactor-card-note-preview,
+.reactor-card:focus-within .reactor-card-note-preview,
+.reactor-card-note-preview.open {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reactor-card-note-toggle {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  text-align: left;
+  color: rgba(69, 52, 39, 0.78);
+  cursor: pointer;
+}
+
+.reactor-card-note-toggle span:first-child {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.reactor-card-note-preview.open .reactor-card-note-toggle span:first-child {
+  -webkit-line-clamp: 6;
+}
+
+.reactor-card-note-hint {
+  justify-self: end;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.68rem;
+  color: rgba(106, 84, 66, 0.58);
 }
 
 .reactor-card-image {
@@ -1862,6 +1937,12 @@ img {
   filter: drop-shadow(0 0 10px rgba(243, 201, 95, 0.32));
 }
 
+.reactor-pet-pocketed .reactor-pet-sprite {
+  filter:
+    drop-shadow(0 0 10px rgba(131, 188, 171, 0.28))
+    drop-shadow(0 3px 8px rgba(111, 164, 149, 0.16));
+}
+
 .reactor-pet-crown {
   position: absolute;
   top: -10px;
@@ -1871,6 +1952,15 @@ img {
   color: rgba(223, 178, 57, 0.92);
   text-shadow: 0 0 12px rgba(255, 229, 145, 0.7);
   animation: reactorImportantSpark 1.6s ease-in-out infinite;
+}
+
+.reactor-pet-pocket-mark {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  font-size: 0.72rem;
+  color: rgba(118, 178, 162, 0.92);
+  text-shadow: 0 0 10px rgba(204, 241, 233, 0.8);
 }
 
 .reactor-pet-cluster-left {
@@ -2019,27 +2109,38 @@ img {
   height: min(68vh, 720px);
 }
 
-.reactor-pocket-bar {
+.reactor-generate-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(214, 199, 183, 0.42);
+  box-shadow: 0 18px 30px rgba(71, 49, 35, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.reactor-generate-dock-inline {
+  justify-self: end;
+}
+
+.reactor-generate-actions {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(214, 199, 183, 0.55);
-  box-shadow: 0 14px 24px rgba(71, 49, 35, 0.07);
 }
 
-.reactor-pocket-bar-diary {
-  margin-top: 14px;
+.reactor-generate-trigger.active {
+  background: rgba(247, 242, 234, 0.96);
 }
 
 .reactor-pocket-count {
   display: inline-grid;
   place-items: center;
-  min-width: 24px;
+  min-width: 54px;
   height: 24px;
-  padding: 0 7px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(247, 242, 234, 0.92);
   font-family: "Georgia", "Times New Roman", serif;
@@ -2051,6 +2152,7 @@ img {
   height: 100%;
   min-height: 520px;
   overflow: auto;
+  scrollbar-width: none;
   border-radius: 32px;
   cursor: grab;
   background:
@@ -2063,6 +2165,35 @@ img {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.86),
     inset 0 -36px 80px rgba(169, 144, 118, 0.06);
+}
+
+.reactor-canvas-board::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.reactor-canvas-board::-webkit-scrollbar-track,
+.reactor-canvas-board::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.reactor-canvas-board:hover,
+.reactor-canvas-board:focus-within {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(179, 165, 145, 0.62) transparent;
+}
+
+.reactor-canvas-board:hover::-webkit-scrollbar-thumb,
+.reactor-canvas-board:focus-within::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(179, 165, 145, 0.58);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.reactor-canvas-board:hover::-webkit-scrollbar-track,
+.reactor-canvas-board:focus-within::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .reactor-pocket-result {
@@ -2101,12 +2232,6 @@ img {
 
 .reactor-card-pocket:hover {
   filter: saturate(1.02);
-}
-
-.reactor-card-selected {
-  box-shadow:
-    0 18px 34px rgba(71, 49, 35, 0.08),
-    0 0 0 2px rgba(173, 146, 85, 0.44);
 }
 
 .reactor-canvas-board:active {
@@ -2289,6 +2414,10 @@ img {
   box-shadow:
     0 24px 42px rgba(71, 49, 35, 0.14),
     0 0 0 2px rgba(225, 210, 186, 0.5);
+}
+
+.reactor-board-card-selected {
+  filter: drop-shadow(0 24px 36px rgba(93, 132, 123, 0.16));
 }
 
 .reactor-board-card-backgrounded {
