@@ -110,6 +110,7 @@ export function App() {
   const [composerTagsDraft, setComposerTagsDraft] = useState("");
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [reactorFeedback, setReactorFeedback] = useState<string | null>(null);
+  const [reactorExportOpen, setReactorExportOpen] = useState(false);
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
   const [editingImportant, setEditingImportant] = useState(false);
   const [editingNoteDraft, setEditingNoteDraft] = useState("");
@@ -866,30 +867,17 @@ export function App() {
                   : "Aesthetic Board"
                 : "Creator Reactor"}
             </h1>
+            {boardMode === "reactor" ? (
+              <span className="title-side-note">Drop loose thoughts into the week.</span>
+            ) : null}
             <p className="date-range">
               {boardMode === "aesthetic"
                 ? week?.label ?? "Weekly Board"
-                : ""}
+                : week?.label ?? ""}
             </p>
           </div>
           <div className="week-actions">
             <div className="week-actions-top">
-              <div className="board-mode-switch">
-                <button
-                  className={`top-tool ${boardMode === "aesthetic" ? "active" : ""}`}
-                  onClick={() => setBoardMode("aesthetic")}
-                >
-                  <span className="top-tool-icon">◫</span>
-                  <span>Aesthetic Board</span>
-                </button>
-                <button
-                  className={`top-tool ${boardMode === "reactor" ? "active" : ""}`}
-                  onClick={() => setBoardMode("reactor")}
-                >
-                  <span className="top-tool-icon">✎</span>
-                  <span>Reactor</span>
-                </button>
-              </div>
               <>
                 <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value - 1)}>
                   ‹
@@ -911,34 +899,54 @@ export function App() {
                 <button className="nav-button icon-only" onClick={() => setWeekOffset((value) => value + 1)}>
                   ›
                 </button>
-                <button className="top-tool active" onClick={() => setShowSummary(true)}>
-                  <span className="top-tool-icon">◫</span>
-                  <span>{boardMode === "aesthetic" ? "Weekly Summary" : "Weekly Digest"}</span>
-                </button>
               </>
-              <button
-                className="top-tool icon-tool"
-                onClick={() => setAppearance((current) => (current === "light" ? "dark" : "light"))}
-                aria-label="Toggle theme"
-              >
-                ☾
-              </button>
             </div>
           </div>
         </header>
-
-        <section className="view-switcher">
-          <span className="view-copy">
-            {boardMode === "aesthetic"
-              ? viewMode === "week"
-                ? "Week View"
-                : `${labelForDay(activeDay)}`
-              : viewMode === "week"
-                ? "Weekly Board"
-                : "Focused Day"}
-          </span>
-          {copiedTerm ? <span className="copied-inline">Copied</span> : null}
-        </section>
+        <aside className="board-side-rail" aria-label="Board actions">
+          <button
+            className={`board-side-button ${boardMode === "aesthetic" ? "active" : ""}`}
+            onClick={() => setBoardMode("aesthetic")}
+            title="Aesthetic Board"
+            aria-label="Aesthetic Board"
+          >
+            ◫
+          </button>
+          <button
+            className={`board-side-button ${boardMode === "reactor" ? "active" : ""}`}
+            onClick={() => setBoardMode("reactor")}
+            title="Creator Reactor"
+            aria-label="Creator Reactor"
+          >
+            ✎
+          </button>
+          <button
+            className="board-side-button"
+            onClick={() => setShowSummary(true)}
+            title={boardMode === "aesthetic" ? "Weekly Summary" : "Weekly Digest"}
+            aria-label={boardMode === "aesthetic" ? "Weekly Summary" : "Weekly Digest"}
+          >
+            ◎
+          </button>
+          {boardMode === "reactor" && reactorViewMode === "day" ? (
+            <button
+              className={`board-side-button ${reactorExportOpen ? "active" : ""}`}
+              onClick={() => setReactorExportOpen((value) => !value)}
+              title="Download"
+              aria-label="Download"
+            >
+              ↓
+            </button>
+          ) : null}
+          <button
+            className="board-side-button"
+            onClick={() => setAppearance((current) => (current === "light" ? "dark" : "light"))}
+            title="Toggle theme"
+            aria-label="Toggle theme"
+          >
+            ☾
+          </button>
+        </aside>
 
         <motion.section
           className="paper-sheet"
@@ -1142,6 +1150,8 @@ export function App() {
                   onComposerNoteChange={setComposerNote}
                   onComposerTagsChange={setComposerTagsDraft}
                   onSaveMaterial={() => void handleSaveMaterial()}
+                  exportOpen={reactorExportOpen}
+                  onToggleExportOpen={() => setReactorExportOpen((value) => !value)}
                   onUpdateLayout={(materialId, next) =>
                     setReactorLayouts((current) => ({
                       ...current,
@@ -1547,6 +1557,8 @@ function ReactorBoardView({
   onComposerNoteChange,
   onComposerTagsChange,
   onSaveMaterial,
+  exportOpen,
+  onToggleExportOpen,
   onUpdateLayout,
 }: {
   week: Map<DaySlot, ReactorDay>;
@@ -1580,17 +1592,13 @@ function ReactorBoardView({
   onComposerNoteChange: (value: string) => void;
   onComposerTagsChange: (value: string) => void;
   onSaveMaterial: () => void;
+  exportOpen: boolean;
+  onToggleExportOpen: () => void;
   onUpdateLayout: (materialId: string, next: Partial<BoardLayout>) => void;
 }) {
   return viewMode === "week" ? (
     <section className="reactor-shell">
       {feedback ? <div className="reactor-feedback-toast">{feedback}</div> : null}
-      <header className="reactor-header">
-        <div>
-          <h2>Drop loose thoughts into the week.</h2>
-        </div>
-      </header>
-
       <section className="week-grid reactor-week-grid">
         <div className="week-row">
           {dayGroups.slice(0, 3).map(([slot, label]) => (
@@ -1687,6 +1695,8 @@ function ReactorBoardView({
       onComposerNoteChange={onComposerNoteChange}
       onComposerTagsChange={onComposerTagsChange}
       onSaveMaterial={onSaveMaterial}
+      exportOpen={exportOpen}
+      onToggleExportOpen={onToggleExportOpen}
     />
   );
 }
@@ -1915,6 +1925,8 @@ function ReactorDayCanvas({
   onComposerNoteChange,
   onComposerTagsChange,
   onSaveMaterial,
+  exportOpen,
+  onToggleExportOpen,
 }: {
   day: ReactorDay | undefined;
   materials: ReactorDay["materials"];
@@ -1941,11 +1953,12 @@ function ReactorDayCanvas({
   onComposerNoteChange: (value: string) => void;
   onComposerTagsChange: (value: string) => void;
   onSaveMaterial: () => void;
+  exportOpen: boolean;
+  onToggleExportOpen: () => void;
 }) {
   const dayKey = day?.dayKey ?? todayDateKey();
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
-  const [exportOpen, setExportOpen] = useState(false);
   const [pocketOpen, setPocketOpen] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
   const [selectedAiIds, setSelectedAiIds] = useState<string[]>([]);
@@ -2048,10 +2061,6 @@ function ReactorDayCanvas({
             <span className="nav-button-icon" aria-hidden="true">☷</span>
             Organize
           </button>
-          <button className="nav-button" onClick={() => setExportOpen((value) => !value)}>
-            <span className="nav-button-icon" aria-hidden="true">↓</span>
-            Download
-          </button>
           <div className="canvas-zoom-controls">
             <button className="nav-button" onClick={() => setCanvasScale((value) => Math.max(0.65, value - 0.1))}>－</button>
             <span>{Math.round(canvasScale * 100)}%</span>
@@ -2066,7 +2075,7 @@ function ReactorDayCanvas({
               <strong>Export source pack</strong>
               <span>Pick notes to turn into a clean markdown bundle.</span>
             </div>
-            <button className="ghost-action" onClick={() => setExportOpen(false)}>Close</button>
+            <button className="ghost-action" onClick={onToggleExportOpen}>Close</button>
           </div>
           <div className="reactor-export-grid">
             <div className="reactor-export-list">
@@ -3106,28 +3115,24 @@ function JournalCard({
               <div className="term-hover-list is-open">
                 {terms.map((term, termIndex) => (
                   <div key={term.id} className="term-pill-row">
-                    <button
+                    <div
                       className="term-pill floating"
                       style={{
-                        width: `${Math.max(68, 100 - termIndex * 5)}%`,
+                        width: `${Math.max(72, 100 - termIndex * 4)}%`,
                       }}
+                    >
+                      <span>{term.term}</span>
+                    </div>
+                    <button
+                      className="term-action"
                       onClick={(event) => {
                         event.stopPropagation();
                         void onCopyTerm(term.term);
                       }}
                       title={`复制关键词 ${term.term}`}
+                      aria-label={`复制关键词 ${term.term}`}
                     >
-                      <span>{term.term}</span>
-                    </button>
-                    <button
-                      className="term-action term-action-delete"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void onDeleteTerm(term.id);
-                      }}
-                      aria-label={`删除术语 ${term.term}`}
-                    >
-                      ×
+                      <span className="term-copy">⧉</span>
                     </button>
                   </div>
                 ))}
