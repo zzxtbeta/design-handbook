@@ -1946,7 +1946,7 @@ function ReactorDayCanvas({
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
   const [exportOpen, setExportOpen] = useState(false);
-  const [aiStudioOpen, setAiStudioOpen] = useState(false);
+  const [pocketOpen, setPocketOpen] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
   const [selectedAiIds, setSelectedAiIds] = useState<string[]>([]);
   const [includeDiaryInAi, setIncludeDiaryInAi] = useState(true);
@@ -2049,9 +2049,9 @@ function ReactorDayCanvas({
             <span className="nav-button-icon" aria-hidden="true">☷</span>
             Organize
           </button>
-          <button className="nav-button" onClick={() => setAiStudioOpen((value) => !value)}>
+          <button className={`nav-button ${pocketOpen ? "active" : ""}`} onClick={() => setPocketOpen((value) => !value)}>
             <span className="nav-button-icon" aria-hidden="true">✦</span>
-            AI Studio
+            Pocket
           </button>
           <button className="nav-button" onClick={() => setExportOpen((value) => !value)}>
             <span className="nav-button-icon" aria-hidden="true">↓</span>
@@ -2136,73 +2136,9 @@ function ReactorDayCanvas({
           placeholder="Write the scattered parts of today before you try to explain them."
         />
       </section>
-      <div className={`reactor-canvas-stage ${aiStudioOpen ? "with-ai-studio" : ""}`}>
-        <aside className={`reactor-ai-drawer ${aiStudioOpen ? "open" : ""}`}>
-          <section className="reactor-ai-studio">
-            <div className="reactor-ai-studio-header">
-              <div>
-                <span className="reactor-side-kicker">AI Studio</span>
-                <strong>Build a better writing prompt.</strong>
-              </div>
-              <button className="ghost-action" onClick={() => setAiStudioOpen(false)}>关闭</button>
-            </div>
-            <p className="reactor-ai-intro">
-              用今日日记和你选中的素材，整理出一个可直接复制给更强 AI 的写作 prompt。
-            </p>
-            <label className="reactor-ai-toggle">
-              <input
-                type="checkbox"
-                checked={includeDiaryInAi}
-                onChange={(event) => setIncludeDiaryInAi(event.target.checked)}
-              />
-              <span>带上今日日记</span>
-            </label>
-            <div className="reactor-ai-list">
-              {materials.map((material) => (
-                <label key={material.id} className="reactor-ai-item">
-                  <input
-                    type="checkbox"
-                    checked={selectedAiIds.includes(material.id)}
-                    onChange={() =>
-                      setSelectedAiIds((current) =>
-                        current.includes(material.id)
-                          ? current.filter((id) => id !== material.id)
-                          : [...current, material.id],
-                      )
-                    }
-                  />
-                  <span className="reactor-ai-item-type">{labelForMaterialTypeZh(material.type)}</span>
-                  <span className="reactor-ai-item-title">{material.content}</span>
-                </label>
-              ))}
-            </div>
-            <div className="reactor-ai-actions">
-              <button className="today-button" onClick={() => void handleGenerateStoryline()} disabled={isGeneratingStoryline}>
-                {isGeneratingStoryline ? "整理中..." : "生成 Prompt"}
-              </button>
-            </div>
-            {storylineInsight ? (
-              <div className="reactor-ai-result">
-                <strong>{storylineInsight.title}</strong>
-                <p>{storylineInsight.intent}</p>
-                <pre>{storylineInsight.prompt}</pre>
-                <div className="reactor-ai-actions">
-                  <button
-                    className={`top-tool ${copiedStudioPrompt ? "active" : ""}`}
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(storylineInsight.prompt);
-                      setCopiedStudioPrompt(true);
-                    }}
-                  >
-                    {copiedStudioPrompt ? "已复制 Prompt" : "复制 Prompt"}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </section>
-        </aside>
+      <div className="reactor-canvas-stage">
       <div
-        className={`day-canvas-board reactor-canvas-board ${aiStudioOpen ? "reactor-canvas-board-shifted" : ""}`}
+        className="day-canvas-board reactor-canvas-board"
         onWheel={(event) => {
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
@@ -2242,6 +2178,20 @@ function ReactorDayCanvas({
         }}
       >
         <div className="reactor-canvas-toolbar">
+          {pocketOpen ? (
+            <div className="reactor-pocket-bar">
+              <button
+                className={`top-tool ${includeDiaryInAi ? "active" : ""}`}
+                onClick={() => setIncludeDiaryInAi((value) => !value)}
+              >
+                Diary
+              </button>
+              <span className="reactor-pocket-count">{selectedAiIds.length}</span>
+              <button className="today-button" onClick={() => void handleGenerateStoryline()} disabled={isGeneratingStoryline}>
+                {isGeneratingStoryline ? "..." : "Prompt"}
+              </button>
+            </div>
+          ) : null}
           <button
             className={`reactor-canvas-fab ${isComposerOpen ? "active" : ""}`}
             onClick={() => (isComposerOpen ? onCloseComposer() : onOpenComposer("idea", dayKey))}
@@ -2291,6 +2241,21 @@ function ReactorDayCanvas({
                 zIndex: layout.z,
                 rotate: entryRotation(index),
               }}
+              onClick={(event) => {
+                if (!pocketOpen) {
+                  return;
+                }
+
+                if ((event.target as HTMLElement).closest("button, a, .resize-handle, input, textarea")) {
+                  return;
+                }
+
+                setSelectedAiIds((current) =>
+                  current.includes(material.id)
+                    ? current.filter((id) => id !== material.id)
+                    : [...current, material.id],
+                );
+              }}
               onMouseDown={(event) => {
                 if ((event.target as HTMLElement).closest("button, a, .resize-handle")) {
                   return;
@@ -2324,6 +2289,8 @@ function ReactorDayCanvas({
               <ReactorMaterialCard
                 material={material}
                 index={index}
+                selected={selectedAiIds.includes(material.id)}
+                pocketMode={pocketOpen}
                 onDelete={() => onDeleteMaterial(material.id)}
                 onEdit={() => onEditMaterial(material.id)}
                 onToggleImportant={() => onToggleImportant(material.id)}
@@ -2355,6 +2322,32 @@ function ReactorDayCanvas({
         </div>
       </div>
       </div>
+      {storylineInsight ? (
+        <div className="summary-overlay" onClick={() => setStorylineInsight(null)}>
+          <section className="reactor-pocket-result" onClick={(event) => event.stopPropagation()}>
+            <div className="reactor-ai-studio-header">
+              <div>
+                <span className="reactor-side-kicker">Pocket</span>
+                <strong>{storylineInsight.title}</strong>
+              </div>
+              <button className="ghost-action" onClick={() => setStorylineInsight(null)}>关闭</button>
+            </div>
+            <p>{storylineInsight.intent}</p>
+            <pre>{storylineInsight.prompt}</pre>
+            <div className="reactor-ai-actions">
+              <button
+                className={`today-button ${copiedStudioPrompt ? "active" : ""}`}
+                onClick={async () => {
+                  await navigator.clipboard.writeText(storylineInsight.prompt);
+                  setCopiedStudioPrompt(true);
+                }}
+              >
+                {copiedStudioPrompt ? "已复制 Prompt" : "复制 Prompt"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -2363,6 +2356,8 @@ function ReactorMaterialCard({
   material,
   index,
   weekMode = false,
+  selected = false,
+  pocketMode = false,
   onDelete,
   onEdit,
   onToggleImportant,
@@ -2370,6 +2365,8 @@ function ReactorMaterialCard({
   material: ReactorDay["materials"][number];
   index: number;
   weekMode?: boolean;
+  selected?: boolean;
+  pocketMode?: boolean;
   onDelete: () => void;
   onEdit: () => void;
   onToggleImportant: () => void;
@@ -2435,7 +2432,9 @@ function ReactorMaterialCard({
     <article
       className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)} ${
         weekMode ? "reactor-card-week" : "reactor-card-canvas"
-      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity}`}
+      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity} ${
+        selected ? "reactor-card-selected" : ""
+      } ${pocketMode ? "reactor-card-pocket" : ""}`}
       style={weekCardStyle}
     >
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />

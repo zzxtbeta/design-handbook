@@ -1155,55 +1155,6 @@ img {
   line-height: 2.05;
 }
 
-.reactor-ai-studio {
-  display: grid;
-  gap: 12px;
-}
-
-.reactor-ai-intro {
-  margin: 0;
-  color: rgba(82, 64, 49, 0.68);
-  line-height: 1.55;
-}
-
-.reactor-ai-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-family: "Georgia", "Times New Roman", serif;
-  color: rgba(82, 64, 49, 0.72);
-}
-
-.reactor-ai-list {
-  display: grid;
-  gap: 8px;
-  max-height: 220px;
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.reactor-ai-item {
-  display: grid;
-  grid-template-columns: 18px 54px minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 16px;
-  background: rgba(255, 252, 247, 0.78);
-  border: 1px solid rgba(215, 201, 186, 0.34);
-}
-
-.reactor-ai-item-type {
-  font-size: 0.78rem;
-  color: rgba(91, 72, 58, 0.56);
-}
-
-.reactor-ai-item-title {
-  min-width: 0;
-  line-height: 1.45;
-  color: rgba(52, 38, 30, 0.84);
-}
-
 .reactor-ai-actions {
   display: flex;
   justify-content: flex-end;
@@ -2023,24 +1974,6 @@ img {
     min-height: auto;
   }
 
-  .reactor-ai-drawer {
-    position: relative;
-    width: 100%;
-    max-width: none;
-    height: auto;
-    margin-bottom: 16px;
-    transform: translateY(-10px);
-  }
-
-  .reactor-ai-drawer.open {
-    transform: translateY(0);
-  }
-
-  .reactor-canvas-board-shifted {
-    margin-left: 0;
-    width: 100%;
-  }
-
   .reactor-day-stack {
     grid-template-columns: 1fr;
   }
@@ -2080,24 +2013,28 @@ img {
   min-height: 920px;
 }
 
-.reactor-ai-drawer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: min(360px, 34vw);
-  max-width: 360px;
-  height: 100%;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-28px);
-  transition: opacity 220ms ease, transform 260ms ease;
-  z-index: 3;
+.reactor-pocket-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(214, 199, 183, 0.55);
+  box-shadow: 0 14px 24px rgba(71, 49, 35, 0.07);
 }
 
-.reactor-ai-drawer.open {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
+.reactor-pocket-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(247, 242, 234, 0.92);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.76rem;
+  color: rgba(88, 64, 43, 0.6);
 }
 
 .reactor-canvas-board {
@@ -2105,7 +2042,6 @@ img {
   overflow: auto;
   border-radius: 32px;
   cursor: grab;
-  transition: width 260ms ease, margin-left 260ms ease;
   background:
     radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.88), transparent 20%),
     radial-gradient(circle at 82% 18%, rgba(244, 234, 220, 0.28), transparent 18%),
@@ -2118,9 +2054,53 @@ img {
     inset 0 -36px 80px rgba(169, 144, 118, 0.06);
 }
 
-.reactor-canvas-board-shifted {
-  margin-left: clamp(248px, 28vw, 304px);
-  width: calc(100% - clamp(248px, 28vw, 304px));
+.reactor-card-pocket::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 20px;
+  border: 1px dashed transparent;
+  transition: border-color 180ms ease, background 180ms ease;
+  pointer-events: none;
+}
+
+.reactor-card-pocket:hover::after {
+  border-color: rgba(164, 145, 121, 0.18);
+}
+
+.reactor-card-selected::after {
+  border-color: rgba(160, 133, 78, 0.42);
+  background: rgba(250, 247, 238, 0.22);
+}
+
+.reactor-pocket-result {
+  width: min(680px, calc(100vw - 48px));
+  display: grid;
+  gap: 12px;
+  padding: 22px 24px 20px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(214, 199, 183, 0.55);
+  box-shadow: 0 28px 56px rgba(71, 49, 35, 0.12);
+}
+
+.reactor-pocket-result p {
+  margin: 0;
+  color: rgba(67, 49, 36, 0.76);
+  line-height: 1.65;
+}
+
+.reactor-pocket-result pre {
+  margin: 0;
+  white-space: pre-wrap;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 252, 247, 0.84);
+  border: 1px solid rgba(215, 201, 186, 0.34);
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgba(56, 42, 34, 0.8);
 }
 
 .reactor-canvas-board:active {
