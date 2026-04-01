@@ -922,7 +922,7 @@ img {
 
 .term-pill-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px 28px;
+  grid-template-columns: minmax(0, 1fr) 28px;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
@@ -965,12 +965,6 @@ img {
     background 120ms ease;
 }
 
-.term-action-copy {
-  background: rgba(255, 255, 255, 0.96);
-  color: rgba(94, 74, 60, 0.72);
-  box-shadow: 0 6px 12px rgba(74, 49, 28, 0.08);
-}
-
 .term-action-delete {
   width: 22px;
   height: 22px;
@@ -985,19 +979,6 @@ img {
 .term-pill-row:focus-within .term-action-delete {
   opacity: 1;
   transform: scale(1);
-}
-
-.term-bulk-copy {
-  justify-self: end;
-  border: 0;
-  border-radius: 999px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 14px rgba(74, 49, 28, 0.08);
-  color: rgba(82, 64, 49, 0.76);
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 0.74rem;
-  cursor: pointer;
 }
 
 .term-copy {

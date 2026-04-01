@@ -3104,35 +3104,20 @@ function JournalCard({
           <div className="term-summary">
             {isExpanded ? (
               <div className="term-hover-list is-open">
-                <button
-                  className="term-bulk-copy"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void onCopyTerm(terms.map((term) => term.term).join("\n"));
-                  }}
-                >
-                  复制全部关键词
-                </button>
                 {terms.map((term, termIndex) => (
                   <div key={term.id} className="term-pill-row">
-                    <span
+                    <button
                       className="term-pill floating"
                       style={{
                         width: `${Math.max(68, 100 - termIndex * 5)}%`,
                       }}
-                    >
-                      <span>{term.term}</span>
-                    </span>
-                    <button
-                      className="term-action term-action-copy"
                       onClick={(event) => {
                         event.stopPropagation();
                         void onCopyTerm(term.term);
                       }}
-                      aria-label={`复制术语 ${term.term}`}
-                      title="复制关键词"
+                      title={`复制关键词 ${term.term}`}
                     >
-                      ⧉
+                      <span>{term.term}</span>
                     </button>
                     <button
                       className="term-action term-action-delete"
