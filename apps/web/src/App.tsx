@@ -1897,17 +1897,9 @@ function ReactorDayCanvas({
   const dayKey = day?.dayKey ?? todayDateKey();
   const [canvasScale, setCanvasScale] = useState(1);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
-  const [dockPosition, setDockPosition] = useState({ x: 420, y: 720 });
   const [exportOpen, setExportOpen] = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
-  useEffect(() => {
-    setDockPosition(readStoredJson(`creator-reactor-dock:${dayKey}`, { x: 420, y: 720 }));
-  }, [dayKey]);
-
-  useEffect(() => {
-    window.localStorage.setItem(`creator-reactor-dock:${dayKey}`, JSON.stringify(dockPosition));
-  }, [dayKey, dockPosition]);
 
   useEffect(() => {
     setSelectedExportIds(materials.map((material) => material.id));
@@ -2059,6 +2051,34 @@ function ReactorDayCanvas({
           window.addEventListener("mouseup", handleUp);
         }}
       >
+        <div className="reactor-canvas-toolbar">
+          <button
+            className={`reactor-canvas-fab ${isComposerOpen ? "active" : ""}`}
+            onClick={() => (isComposerOpen ? onCloseComposer() : onOpenComposer("idea", dayKey))}
+            aria-label={isComposerOpen ? "Close capture" : "Open capture"}
+          >
+            <span aria-hidden="true">{isComposerOpen ? "×" : "+"}</span>
+          </button>
+          {isComposerOpen ? (
+            <div className="reactor-canvas-panel">
+              <ReactorComposer
+                dock
+                composerType={composerType}
+                composerContent={composerContent}
+                composerNote={composerNote}
+                composerTagsDraft={composerTagsDraft}
+                isSavingMaterial={isSavingMaterial}
+                onCloseComposer={onCloseComposer}
+                onComposerTypeChange={onComposerTypeChange}
+                onComposerContentChange={onComposerContentChange}
+                onComposerNoteChange={onComposerNoteChange}
+                onComposerTagsChange={onComposerTagsChange}
+                onApplyNotePreset={onComposerNoteChange}
+                onSaveMaterial={onSaveMaterial}
+              />
+            </div>
+          ) : null}
+        </div>
         <div
           className="reactor-canvas-content"
           style={{
@@ -2142,66 +2162,6 @@ function ReactorDayCanvas({
             </motion.article>
           );
         })}
-        <div
-          className="reactor-canvas-composer"
-          style={{
-            left: `${dockPosition.x}px`,
-            top: `${dockPosition.y}px`,
-          }}
-          onMouseDown={(event) => {
-            if (!(event.target as HTMLElement).closest(".reactor-dock-handle")) {
-              return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-            const startX = event.clientX;
-            const startY = event.clientY;
-            const origin = dockPosition;
-
-            const handleMove = (moveEvent: MouseEvent) => {
-              setDockPosition({
-                x: Math.max(24, origin.x + (moveEvent.clientX - startX) / canvasScale),
-                y: Math.max(24, origin.y + (moveEvent.clientY - startY) / canvasScale),
-              });
-            };
-
-            const handleUp = () => {
-              window.removeEventListener("mousemove", handleMove);
-              window.removeEventListener("mouseup", handleUp);
-            };
-
-            window.addEventListener("mousemove", handleMove);
-            window.addEventListener("mouseup", handleUp);
-          }}
-        >
-          {isComposerOpen ? (
-            <ReactorComposer
-              dock
-              composerType={composerType}
-              composerContent={composerContent}
-              composerNote={composerNote}
-              composerTagsDraft={composerTagsDraft}
-              isSavingMaterial={isSavingMaterial}
-              onCloseComposer={onCloseComposer}
-              onComposerTypeChange={onComposerTypeChange}
-              onComposerContentChange={onComposerContentChange}
-              onComposerNoteChange={onComposerNoteChange}
-              onComposerTagsChange={onComposerTagsChange}
-              onApplyNotePreset={onComposerNoteChange}
-              onSaveMaterial={onSaveMaterial}
-            />
-          ) : (
-            <button
-              className="reactor-capture-prompt"
-              onClick={() => onOpenComposer("idea", dayKey)}
-            >
-              <span className="reactor-capture-handle" />
-              <span className="reactor-capture-title">粘贴、拖入，或随手记下</span>
-              <span className="reactor-capture-meta">链接会变成预览卡，图片会变成图片卡。</span>
-            </button>
-          )}
-        </div>
         </div>
       </div>
     </section>
