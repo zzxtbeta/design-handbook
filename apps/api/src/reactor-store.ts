@@ -17,6 +17,7 @@ export interface ReactorMaterialMeta {
 export interface ReactorMaterialRecord {
   id: string;
   dayKey: string;
+  parentId: string | null;
   type: ReactorMaterialType;
   content: string;
   important: boolean;
@@ -66,6 +67,7 @@ export async function createReactorMaterial(input: {
   type: ReactorMaterialType;
   content: string;
   important?: boolean;
+  parentId?: string | null;
   note?: string;
   manualTags?: string[];
   dayKey?: string;
@@ -77,6 +79,7 @@ export async function createReactorMaterial(input: {
     .insert(reactorMaterials)
     .values({
       dayKey,
+      parentId: input.parentId ?? null,
       type: input.type,
       content: input.content.trim(),
       important: input.important ?? false,
@@ -96,6 +99,7 @@ export async function updateReactorMaterial(
   patch: {
     content?: string;
     important?: boolean;
+    parentId?: string | null;
     note?: string;
     manualTags?: string[];
     meta?: ReactorMaterialMeta | null;
@@ -106,6 +110,7 @@ export async function updateReactorMaterial(
     .set({
       content: patch.content?.trim(),
       important: patch.important,
+      parentId: patch.parentId,
       note: patch.note?.trim(),
       manualTags: patch.manualTags ? normalizeTags(patch.manualTags) : undefined,
       meta: patch.meta,
@@ -118,6 +123,14 @@ export async function updateReactorMaterial(
 }
 
 export async function deleteReactorMaterial(materialId: string) {
+  await db
+    .update(reactorMaterials)
+    .set({
+      parentId: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(reactorMaterials.parentId, materialId));
+
   const [deleted] = await db
     .delete(reactorMaterials)
     .where(eq(reactorMaterials.id, materialId))
@@ -140,6 +153,7 @@ function mapMaterial(row: typeof reactorMaterials.$inferSelect): ReactorMaterial
   return {
     id: row.id,
     dayKey: row.dayKey,
+    parentId: row.parentId,
     type: row.type,
     content: row.content,
     important: row.important,

@@ -111,6 +111,7 @@ export const reactorMaterials = pgTable("reactor_materials", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderIndex: serial("order_index").notNull(),
   dayKey: varchar("day_key", { length: 10 }).notNull(),
+  parentId: uuid("parent_id"),
   type: reactorMaterialTypeEnum("type").notNull(),
   content: text("content").notNull(),
   important: boolean("important").notNull().default(false),

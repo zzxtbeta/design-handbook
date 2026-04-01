@@ -121,6 +121,7 @@ export function App() {
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
   const [editingImportant, setEditingImportant] = useState(false);
+  const [editingParentId, setEditingParentId] = useState<string | null>(null);
   const [editingNoteDraft, setEditingNoteDraft] = useState("");
   const [editingTagsDraft, setEditingTagsDraft] = useState("");
   const [isSavingMaterialEdit, setIsSavingMaterialEdit] = useState(false);
@@ -433,6 +434,19 @@ export function App() {
     [reactorBoard],
   );
   const editingMaterial = editingMaterialId ? reactorMaterialsById.get(editingMaterialId) ?? null : null;
+  const editingParent = editingParentId ? reactorMaterialsById.get(editingParentId) ?? null : null;
+  const editingAttachCandidates = useMemo(() => {
+    if (!editingMaterial) {
+      return [];
+    }
+
+    return activeReactorMaterials.filter(
+      (material) =>
+        material.id !== editingMaterial.id &&
+        material.parentId !== editingMaterial.id &&
+        material.dayKey === editingMaterial.dayKey,
+    );
+  }, [activeReactorMaterials, editingMaterial]);
 
   const activeEntries = week
     ? week.entries.filter((entry) => entry.daySlot === activeDay)
@@ -594,6 +608,7 @@ export function App() {
 
     setEditingMaterialId(materialId);
     setEditingImportant(Boolean(material.important));
+    setEditingParentId(material.parentId ?? null);
     setEditingNoteDraft(material.note ?? "");
     setEditingTagsDraft(
       (material.manualTags?.length ? material.manualTags : defaultMaterialTags(material.type)).join(", "),
@@ -614,6 +629,7 @@ export function App() {
         },
         body: JSON.stringify({
           important: editingImportant,
+          parentId: editingParentId,
           note: editingNoteDraft,
           manualTags: editingTagsDraft
             .split(",")
@@ -673,6 +689,31 @@ export function App() {
     } catch (error) {
       console.error("[web] handleToggleImportant failed", error);
       setReactorError("Could not update importance right now.");
+    }
+  }
+
+  async function handleSetMaterialParent(materialId: string, parentId: string | null) {
+    try {
+      const response = await fetch(`/api/reactor/materials/${materialId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ parentId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Reactor parent update failed with status ${response.status}`);
+      }
+
+      if (editingMaterialId === materialId) {
+        setEditingParentId(parentId);
+      }
+
+      await loadReactorBoard();
+    } catch (error) {
+      console.error("[web] handleSetMaterialParent failed", error);
+      setReactorError("Could not update note relationship right now.");
     }
   }
 
@@ -1122,6 +1163,7 @@ export function App() {
                   onDeleteMaterial={(id) => void handleDeleteMaterial(id)}
                   onEditMaterial={openMaterialEditor}
                   onToggleImportant={(id) => void handleToggleImportant(id)}
+                  onSetParent={(materialId, parentId) => void handleSetMaterialParent(materialId, parentId)}
                   onOpenDay={(dayKey) => {
                     setActiveReactorDayKey(dayKey);
                     setReactorViewMode("day");
@@ -1248,6 +1290,34 @@ export function App() {
                 >
                   {editingImportant ? "Marked important" : "Mark as important"}
                 </button>
+                {editingMaterial ? (
+                  <div className="reactor-parent-section">
+                    <div className="reactor-parent-header">
+                      <strong>Structure</strong>
+                      <span>
+                        {editingParent ? `Subset of: ${editingParent.content}` : "Currently a standalone card"}
+                      </span>
+                    </div>
+                    <div className="reactor-parent-actions">
+                      <button
+                        className={`top-tool ${editingParentId === null ? "active" : ""}`}
+                        onClick={() => setEditingParentId(null)}
+                      >
+                        Standalone
+                      </button>
+                      {editingAttachCandidates.map((candidate) => (
+                        <button
+                          key={candidate.id}
+                          className={`top-tool ${editingParentId === candidate.id ? "active" : ""}`}
+                          onClick={() => setEditingParentId(candidate.id)}
+                          title={candidate.content}
+                        >
+                          {truncateMiddle(candidate.content, 22)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <input
                   className="reactor-compose-input"
                   value={editingTagsDraft}
@@ -1532,6 +1602,7 @@ function ReactorBoardView({
   onDeleteMaterial,
   onEditMaterial,
   onToggleImportant,
+  onSetParent,
   onOpenDay,
   onBackToWeek,
   onCloseComposer,
@@ -1561,6 +1632,7 @@ function ReactorBoardView({
   onDeleteMaterial: (materialId: string) => void;
   onEditMaterial: (materialId: string) => void;
   onToggleImportant: (materialId: string) => void;
+  onSetParent: (materialId: string, parentId: string | null) => void;
   onOpenDay: (dayKey: string) => void;
   onBackToWeek: () => void;
   onCloseComposer: () => void;
@@ -1664,6 +1736,7 @@ function ReactorBoardView({
       onDeleteMaterial={onDeleteMaterial}
       onEditMaterial={onEditMaterial}
       onToggleImportant={onToggleImportant}
+      onSetParent={onSetParent}
       onUpdateLayout={onUpdateLayout}
       onCloseComposer={onCloseComposer}
       onComposerTypeChange={onComposerTypeChange}
@@ -1888,6 +1961,7 @@ function ReactorDayCanvas({
   onDeleteMaterial,
   onEditMaterial,
   onToggleImportant,
+  onSetParent,
   onUpdateLayout,
   onCloseComposer,
   onComposerTypeChange,
@@ -1910,6 +1984,7 @@ function ReactorDayCanvas({
   onDeleteMaterial: (materialId: string) => void;
   onEditMaterial: (materialId: string) => void;
   onToggleImportant: (materialId: string) => void;
+  onSetParent: (materialId: string, parentId: string | null) => void;
   onUpdateLayout: (materialId: string, next: Partial<BoardLayout>) => void;
   onCloseComposer: () => void;
   onComposerTypeChange: (type: ReactorMaterialType) => void;
@@ -1957,6 +2032,23 @@ function ReactorDayCanvas({
     });
     return map;
   }, [clusters, layouts]);
+  const subsetLinks = useMemo(
+    () => buildSubsetLinks(materials, layouts),
+    [materials, layouts],
+  );
+  const childIdsByParent = useMemo(() => {
+    const map = new Map<string, string[]>();
+    materials.forEach((material) => {
+      if (!material.parentId) {
+        return;
+      }
+
+      const current = map.get(material.parentId) ?? [];
+      current.push(material.id);
+      map.set(material.parentId, current);
+    });
+    return map;
+  }, [materials]);
 
   useEffect(() => {
     setDockPosition(readStoredJson(`creator-reactor-dock:${dayKey}`, { x: 420, y: 720 }));
@@ -2233,14 +2325,25 @@ function ReactorDayCanvas({
             </div>
           </div>
         ))}
+        <div className="reactor-subset-links" aria-hidden="true">
+          <svg width="3200" height="2400" viewBox="0 0 3200 2400">
+            {subsetLinks.map((link) => (
+              <path
+                key={`${link.fromId}-${link.toId}`}
+                d={`M ${link.from.x} ${link.from.y} C ${link.from.x} ${link.from.y + 26}, ${link.to.x} ${link.to.y - 26}, ${link.to.x} ${link.to.y}`}
+              />
+            ))}
+          </svg>
+        </div>
         {materials.map((material, index) => {
           const layout = layouts[material.id] ?? defaultReactorLayout(index);
+          const childIds = childIdsByParent.get(material.id) ?? [];
           return (
             <motion.article
               key={material.id}
               className={`day-board-card reactor-board-card ${
                 clusteredMaterialIds.has(material.id) ? "reactor-board-card-clustered" : ""
-              }`}
+              } ${material.parentId ? "reactor-board-card-subset" : ""}`}
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               style={{
@@ -2259,18 +2362,47 @@ function ReactorDayCanvas({
                 const startY = event.clientY;
                 const startLeft = layout.x;
                 const startTop = layout.y;
+                const childLayouts = Object.fromEntries(
+                  childIds.map((childId, order) => [
+                    childId,
+                    layouts[childId] ?? defaultReactorLayout(index + order + 1),
+                  ]),
+                );
+                let moved = false;
+                let finalDx = 0;
+                let finalDy = 0;
                 onUpdateLayout(material.id, { z: Date.now() });
+                childIds.forEach((childId, order) => {
+                  onUpdateLayout(childId, { z: Date.now() + order + 1 });
+                });
 
                 const handleMove = (moveEvent: MouseEvent) => {
+                  moved = true;
+                  const dx = (moveEvent.clientX - startX) / canvasScale;
+                  const dy = (moveEvent.clientY - startY) / canvasScale;
+                  finalDx = dx;
+                  finalDy = dy;
                   onUpdateLayout(material.id, {
-                    x: Math.max(0, startLeft + (moveEvent.clientX - startX) / canvasScale),
-                    y: Math.max(0, startTop + (moveEvent.clientY - startY) / canvasScale),
+                    x: Math.max(0, startLeft + dx),
+                    y: Math.max(0, startTop + dy),
+                  });
+                  childIds.forEach((childId) => {
+                    const childLayout = childLayouts[childId];
+                    onUpdateLayout(childId, {
+                      x: Math.max(0, childLayout.x + dx),
+                      y: Math.max(0, childLayout.y + dy),
+                    });
                   });
                 };
 
                 const handleUp = () => {
                   window.removeEventListener("mousemove", handleMove);
                   window.removeEventListener("mouseup", handleUp);
+                  if (material.parentId && moved) {
+                    if (Math.abs(finalDx) > 18 || Math.abs(finalDy) > 18) {
+                      void onSetParent(material.id, null);
+                    }
+                  }
                 };
 
                 window.addEventListener("mousemove", handleMove);
@@ -2736,6 +2868,16 @@ function downloadTextFile(filename: string, contents: string) {
   URL.revokeObjectURL(url);
 }
 
+function truncateMiddle(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  const head = Math.ceil((maxLength - 1) / 2);
+  const tail = Math.floor((maxLength - 1) / 2);
+  return `${value.slice(0, head)}…${value.slice(value.length - tail)}`;
+}
+
 interface ReactorClusterSuggestion {
   title: string;
   note: string;
@@ -2755,6 +2897,35 @@ function sharedMeaningfulTags(
   return (right.manualTags ?? [])
     .map((tag) => tag.trim().toLowerCase())
     .filter((tag) => leftTags.has(tag));
+}
+
+function buildSubsetLinks(
+  materials: ReactorMaterial[],
+  layouts: Record<string, BoardLayout>,
+) {
+  const byId = new Map(materials.map((material) => [material.id, material] as const));
+
+  return materials
+    .filter((material) => material.parentId && byId.has(material.parentId))
+    .map((material, index) => {
+      const childLayout = layouts[material.id] ?? defaultReactorLayout(index);
+      const parentLayout =
+        layouts[material.parentId as string] ??
+        defaultReactorLayout(Math.max(0, index - 1));
+
+      return {
+        fromId: material.parentId as string,
+        toId: material.id,
+        from: {
+          x: parentLayout.x + parentLayout.width / 2,
+          y: parentLayout.y + defaultReactorCardHeight(byId.get(material.parentId as string)!) - 8,
+        },
+        to: {
+          x: childLayout.x + childLayout.width / 2,
+          y: childLayout.y + 8,
+        },
+      };
+    });
 }
 
 function PixelPetSprite({

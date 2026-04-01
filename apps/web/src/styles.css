@@ -2007,6 +2007,27 @@ img {
   cursor: wait;
 }
 
+.reactor-subset-links {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.reactor-subset-links svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.reactor-subset-links path {
+  fill: none;
+  stroke: rgba(180, 164, 132, 0.42);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 3 8;
+}
+
 .reactor-export-sheet {
   display: grid;
   gap: 16px;
@@ -2115,6 +2136,16 @@ img {
   filter: drop-shadow(0 24px 34px rgba(137, 165, 141, 0.16));
 }
 
+.reactor-board-card-subset {
+  opacity: 0.98;
+}
+
+.reactor-board-card-subset .reactor-card {
+  box-shadow:
+    0 14px 28px rgba(71, 49, 35, 0.07),
+    0 0 0 1px rgba(214, 201, 183, 0.4);
+}
+
 .reactor-capture-prompt {
   width: 100%;
   display: grid;
@@ -2197,6 +2228,36 @@ img {
 .reactor-important-toggle.active {
   background: rgba(255, 243, 194, 0.96);
   color: rgba(136, 96, 11, 0.94);
+}
+
+.reactor-parent-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: rgba(252, 250, 246, 0.92);
+  border: 1px solid rgba(220, 207, 190, 0.36);
+}
+
+.reactor-parent-header {
+  display: grid;
+  gap: 4px;
+}
+
+.reactor-parent-header strong {
+  color: rgba(54, 40, 30, 0.84);
+}
+
+.reactor-parent-header span {
+  color: rgba(88, 69, 54, 0.62);
+  line-height: 1.4;
+}
+
+.reactor-parent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .reactor-quick-tags {

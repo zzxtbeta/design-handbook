@@ -50,6 +50,7 @@ export interface ReactorMaterialMeta {
 export interface ReactorMaterial {
   id: string;
   dayKey: string;
+  parentId: string | null;
   type: ReactorMaterialType;
   content: string;
   important: boolean;

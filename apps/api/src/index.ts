@@ -77,7 +77,7 @@ app.get("/api/reactor/days", async (request, response) => {
 });
 
 app.post("/api/reactor/materials", async (request, response) => {
-  const { type, content, important, note, manualTags, dayKey, meta, imageDataUrl } = request.body;
+  const { type, content, important, parentId, note, manualTags, dayKey, meta, imageDataUrl } = request.body;
 
   if (typeof type !== "string") {
     response.status(400).json({
@@ -132,6 +132,7 @@ app.post("/api/reactor/materials", async (request, response) => {
       type: type as Parameters<typeof createReactorMaterial>[0]["type"],
       content: resolvedContent,
       important: Boolean(important),
+      parentId: typeof parentId === "string" ? parentId : null,
       note: typeof note === "string" ? note : "",
       manualTags: Array.isArray(manualTags) ? manualTags.filter((tag) => typeof tag === "string") : [],
       dayKey: typeof dayKey === "string" ? dayKey : undefined,
@@ -144,6 +145,12 @@ app.patch("/api/reactor/materials/:id", async (request, response) => {
   const updated = await updateReactorMaterial(request.params.id, {
     content: typeof request.body.content === "string" ? request.body.content : undefined,
     important: typeof request.body.important === "boolean" ? request.body.important : undefined,
+    parentId:
+      typeof request.body.parentId === "string"
+        ? request.body.parentId
+        : request.body.parentId === null
+          ? null
+          : undefined,
     note: typeof request.body.note === "string" ? request.body.note : undefined,
     manualTags: Array.isArray(request.body.manualTags)
       ? request.body.manualTags.filter((tag: unknown) => typeof tag === "string")
