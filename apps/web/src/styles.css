@@ -1932,21 +1932,21 @@ img {
 
 .reactor-cluster-note {
   position: absolute;
-  top: -52px;
+  top: -96px;
   left: 50%;
   transform: translateX(-50%);
   display: grid;
   gap: 4px;
-  padding: 10px 14px 11px;
+  padding: 9px 14px 10px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.97);
   border: 1px solid rgba(210, 223, 212, 0.64);
-  box-shadow: 0 12px 30px rgba(71, 49, 35, 0.06);
-  min-width: 260px;
-  max-width: 360px;
+  box-shadow: 0 16px 34px rgba(71, 49, 35, 0.08);
+  min-width: 240px;
+  max-width: 320px;
   pointer-events: auto;
   cursor: grab;
-  z-index: 3;
+  z-index: 24;
 }
 
 .reactor-cluster-note strong,
@@ -1995,9 +1995,9 @@ img {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -12px;
+  bottom: -16px;
   width: 2px;
-  height: 12px;
+  height: 16px;
   transform: translateX(-50%);
   background: linear-gradient(180deg, rgba(144, 173, 149, 0.7), rgba(144, 173, 149, 0));
 }
