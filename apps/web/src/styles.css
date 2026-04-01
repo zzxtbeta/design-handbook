@@ -222,6 +222,62 @@ img {
   color: rgba(122, 73, 52, 0.94);
 }
 
+.board-tools-popover {
+  position: fixed;
+  top: 272px;
+  left: 78px;
+  z-index: 36;
+  width: 260px;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(214, 199, 183, 0.5);
+  box-shadow: 0 20px 36px rgba(71, 49, 35, 0.1);
+  backdrop-filter: blur(16px);
+}
+
+.board-tool-row {
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(250, 248, 244, 0.94);
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.board-tool-row + .board-tool-row {
+  margin-top: 8px;
+}
+
+.board-tool-eyebrow {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(107, 87, 73, 0.54);
+}
+
+.board-tool-row strong {
+  color: rgba(60, 42, 31, 0.92);
+  font-size: 0.96rem;
+}
+
+.board-tool-row span:last-child {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(87, 67, 55, 0.68);
+}
+
+.board-tool-eyebrow-modal {
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
 .top-toolbar {
   display: flex;
   align-items: center;
@@ -306,6 +362,76 @@ img {
   font-family: "Georgia", "Times New Roman", serif;
   font-size: 0.92rem;
   color: rgba(108, 89, 75, 0.66);
+}
+
+.tool-card {
+  width: min(760px, calc(100vw - 48px));
+  max-height: min(80vh, 920px);
+  overflow: auto;
+  padding: 28px 28px 22px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(209, 190, 171, 0.45);
+  box-shadow: 0 28px 64px rgba(71, 49, 35, 0.14);
+}
+
+.tool-card h2,
+.tool-card p {
+  margin: 0;
+}
+
+.tool-card p {
+  margin-top: 8px;
+  max-width: 560px;
+  line-height: 1.65;
+  color: rgba(86, 67, 55, 0.78);
+}
+
+.tool-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.tool-step {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(249, 246, 241, 0.94);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  display: grid;
+  gap: 8px;
+}
+
+.tool-step strong {
+  font-size: 1rem;
+}
+
+.tool-step span {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: rgba(84, 67, 54, 0.78);
+}
+
+.tool-prompt-preview {
+  margin: 18px 0 0;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(252, 250, 246, 0.95);
+  border: 1px solid rgba(215, 198, 178, 0.42);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
+  color: rgba(55, 42, 33, 0.86);
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.8rem;
+}
+
+.tool-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
 }
 
 .paper-sheet {
