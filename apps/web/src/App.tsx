@@ -693,6 +693,9 @@ export function App() {
   }
 
   async function handleSetMaterialParent(materialId: string, parentId: string | null) {
+    const material = reactorMaterialsById.get(materialId);
+    const parent = parentId ? reactorMaterialsById.get(parentId) : null;
+
     try {
       const response = await fetch(`/api/reactor/materials/${materialId}`, {
         method: "PATCH",
@@ -704,6 +707,19 @@ export function App() {
 
       if (!response.ok) {
         throw new Error(`Reactor parent update failed with status ${response.status}`);
+      }
+
+      if (material && parentId && parent) {
+        setReactorLayouts((current) =>
+          arrangeSubsetLayouts({
+            currentLayouts: current,
+            parent,
+            childId: materialId,
+            siblingIds: activeReactorMaterials
+              .filter((entry) => entry.parentId === parentId && entry.id !== materialId)
+              .map((entry) => entry.id),
+          }),
+        );
       }
 
       if (editingMaterialId === materialId) {
@@ -2036,6 +2052,10 @@ function ReactorDayCanvas({
     () => buildSubsetLinks(materials, layouts),
     [materials, layouts],
   );
+  const subsetGroups = useMemo(
+    () => buildSubsetGroups(materials, layouts),
+    [materials, layouts],
+  );
   const childIdsByParent = useMemo(() => {
     const map = new Map<string, string[]>();
     materials.forEach((material) => {
@@ -2154,6 +2174,42 @@ function ReactorDayCanvas({
 
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
+  }
+
+  function handleSubsetGroupDrag(group: ReactorSubsetGroup, event: React.MouseEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest(".reactor-folder-tab")) {
+      event.preventDefault();
+      event.stopPropagation();
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const startingLayouts = Object.fromEntries(
+        group.materialIds.map((materialId, order) => [
+          materialId,
+          layouts[materialId] ?? defaultReactorLayout(order),
+        ]),
+      );
+      group.materialIds.forEach((materialId, order) => {
+        onUpdateLayout(materialId, { z: Date.now() + order });
+      });
+
+      const handleMove = (moveEvent: MouseEvent) => {
+        group.materialIds.forEach((materialId) => {
+          const current = startingLayouts[materialId];
+          onUpdateLayout(materialId, {
+            x: Math.max(0, current.x + (moveEvent.clientX - startX) / canvasScale),
+            y: Math.max(0, current.y + (moveEvent.clientY - startY) / canvasScale),
+          });
+        });
+      };
+
+      const handleUp = () => {
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("mouseup", handleUp);
+      };
+
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", handleUp);
+    }
   }
 
   return (
@@ -2322,6 +2378,24 @@ function ReactorDayCanvas({
               >
                 {loadingClusterId === cluster.id ? "思考中..." : "AI整理"}
               </button>
+            </div>
+          </div>
+        ))}
+        {subsetGroups.map((group) => (
+          <div
+            key={group.parentId}
+            className="reactor-folder-group"
+            style={{
+              left: `${group.bounds.left}px`,
+              top: `${group.bounds.top}px`,
+              width: `${group.bounds.width}px`,
+              height: `${group.bounds.height}px`,
+            }}
+            onMouseDown={(event) => handleSubsetGroupDrag(group, event)}
+          >
+            <div className="reactor-folder-tab">
+              <span className="reactor-folder-dot" />
+              <span>{group.materialIds.length}</span>
             </div>
           </div>
         ))}
@@ -2884,6 +2958,17 @@ interface ReactorClusterSuggestion {
   subsetHint: string | null;
 }
 
+interface ReactorSubsetGroup {
+  parentId: string;
+  materialIds: string[];
+  bounds: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+}
+
 function sharedMeaningfulTags(
   left: ReactorDay["materials"][number],
   right: ReactorDay["materials"][number],
@@ -2926,6 +3011,92 @@ function buildSubsetLinks(
         },
       };
     });
+}
+
+function buildSubsetGroups(
+  materials: ReactorMaterial[],
+  layouts: Record<string, BoardLayout>,
+): ReactorSubsetGroup[] {
+  const byId = new Map(materials.map((material) => [material.id, material] as const));
+  const childIdsByParent = new Map<string, string[]>();
+
+  materials.forEach((material) => {
+    if (!material.parentId || !byId.has(material.parentId)) {
+      return;
+    }
+
+    const current = childIdsByParent.get(material.parentId) ?? [];
+    current.push(material.id);
+    childIdsByParent.set(material.parentId, current);
+  });
+
+  return [...childIdsByParent.entries()].map(([parentId, childIds]) => {
+    const parent = byId.get(parentId)!;
+    const allIds = [parentId, ...childIds];
+    const nodes = allIds.map((id, index) => {
+      const material = byId.get(id)!;
+      const layout = layouts[id] ?? defaultReactorLayout(index);
+      return {
+        material,
+        layout,
+        height: defaultReactorCardHeight(material),
+      };
+    });
+
+    const left = Math.min(...nodes.map((node) => node.layout.x)) - 24;
+    const top = Math.min(...nodes.map((node) => node.layout.y)) - 28;
+    const right = Math.max(...nodes.map((node) => node.layout.x + node.layout.width)) + 24;
+    const bottom = Math.max(...nodes.map((node) => node.layout.y + node.height)) + 24;
+
+    return {
+      parentId,
+      materialIds: allIds,
+      bounds: {
+        left,
+        top,
+        width: right - left,
+        height: bottom - top,
+      },
+    };
+  });
+}
+
+function arrangeSubsetLayouts({
+  currentLayouts,
+  parent,
+  childId,
+  siblingIds,
+}: {
+  currentLayouts: Record<string, BoardLayout>;
+  parent: ReactorMaterial;
+  childId: string;
+  siblingIds: string[];
+}) {
+  const parentLayout = currentLayouts[parent.id] ?? defaultReactorLayout(0);
+  const orderedIds = [...siblingIds, childId];
+  const next = { ...currentLayouts };
+  const childWidth = 176;
+  const verticalGap = 26;
+  const horizontalGap = 18;
+  const childStartX = parentLayout.x + 18;
+  const childStartY = parentLayout.y + defaultReactorCardHeight(parent) + verticalGap;
+
+  orderedIds.forEach((id, index) => {
+    next[id] = {
+      ...(currentLayouts[id] ?? defaultReactorLayout(index + 1)),
+      x: childStartX + (index % 2) * (childWidth + horizontalGap),
+      y: childStartY + Math.floor(index / 2) * 126,
+      width: childWidth,
+      z: parentLayout.z + index + 1,
+    };
+  });
+
+  next[parent.id] = {
+    ...parentLayout,
+    width: Math.max(parentLayout.width, orderedIds.length > 1 ? 372 : 310),
+  };
+
+  return next;
 }
 
 function PixelPetSprite({

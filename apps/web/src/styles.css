@@ -2022,10 +2022,50 @@ img {
 
 .reactor-subset-links path {
   fill: none;
-  stroke: rgba(180, 164, 132, 0.42);
-  stroke-width: 2;
+  stroke: rgba(180, 164, 132, 0.26);
+  stroke-width: 1.6;
   stroke-linecap: round;
   stroke-dasharray: 3 8;
+}
+
+.reactor-folder-group {
+  position: absolute;
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(250, 246, 238, 0.16)),
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.5), transparent 30%);
+  border: 1px solid rgba(212, 198, 176, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.66),
+    0 18px 34px rgba(71, 49, 35, 0.04);
+  z-index: 0;
+}
+
+.reactor-folder-tab {
+  position: absolute;
+  top: -14px;
+  left: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(212, 198, 176, 0.44);
+  box-shadow: 0 12px 22px rgba(71, 49, 35, 0.05);
+  color: rgba(92, 70, 51, 0.78);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.78rem;
+  cursor: grab;
+  user-select: none;
+}
+
+.reactor-folder-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(212, 183, 110, 0.8);
+  box-shadow: 0 0 0 4px rgba(244, 231, 190, 0.32);
 }
 
 .reactor-export-sheet {
