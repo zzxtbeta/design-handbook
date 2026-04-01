@@ -25,9 +25,8 @@ export interface ReactorClusterInsight {
 
 export interface ReactorStorylineInsight {
   title: string;
-  summary: string;
-  structure: string[];
-  nextStep: string;
+  intent: string;
+  prompt: string;
 }
 
 const prompt =
@@ -63,14 +62,15 @@ const reactorStorylinePrompt = (input: {
   [
     "你在帮助内容创作者整理一天的乱序素材。",
     "输入包含两部分：当天日记，以及创作者从画布中挑选出来的素材。",
-    "请把它们当成同一条创作脉络来理解，输出一个可继续写的结构草案。",
+    "请把它们当成同一条创作脉络来理解，先理清创作者真正想表达的意图，再产出一段可直接复制给更强AI去生成母稿的中文 prompt。",
     "只输出 JSON，不要输出额外解释。",
-    '输出格式：{"title":"...","summary":"...","structure":["...","...","..."],"nextStep":"..."}',
+    '输出格式：{"title":"...","intent":"...","prompt":"..."}',
     "规则：",
     "- title：中文，6到16个字，像一个可继续写的主题。",
-    "- summary：中文，一句话说明这批材料真正值得写的核心。",
-    "- structure：中文，3条，像内容结构或段落顺序，每条控制在24字以内。",
-    "- nextStep：中文，一句非常具体的建议，告诉创作者接下来最该做什么。",
+    "- intent：中文，一句话说清创作者这批材料真正想表达什么，避免空泛总结。",
+    "- prompt：中文，多行字符串，直接写给另一个更强AI用。",
+    "- prompt 里必须包含：主题判断、目标读者、语气要求、可用素材提示、文章结构要求、必须保留的真实感。",
+    "- prompt 不能是解释，必须是可直接复制粘贴的生成指令。",
     "- 语气像成熟编辑，不要像AI助手，不要空泛，不要鸡汤。",
     "",
     "日记：",
@@ -694,17 +694,14 @@ function parseStorylineInsight(
     const cleaned = String(raw).trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "");
     const parsed = JSON.parse(cleaned);
     const title = typeof parsed?.title === "string" ? parsed.title.trim().slice(0, 80) : "";
-    const summary = typeof parsed?.summary === "string" ? parsed.summary.trim().slice(0, 180) : "";
-    const structure = Array.isArray(parsed?.structure)
-      ? parsed.structure.map((item: unknown) => String(item).trim()).filter(Boolean).slice(0, 3)
-      : [];
-    const nextStep = typeof parsed?.nextStep === "string" ? parsed.nextStep.trim().slice(0, 160) : "";
+    const intent = typeof parsed?.intent === "string" ? parsed.intent.trim().slice(0, 220) : "";
+    const prompt = typeof parsed?.prompt === "string" ? parsed.prompt.trim().slice(0, 2400) : "";
 
-    if (!title || !summary || structure.length === 0 || !nextStep) {
+    if (!title || !intent || !prompt) {
       return generateMockStorylineInsight(diary, materials);
     }
 
-    return { title, summary, structure, nextStep };
+    return { title, intent, prompt };
   } catch {
     return generateMockStorylineInsight(diary, materials);
   }
@@ -719,15 +716,19 @@ function generateMockStorylineInsight(
 
   return {
     title,
-    summary: diary.trim()
+    intent: diary.trim()
       ? "今天的日记和素材都在指向一个更清楚的主题，值得先把核心判断写出来。"
       : "这批素材里已经有一个共同方向了，适合先收成一个可继续展开的主题。",
-    structure: [
-      "先写今天最强的观察或感受",
-      "再接一条最能支撑它的素材",
-      "最后落到一个可继续展开的问题",
-    ],
-    nextStep: "先把第一段写成一句明确判断，再决定哪些素材真的需要留下。",
+    prompt: [
+      "请根据下面这些真实素材，帮我写一篇高质量中文母稿。",
+      `核心主题：${title}`,
+      "先帮我提炼一个清晰判断，不要平铺信息。",
+      "目标读者：对这个主题有感受、但还没被说服的人。",
+      "语气要求：真实、克制、有判断，不要像知识博主念稿。",
+      "结构要求：先抛出核心判断，再用真实素材支撑，最后落到一个值得继续思考的问题。",
+      "素材使用要求：优先使用我提供的日记感受和画布素材，不要编造经历。",
+      "请先给一个完整母稿，再补 3 个可替换标题。",
+    ].join("\n"),
   };
 }
 

@@ -41,9 +41,8 @@ const reactorWhyKeepPresets = [
 
 interface ReactorStorylineInsight {
   title: string;
-  summary: string;
-  structure: string[];
-  nextStep: string;
+  intent: string;
+  prompt: string;
 }
 
 type ViewMode = "week" | "day";
@@ -1952,6 +1951,7 @@ function ReactorDayCanvas({
   const [selectedAiIds, setSelectedAiIds] = useState<string[]>([]);
   const [includeDiaryInAi, setIncludeDiaryInAi] = useState(true);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const [copiedStudioPrompt, setCopiedStudioPrompt] = useState(false);
   const [isGeneratingStoryline, setIsGeneratingStoryline] = useState(false);
   const [storylineInsight, setStorylineInsight] = useState<ReactorStorylineInsight | null>(null);
 
@@ -1968,6 +1968,15 @@ function ReactorDayCanvas({
     const timeout = window.setTimeout(() => setCopiedMarkdown(false), 1200);
     return () => window.clearTimeout(timeout);
   }, [copiedMarkdown]);
+
+  useEffect(() => {
+    if (!copiedStudioPrompt) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setCopiedStudioPrompt(false), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [copiedStudioPrompt]);
 
   const selectedExportMaterials = useMemo(
     () => materials.filter((material) => selectedExportIds.includes(material.id)),
@@ -2112,31 +2121,34 @@ function ReactorDayCanvas({
           </div>
         </section>
       ) : null}
-      <div className="reactor-day-support-grid">
-        <section className="reactor-diary-panel">
-          <div className="reactor-diary-header">
-            <div>
-              <span className="reactor-side-kicker">Diary</span>
-              <strong>Write before sorting.</strong>
-            </div>
-            <button className="ghost-action" onClick={onSaveDiary}>保存日记</button>
+      <section className="reactor-diary-panel">
+        <div className="reactor-diary-header">
+          <div>
+            <span className="reactor-side-kicker">Diary</span>
+            <strong>Write before sorting.</strong>
           </div>
-          <textarea
-            className="reactor-diary-textarea"
-            value={diaryDraft}
-            onChange={(event) => onDiaryChange(event.target.value)}
-            placeholder="Write the scattered parts of today before you try to explain them."
-          />
-        </section>
-        {aiStudioOpen ? (
+          <button className="ghost-action" onClick={onSaveDiary}>保存日记</button>
+        </div>
+        <textarea
+          className="reactor-diary-textarea"
+          value={diaryDraft}
+          onChange={(event) => onDiaryChange(event.target.value)}
+          placeholder="Write the scattered parts of today before you try to explain them."
+        />
+      </section>
+      <div className={`reactor-canvas-stage ${aiStudioOpen ? "with-ai-studio" : ""}`}>
+        <aside className={`reactor-ai-drawer ${aiStudioOpen ? "open" : ""}`}>
           <section className="reactor-ai-studio">
             <div className="reactor-ai-studio-header">
               <div>
                 <span className="reactor-side-kicker">AI Studio</span>
-                <strong>Your material editor.</strong>
+                <strong>Build a better writing prompt.</strong>
               </div>
               <button className="ghost-action" onClick={() => setAiStudioOpen(false)}>关闭</button>
             </div>
+            <p className="reactor-ai-intro">
+              用今日日记和你选中的素材，整理出一个可直接复制给更强 AI 的写作 prompt。
+            </p>
             <label className="reactor-ai-toggle">
               <input
                 type="checkbox"
@@ -2166,34 +2178,31 @@ function ReactorDayCanvas({
             </div>
             <div className="reactor-ai-actions">
               <button className="today-button" onClick={() => void handleGenerateStoryline()} disabled={isGeneratingStoryline}>
-                {isGeneratingStoryline ? "整理中..." : "整理成结构"}
+                {isGeneratingStoryline ? "整理中..." : "生成 Prompt"}
               </button>
             </div>
             {storylineInsight ? (
               <div className="reactor-ai-result">
                 <strong>{storylineInsight.title}</strong>
-                <p>{storylineInsight.summary}</p>
-                <ol>
-                  {storylineInsight.structure.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ol>
-                <span>{storylineInsight.nextStep}</span>
+                <p>{storylineInsight.intent}</p>
+                <pre>{storylineInsight.prompt}</pre>
+                <div className="reactor-ai-actions">
+                  <button
+                    className={`top-tool ${copiedStudioPrompt ? "active" : ""}`}
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(storylineInsight.prompt);
+                      setCopiedStudioPrompt(true);
+                    }}
+                  >
+                    {copiedStudioPrompt ? "已复制 Prompt" : "复制 Prompt"}
+                  </button>
+                </div>
               </div>
             ) : null}
           </section>
-        ) : (
-          <section className="reactor-ai-studio reactor-ai-studio-empty">
-            <div>
-              <span className="reactor-side-kicker">AI Studio</span>
-              <strong>Clip diary and notes into a thread.</strong>
-            </div>
-            <button className="top-tool" onClick={() => setAiStudioOpen(true)}>Open</button>
-          </section>
-        )}
-      </div>
+        </aside>
       <div
-        className="day-canvas-board reactor-canvas-board"
+        className={`day-canvas-board reactor-canvas-board ${aiStudioOpen ? "reactor-canvas-board-shifted" : ""}`}
         onWheel={(event) => {
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
@@ -2344,6 +2353,7 @@ function ReactorDayCanvas({
           );
         })}
         </div>
+      </div>
       </div>
     </section>
   );
