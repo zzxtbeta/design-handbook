@@ -763,15 +763,43 @@ img {
 
 .pin {
   position: absolute;
-  top: -14px;
+  top: -24px;
   left: 50%;
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   transform: translateX(-50%);
   box-shadow:
-    0 8px 14px rgba(66, 47, 34, 0.15),
-    inset 0 2px 1px rgba(255, 255, 255, 0.45);
+    0 10px 18px rgba(66, 47, 34, 0.18),
+    inset 0 2px 3px rgba(255, 255, 255, 0.55),
+    inset 0 -2px 3px rgba(79, 57, 40, 0.12);
+}
+
+.pin::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: 3px;
+  height: 24px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(183, 185, 190, 0.92), rgba(128, 131, 136, 0.88));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.pin::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  filter: blur(0.2px);
 }
 
 .paper-clip {
@@ -796,22 +824,22 @@ img {
 
 .tape-amber,
 .pin-amber {
-  background: rgba(226, 222, 205, 0.9);
+  background: radial-gradient(circle at 34% 28%, rgba(255, 241, 182, 0.92), rgba(229, 181, 24, 0.98));
 }
 
 .tape-pink,
 .pin-pink {
-  background: rgba(234, 206, 213, 0.82);
+  background: radial-gradient(circle at 34% 28%, rgba(255, 206, 228, 0.92), rgba(228, 97, 150, 0.98));
 }
 
 .tape-sage,
 .pin-sage {
-  background: rgba(208, 228, 211, 0.82);
+  background: radial-gradient(circle at 34% 28%, rgba(214, 238, 219, 0.92), rgba(111, 173, 129, 0.98));
 }
 
 .tape-blue,
 .pin-blue {
-  background: rgba(210, 222, 238, 0.84);
+  background: radial-gradient(circle at 34% 28%, rgba(214, 226, 246, 0.92), rgba(108, 141, 214, 0.98));
 }
 
 .image-frame {
