@@ -2446,22 +2446,28 @@ function ReactorDayCanvas({
         {materials.map((material, index) => {
           const layout = layouts[material.id] ?? defaultReactorLayout(index);
           const childIds = childIdsByParent.get(material.id) ?? [];
+          const isFocused = focusedMaterialId === material.id;
+          const isBackgrounded =
+            Boolean(
+              focusedGroupRootId &&
+                (material.parentId === focusedGroupRootId || material.id === focusedGroupRootId) &&
+                focusedMaterialId !== material.id,
+            );
           return (
             <motion.article
               key={material.id}
               className={`day-board-card reactor-board-card ${
                 clusteredMaterialIds.has(material.id) ? "reactor-board-card-clustered" : ""
-              } ${material.parentId ? "reactor-board-card-subset" : ""} ${
-                focusedMaterialId === material.id ? "reactor-board-card-active" : ""
-              } ${
-                focusedGroupRootId &&
-                (material.parentId === focusedGroupRootId || material.id === focusedGroupRootId) &&
-                focusedMaterialId !== material.id
-                  ? "reactor-board-card-backgrounded"
-                  : ""
+              } ${material.parentId ? "reactor-board-card-subset" : ""} ${isFocused ? "reactor-board-card-active" : ""} ${
+                isBackgrounded ? "reactor-board-card-backgrounded" : ""
               }`}
               initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
+              animate={{
+                opacity: isBackgrounded ? 0.72 : 1,
+                scale: isFocused ? 1.03 : isBackgrounded ? 0.96 : 1,
+                y: isFocused ? -6 : isBackgrounded ? 6 : 0,
+              }}
+              transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.7 }}
               style={{
                 left: `${layout.x}px`,
                 top: `${layout.y}px`,
