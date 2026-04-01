@@ -1307,10 +1307,10 @@ export function App() {
                     <button
                       className="image-lightbox-prompt"
                       onClick={() => void handleCopyTerm(zoomedEntry.promptSummary ?? "")}
-                      title="点击复制风格备注"
+                      title="点击复制风格提示词"
                     >
                       <span className="image-lightbox-prompt-copy">
-                        <strong>风格备注</strong>
+                        <strong>风格提示词</strong>
                         <span>{zoomedEntry.promptSummary}</span>
                       </span>
                       <span className="summary-copy">⧉</span>
@@ -3024,6 +3024,7 @@ function JournalCard({
 }) {
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const canExpandSummary = (entry.promptSummary?.length ?? 0) > 58;
+  const terms = visibleTerms(entry);
 
   return (
     <article
@@ -3099,27 +3100,42 @@ function JournalCard({
         </div>
       ) : null}
       <div className="term-cluster">
-        {visibleTerms(entry).length > 0 ? (
+        {terms.length > 0 ? (
           <div className="term-summary">
             {isExpanded ? (
               <div className="term-hover-list is-open">
-                {visibleTerms(entry).map((term, termIndex) => (
+                <button
+                  className="term-bulk-copy"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void onCopyTerm(terms.map((term) => term.term).join("\n"));
+                  }}
+                >
+                  复制全部关键词
+                </button>
+                {terms.map((term, termIndex) => (
                   <div key={term.id} className="term-pill-row">
-                    <button
+                    <span
                       className="term-pill floating"
                       style={{
                         width: `${Math.max(68, 100 - termIndex * 5)}%`,
                       }}
+                    >
+                      <span>{term.term}</span>
+                    </span>
+                    <button
+                      className="term-action term-action-copy"
                       onClick={(event) => {
                         event.stopPropagation();
                         void onCopyTerm(term.term);
                       }}
+                      aria-label={`复制术语 ${term.term}`}
+                      title="复制关键词"
                     >
-                      <span>{term.term}</span>
-                      <span className="term-copy">⧉</span>
+                      ⧉
                     </button>
                     <button
-                      className="term-delete"
+                      className="term-action term-action-delete"
                       onClick={(event) => {
                         event.stopPropagation();
                         void onDeleteTerm(term.id);
@@ -3139,9 +3155,9 @@ function JournalCard({
                   onToggleExpanded(isExpanded ? null : entry.id);
                 }}
               >
-                <span>{visibleTerms(entry)[0].term}</span>
-                {visibleTerms(entry).length > 1 ? (
-                  <span className="term-count">+{visibleTerms(entry).length - 1}</span>
+                <span>{terms[0].term}</span>
+                {terms.length > 1 ? (
+                  <span className="term-count">+{terms.length - 1}</span>
                 ) : null}
               </button>
             )}

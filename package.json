@@ -15,6 +15,7 @@
     "typecheck:web": "cd apps/web && bun run typecheck",
     "typecheck:api": "cd apps/api && bun run typecheck",
     "backfill:entry-language": "cd apps/api && bunx tsx src/scripts/backfill-entry-language.ts",
+    "backfill:entry-prompts": "cd apps/api && bunx tsx src/scripts/backfill-entry-prompts.ts",
     "db:check": "cd packages/db && bun run check",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",

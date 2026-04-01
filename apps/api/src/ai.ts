@@ -35,8 +35,11 @@ const prompt =
   "关键词必须使用中文短语，不要英文，不要中英混写。" +
   "请尽量覆盖至少 4 类信息：布局结构、组件形态、字体/排版、颜色/光影、材质/质感、交互暗示。" +
   "优先输出这张图真正显著的视觉特征，而不是安全但泛化的描述。" +
-  '另外再生成一句非常简短的中文风格备注，用于以后快速回忆这张图的感觉，控制在 12 到 20 个中文字符以内。' +
-  '这句备注必须是中文，不要英文，不要句号，不要过度抽象。' +
+  "另外再生成一段可直接复制给文生文或文生图AI的中文风格提示词，用来让AI精准理解这张图的气质与设计语言。" +
+  "这段提示词必须是完整自然的一段话，不是标题，不是碎片短语，也不是总结口号。" +
+  "必须明确说明：整体氛围、版式结构、排版风格、配色倾向、材质肌理、光影方式，以及应该避免的俗套方向。" +
+  "长度控制在 80 到 220 个中文字符之间，要求具体、可执行、可复刻，可以直接复制使用。" +
+  "这段提示词必须使用中文，不要英文，不要项目符号，不要 JSON 内嵌列表。" +
   '输出 JSON：{"terms":["..."],"promptSummary":"..."}。每个关键词保持短语，不要写句子，不要重复。';
 
 const reactorClusterPrompt = (materials: ReactorClusterMaterialInput[]) =>
@@ -605,7 +608,7 @@ function parseTermsFromUnknownPayload(raw: string): DesignInsight {
   const terms = Array.isArray(parsed?.terms) ? parsed.terms : [];
   const promptSummary =
     typeof parsed?.promptSummary === "string"
-      ? parsed.promptSummary.trim().slice(0, 180)
+      ? parsed.promptSummary.trim().slice(0, 600)
       : null;
   return {
     terms: sanitizeTerms(terms),
@@ -623,20 +626,20 @@ function sanitizeTerms(input: string[]) {
 function generateMockTerms(seed: string): DesignInsight {
   const pools = [
     {
-      terms: ["editorial layout", "paper texture", "soft shadow", "warm neutral palette"],
-      promptSummary: "暖调纸感编辑墙",
+      terms: ["编辑式留白布局", "纸张纤维肌理", "柔和漫反射阴影", "暖灰中性色调"],
+      promptSummary: "整体保持暖灰米白的纸感编辑氛围，用克制留白和轻柔阴影建立安静层次，版式偏杂志编排而不是强功能看板，字体与元素都要有呼吸感，避免高饱和配色、锐利高对比和过满的信息堆叠。",
     },
     {
-      terms: ["glassmorphism", "frosted layer", "cool blur", "translucent panel"],
-      promptSummary: "冷调毛玻璃叠层卡片",
+      terms: ["冷调毛玻璃叠层", "半透明模糊面板", "柔雾边缘", "浅灰蓝光感"],
+      promptSummary: "画面以浅灰蓝和雾面白为主，使用半透明叠层卡片与柔和模糊边缘营造冷静的数字空气感，强调轻盈悬浮和细腻过渡，不要出现厚重投影、艳丽颜色或过于科技感的赛博元素。",
     },
     {
-      terms: ["poster composition", "oversized type", "calm negative space", "soft gradient"],
-      promptSummary: "大字留白海报构图",
+      terms: ["海报式大字构图", "克制负空间", "重心偏移排版", "低饱和渐变"],
+      promptSummary: "采用海报式大字与大面积留白的版式结构，让视觉重心带一点偏移和呼吸感，色彩保持低饱和柔雾渐变，整体安静而有设计张力，避免满版装饰、复杂组件感和常见互联网运营风格。",
     },
     {
-      terms: ["polaroid framing", "tape accent", "scrapbook feel", "gentle depth"],
-      promptSummary: "拍立得拼贴手帐感",
+      terms: ["拍立得相纸边框", "手帐拼贴感", "纸胶带点缀", "轻静物陈列"],
+      promptSummary: "用拍立得相纸边框、手帐式拼贴和少量纸胶带细节营造轻松文艺的收集感，整体偏低饱和莫兰迪色和柔和纸面肌理，像桌面静物陈列而不是商业广告，避免元素过满和过强的可爱装饰。",
     },
   ];
 

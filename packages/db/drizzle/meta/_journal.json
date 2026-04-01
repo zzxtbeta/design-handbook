@@ -57,6 +57,13 @@
       "when": 1775240400000,
       "tag": "0007_reactor_parent_links",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775323800000,
+      "tag": "0008_expand_entry_prompt_summary",
+      "breakpoints": true
     }
   ]
 }

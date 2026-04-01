@@ -921,10 +921,11 @@ img {
 }
 
 .term-pill-row {
-  position: relative;
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px 28px;
   align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   width: 100%;
 }
 
@@ -936,8 +937,8 @@ img {
 
 .term-pill.floating {
   font-size: 0.84rem;
-  padding-right: 12px;
-  justify-content: space-between;
+  padding-right: 14px;
+  justify-content: flex-start;
   min-height: 50px;
   margin-left: auto;
 }
@@ -949,26 +950,54 @@ img {
   white-space: nowrap;
 }
 
-.term-delete {
-  position: absolute;
-  top: 50%;
-  right: -8px;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
+.term-action {
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    background 120ms ease;
+}
+
+.term-action-copy {
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(94, 74, 60, 0.72);
+  box-shadow: 0 6px 12px rgba(74, 49, 28, 0.08);
+}
+
+.term-action-delete {
+  width: 22px;
+  height: 22px;
   background: #ef6d6d;
   color: #fff;
   box-shadow: 0 8px 14px rgba(86, 46, 46, 0.16);
   opacity: 0;
-  cursor: pointer;
-  transition: opacity 120ms ease;
+  transform: scale(0.94);
 }
 
-.term-pill-row:hover .term-delete,
-.term-pill-row:focus-within .term-delete {
+.term-pill-row:hover .term-action-delete,
+.term-pill-row:focus-within .term-action-delete {
   opacity: 1;
+  transform: scale(1);
+}
+
+.term-bulk-copy {
+  justify-self: end;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 14px rgba(74, 49, 28, 0.08);
+  color: rgba(82, 64, 49, 0.76);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.74rem;
+  cursor: pointer;
 }
 
 .term-copy {
