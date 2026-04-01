@@ -21,22 +21,22 @@ const dayGroups = [
 ] as const;
 
 const reactorQuickTags = [
-  "Angle",
-  "Reference",
-  "Structure",
-  "Tone",
-  "Visual",
-  "Follow-up",
-  "Topic",
-  "Prompt",
+  "角度",
+  "参考",
+  "结构",
+  "语气",
+  "视觉",
+  "跟进",
+  "主题",
+  "提示词",
 ] as const;
 
 const reactorWhyKeepPresets = [
-  "Worth revisiting",
-  "Use later",
-  "Strong angle",
-  "Good reference",
-  "Keep the tone",
+  "值得再看",
+  "以后会用",
+  "角度很强",
+  "可作参考",
+  "语气很好",
 ] as const;
 
 type ViewMode = "week" | "day";
@@ -121,7 +121,6 @@ export function App() {
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
   const [editingImportant, setEditingImportant] = useState(false);
-  const [editingParentId, setEditingParentId] = useState<string | null>(null);
   const [editingNoteDraft, setEditingNoteDraft] = useState("");
   const [editingTagsDraft, setEditingTagsDraft] = useState("");
   const [isSavingMaterialEdit, setIsSavingMaterialEdit] = useState(false);
@@ -434,20 +433,6 @@ export function App() {
     [reactorBoard],
   );
   const editingMaterial = editingMaterialId ? reactorMaterialsById.get(editingMaterialId) ?? null : null;
-  const editingParent = editingParentId ? reactorMaterialsById.get(editingParentId) ?? null : null;
-  const editingAttachCandidates = useMemo(() => {
-    if (!editingMaterial) {
-      return [];
-    }
-
-    return activeReactorMaterials.filter(
-      (material) =>
-        material.id !== editingMaterial.id &&
-        material.parentId !== editingMaterial.id &&
-        material.dayKey === editingMaterial.dayKey,
-    );
-  }, [activeReactorMaterials, editingMaterial]);
-
   const activeEntries = week
     ? week.entries.filter((entry) => entry.daySlot === activeDay)
     : [];
@@ -608,7 +593,6 @@ export function App() {
 
     setEditingMaterialId(materialId);
     setEditingImportant(Boolean(material.important));
-    setEditingParentId(material.parentId ?? null);
     setEditingNoteDraft(material.note ?? "");
     setEditingTagsDraft(
       (material.manualTags?.length ? material.manualTags : defaultMaterialTags(material.type)).join(", "),
@@ -629,7 +613,6 @@ export function App() {
         },
         body: JSON.stringify({
           important: editingImportant,
-          parentId: editingParentId,
           note: editingNoteDraft,
           manualTags: editingTagsDraft
             .split(",")
@@ -689,49 +672,6 @@ export function App() {
     } catch (error) {
       console.error("[web] handleToggleImportant failed", error);
       setReactorError("Could not update importance right now.");
-    }
-  }
-
-  async function handleSetMaterialParent(materialId: string, parentId: string | null) {
-    const material = reactorMaterialsById.get(materialId);
-    const parent = parentId ? reactorMaterialsById.get(parentId) : null;
-
-    try {
-      const response = await fetch(`/api/reactor/materials/${materialId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ parentId }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Reactor parent update failed with status ${response.status}`);
-      }
-
-      if (material && parentId && parent) {
-        setReactorLayouts((current) =>
-          arrangeSubsetLayouts({
-            currentLayouts: current,
-            parent,
-            childIds: [
-              ...activeReactorMaterials
-              .filter((entry) => entry.parentId === parentId && entry.id !== materialId)
-              .map((entry) => entry.id),
-              materialId,
-            ],
-          }),
-        );
-      }
-
-      if (editingMaterialId === materialId) {
-        setEditingParentId(parentId);
-      }
-
-      await loadReactorBoard();
-    } catch (error) {
-      console.error("[web] handleSetMaterialParent failed", error);
-      setReactorError("Could not update note relationship right now.");
     }
   }
 
@@ -1181,7 +1121,6 @@ export function App() {
                   onDeleteMaterial={(id) => void handleDeleteMaterial(id)}
                   onEditMaterial={openMaterialEditor}
                   onToggleImportant={(id) => void handleToggleImportant(id)}
-                  onSetParent={(materialId, parentId) => void handleSetMaterialParent(materialId, parentId)}
                   onOpenDay={(dayKey) => {
                     setActiveReactorDayKey(dayKey);
                     setReactorViewMode("day");
@@ -1252,12 +1191,12 @@ export function App() {
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="reactor-edit-sheet-header">
-                  <strong>Refine note</strong>
-                  <button className="ghost-action" onClick={() => setEditingMaterialId(null)}>Close</button>
+                  <strong>编辑素材</strong>
+                  <button className="ghost-action" onClick={() => setEditingMaterialId(null)}>关闭</button>
                 </div>
                 {editingMaterial ? (
                   <div className="reactor-edit-meta">
-                    <span className="reactor-edit-meta-label">{labelForMaterialType(editingMaterial.type)}</span>
+                    <span className="reactor-edit-meta-label">{labelForMaterialTypeZh(editingMaterial.type)}</span>
                     {editingMaterial.type === "link" ? (
                       <>
                         <p className="reactor-edit-content">{editingMaterial.content}</p>
@@ -1274,22 +1213,23 @@ export function App() {
                       <button
                         className="reactor-edit-image"
                         onClick={() => window.open(editingMaterial.meta?.imageUrl, "_blank", "noopener,noreferrer")}
-                      >
-                        {editingMaterial.meta?.imageUrl ? (
-                          <img src={editingMaterial.meta.imageUrl} alt={editingMaterial.content} />
-                        ) : null}
-                        <span>Open image</span>
+                        >
+                          {editingMaterial.meta?.imageUrl ? (
+                            <img src={editingMaterial.meta.imageUrl} alt={editingMaterial.content} />
+                          ) : null}
+                        <span>查看大图</span>
                       </button>
                     ) : (
                       <p className="reactor-edit-content">{editingMaterial.content}</p>
                     )}
                   </div>
                 ) : null}
+                <label className="reactor-field-label">备注</label>
                 <textarea
                   className="reactor-compose-textarea"
                   value={editingNoteDraft}
                   onChange={(event) => setEditingNoteDraft(event.target.value)}
-                  placeholder="Add a quick note"
+                  placeholder="补一句备注，说明为什么留下它"
                 />
                 <div className="reactor-quick-tags">
                   {reactorWhyKeepPresets.map((preset) => (
@@ -1306,41 +1246,14 @@ export function App() {
                   className={`reactor-important-toggle ${editingImportant ? "active" : ""}`}
                   onClick={() => setEditingImportant((value) => !value)}
                 >
-                  {editingImportant ? "Marked important" : "Mark as important"}
+                  {editingImportant ? "已标为重要" : "标为重要"}
                 </button>
-                {editingMaterial ? (
-                  <div className="reactor-parent-section">
-                    <div className="reactor-parent-header">
-                      <strong>Structure</strong>
-                      <span>
-                        {editingParent ? `Subset of: ${editingParent.content}` : "Currently a standalone card"}
-                      </span>
-                    </div>
-                    <div className="reactor-parent-actions">
-                      <button
-                        className={`top-tool ${editingParentId === null ? "active" : ""}`}
-                        onClick={() => setEditingParentId(null)}
-                      >
-                        Standalone
-                      </button>
-                      {editingAttachCandidates.map((candidate) => (
-                        <button
-                          key={candidate.id}
-                          className={`top-tool ${editingParentId === candidate.id ? "active" : ""}`}
-                          onClick={() => setEditingParentId(candidate.id)}
-                          title={candidate.content}
-                        >
-                          {truncateMiddle(candidate.content, 22)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+                <label className="reactor-field-label">标签</label>
                 <input
                   className="reactor-compose-input"
                   value={editingTagsDraft}
                   onChange={(event) => setEditingTagsDraft(event.target.value)}
-                  placeholder="Tags, comma separated"
+                  placeholder="标签，用逗号分隔"
                 />
                 <div className="reactor-quick-tags">
                   {reactorQuickTags.map((tag) => (
@@ -1356,9 +1269,9 @@ export function App() {
                   ))}
                 </div>
                 <div className="reactor-compose-actions">
-                  <button className="top-tool" onClick={() => setEditingMaterialId(null)}>Cancel</button>
+                  <button className="top-tool" onClick={() => setEditingMaterialId(null)}>取消</button>
                   <button className="today-button" onClick={() => void handleSaveMaterialEdit()} disabled={isSavingMaterialEdit}>
-                    {isSavingMaterialEdit ? "Saving..." : "Save"}
+                    {isSavingMaterialEdit ? "保存中..." : "保存"}
                   </button>
                 </div>
               </motion.section>
@@ -1620,7 +1533,6 @@ function ReactorBoardView({
   onDeleteMaterial,
   onEditMaterial,
   onToggleImportant,
-  onSetParent,
   onOpenDay,
   onBackToWeek,
   onCloseComposer,
@@ -1650,7 +1562,6 @@ function ReactorBoardView({
   onDeleteMaterial: (materialId: string) => void;
   onEditMaterial: (materialId: string) => void;
   onToggleImportant: (materialId: string) => void;
-  onSetParent: (materialId: string, parentId: string | null) => void;
   onOpenDay: (dayKey: string) => void;
   onBackToWeek: () => void;
   onCloseComposer: () => void;
@@ -1754,7 +1665,6 @@ function ReactorBoardView({
       onDeleteMaterial={onDeleteMaterial}
       onEditMaterial={onEditMaterial}
       onToggleImportant={onToggleImportant}
-      onSetParent={onSetParent}
       onUpdateLayout={onUpdateLayout}
       onCloseComposer={onCloseComposer}
       onComposerTypeChange={onComposerTypeChange}
@@ -1805,8 +1715,8 @@ function ReactorComposer({
     >
       {dock ? <span className="reactor-dock-handle" aria-hidden="true" /> : null}
       <div className="reactor-compose-header">
-        <strong>{labelForMaterialType(composerType)}</strong>
-        <button className="ghost-action" onClick={onCloseComposer}>Close</button>
+        <strong>{labelForMaterialTypeZh(composerType)}</strong>
+        <button className="ghost-action" onClick={onCloseComposer}>关闭</button>
       </div>
       <div className="reactor-compose-types">
         {(["diary", "idea", "prompt", "link", "sample"] as ReactorMaterialType[]).map((type) => (
@@ -1815,21 +1725,23 @@ function ReactorComposer({
             className={`top-tool ${composerType === type ? "active" : ""}`}
             onClick={() => onComposerTypeChange(type)}
           >
-            {labelForMaterialType(type)}
+            {labelForMaterialTypeZh(type)}
           </button>
         ))}
       </div>
+      <label className="reactor-field-label">内容</label>
       <textarea
         className="reactor-compose-textarea"
         value={composerContent}
         onChange={(event) => onComposerContentChange(event.target.value)}
-        placeholder={dock ? "Paste a link, image, or thought..." : "Write the line you do not want to lose."}
+        placeholder={dock ? "粘贴链接、图片或一条想法" : "写下这条你不想丢掉的内容"}
       />
+      <label className="reactor-field-label">备注</label>
       <input
         className="reactor-compose-input"
         value={composerNote}
         onChange={(event) => onComposerNoteChange(event.target.value)}
-        placeholder="Why keep it"
+        placeholder="为什么留它"
       />
       <div className="reactor-quick-tags">
         {reactorWhyKeepPresets.map((preset) => (
@@ -1842,16 +1754,17 @@ function ReactorComposer({
           </button>
         ))}
       </div>
+      <label className="reactor-field-label">标签</label>
       <input
         className="reactor-compose-input"
         value={composerTagsDraft}
         onChange={(event) => onComposerTagsChange(event.target.value)}
-        placeholder="Tags, comma separated"
+        placeholder="标签，用逗号分隔"
       />
       <div className="reactor-compose-actions">
-        <button className="top-tool" onClick={onCloseComposer}>Cancel</button>
+        <button className="top-tool" onClick={onCloseComposer}>取消</button>
         <button className="today-button" onClick={onSaveMaterial} disabled={isSavingMaterial}>
-          {isSavingMaterial ? "Saving..." : "Save"}
+          {isSavingMaterial ? "保存中..." : "保存"}
         </button>
       </div>
     </section>
@@ -1979,7 +1892,6 @@ function ReactorDayCanvas({
   onDeleteMaterial,
   onEditMaterial,
   onToggleImportant,
-  onSetParent,
   onUpdateLayout,
   onCloseComposer,
   onComposerTypeChange,
@@ -2002,7 +1914,6 @@ function ReactorDayCanvas({
   onDeleteMaterial: (materialId: string) => void;
   onEditMaterial: (materialId: string) => void;
   onToggleImportant: (materialId: string) => void;
-  onSetParent: (materialId: string, parentId: string | null) => void;
   onUpdateLayout: (materialId: string, next: Partial<BoardLayout>) => void;
   onCloseComposer: () => void;
   onComposerTypeChange: (type: ReactorMaterialType) => void;
@@ -2020,7 +1931,6 @@ function ReactorDayCanvas({
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, ReactorClusterSuggestion>>({});
   const [loadingClusterId, setLoadingClusterId] = useState<string | null>(null);
-  const [focusedMaterialId, setFocusedMaterialId] = useState<string | null>(null);
   const clusters = useMemo(
     () => buildReactorClusters(materials, layouts),
     [materials, layouts],
@@ -2048,127 +1958,9 @@ function ReactorDayCanvas({
           map.set(materialId, "middle");
         }
       });
-    });
+      });
     return map;
   }, [clusters, layouts]);
-  const subsetLinks = useMemo(
-    () => buildSubsetLinks(materials, layouts),
-    [materials, layouts],
-  );
-  const subsetGroups = useMemo(
-    () => buildSubsetGroups(materials, layouts),
-    [materials, layouts],
-  );
-  const childIdsByParent = useMemo(() => {
-    const map = new Map<string, string[]>();
-    materials.forEach((material) => {
-      if (!material.parentId) {
-        return;
-      }
-
-      const current = map.get(material.parentId) ?? [];
-      current.push(material.id);
-      map.set(material.parentId, current);
-    });
-    return map;
-  }, [materials]);
-  const focusedGroupRootId = useMemo(() => {
-    if (!focusedMaterialId) {
-      return null;
-    }
-
-    const focused = materials.find((material) => material.id === focusedMaterialId);
-    if (!focused) {
-      return null;
-    }
-
-    if (focused.parentId) {
-      return focused.parentId;
-    }
-
-    return childIdsByParent.has(focused.id) ? focused.id : null;
-  }, [childIdsByParent, focusedMaterialId, materials]);
-  const focusedGroupOffsets = useMemo(() => {
-    if (!focusedGroupRootId || !focusedMaterialId) {
-      return new Map<string, { x: number; y: number }>();
-    }
-
-    const focusedMaterial = materials.find((material) => material.id === focusedMaterialId);
-    const focusedIndexInMaterials = materials.findIndex((material) => material.id === focusedMaterialId);
-    const focusedLayout =
-      focusedMaterial &&
-      (layouts[focusedMaterialId] ?? defaultReactorLayout(Math.max(0, focusedIndexInMaterials)));
-    if (!focusedMaterial || !focusedLayout) {
-      return new Map<string, { x: number; y: number }>();
-    }
-
-    const focusedHeight = defaultReactorCardHeight(focusedMaterial);
-    const focusedCenterX = focusedLayout.x + focusedLayout.width / 2;
-    const focusedCenterY = focusedLayout.y + focusedHeight / 2;
-    const groupIds = [focusedGroupRootId, ...(childIdsByParent.get(focusedGroupRootId) ?? [])];
-    const offsets = new Map<string, { x: number; y: number }>();
-
-    groupIds.forEach((id, index) => {
-      if (id === focusedMaterialId) {
-        offsets.set(id, { x: 0, y: -10 });
-        return;
-      }
-
-      const material = materials.find((entry) => entry.id === id);
-      const materialIndex = materials.findIndex((entry) => entry.id === id);
-      const layout =
-        material &&
-        (layouts[id] ?? defaultReactorLayout(Math.max(0, materialIndex)));
-
-      if (!material || !layout) {
-        offsets.set(id, { x: 0, y: 0 });
-        return;
-      }
-
-      const height = defaultReactorCardHeight(material);
-      const overlapX =
-        Math.min(focusedLayout.x + focusedLayout.width, layout.x + layout.width) -
-        Math.max(focusedLayout.x, layout.x);
-      const overlapY =
-        Math.min(focusedLayout.y + focusedHeight, layout.y + height) -
-        Math.max(focusedLayout.y, layout.y);
-
-      const direction = layout.x + layout.width / 2 < focusedCenterX ? -1 : 1;
-      const distance = index + 1;
-      const xShift =
-        overlapX > 0 && overlapY > -12
-          ? overlapX + 64 + distance * 12
-          : 38 + distance * 12;
-      const yShift =
-        overlapX > 0 && overlapY > 0
-          ? Math.max(24, overlapY * 0.35)
-          : Math.abs(layout.y + height / 2 - focusedCenterY) < height * 0.5
-            ? 20
-            : 0;
-
-      offsets.set(id, {
-        x: direction * xShift,
-        y: yShift,
-      });
-    });
-
-    return offsets;
-  }, [childIdsByParent, focusedGroupRootId, focusedMaterialId, layouts, materials]);
-
-  useEffect(() => {
-    const nextLayouts = normalizeSubsetLayouts({
-      materials,
-      currentLayouts: layouts,
-    });
-
-    if (!nextLayouts) {
-      return;
-    }
-
-    Object.entries(nextLayouts).forEach(([materialId, next]) => {
-      onUpdateLayout(materialId, next);
-    });
-  }, [materials, layouts, onUpdateLayout]);
 
   useEffect(() => {
     setDockPosition(readStoredJson(`creator-reactor-dock:${dayKey}`, { x: 420, y: 720 }));
@@ -2257,15 +2049,15 @@ function ReactorDayCanvas({
       onUpdateLayout(materialId, { z: Date.now() + order });
     });
 
-    const handleMove = (moveEvent: MouseEvent) => {
-      cluster.materialIds.forEach((materialId) => {
-        const current = startingLayouts[materialId];
-        onUpdateLayout(materialId, {
-          x: Math.max(0, current.x + (moveEvent.clientX - startX) / canvasScale),
-          y: Math.max(0, current.y + (moveEvent.clientY - startY) / canvasScale),
+      const handleMove = (moveEvent: MouseEvent) => {
+        cluster.materialIds.forEach((materialId) => {
+          const current = startingLayouts[materialId];
+          onUpdateLayout(materialId, {
+            x: current.x + (moveEvent.clientX - startX) / canvasScale,
+            y: current.y + (moveEvent.clientY - startY) / canvasScale,
+          });
         });
-      });
-    };
+      };
 
     const handleUp = () => {
       window.removeEventListener("mousemove", handleMove);
@@ -2274,42 +2066,6 @@ function ReactorDayCanvas({
 
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
-  }
-
-  function handleSubsetGroupDrag(group: ReactorSubsetGroup, event: React.MouseEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest(".reactor-folder-tab")) {
-      event.preventDefault();
-      event.stopPropagation();
-      const startX = event.clientX;
-      const startY = event.clientY;
-      const startingLayouts = Object.fromEntries(
-        group.materialIds.map((materialId, order) => [
-          materialId,
-          layouts[materialId] ?? defaultReactorLayout(order),
-        ]),
-      );
-      group.materialIds.forEach((materialId, order) => {
-        onUpdateLayout(materialId, { z: Date.now() + order });
-      });
-
-      const handleMove = (moveEvent: MouseEvent) => {
-        group.materialIds.forEach((materialId) => {
-          const current = startingLayouts[materialId];
-          onUpdateLayout(materialId, {
-            x: Math.max(0, current.x + (moveEvent.clientX - startX) / canvasScale),
-            y: Math.max(0, current.y + (moveEvent.clientY - startY) / canvasScale),
-          });
-        });
-      };
-
-      const handleUp = () => {
-        window.removeEventListener("mousemove", handleMove);
-        window.removeEventListener("mouseup", handleUp);
-      };
-
-      window.addEventListener("mousemove", handleMove);
-      window.addEventListener("mouseup", handleUp);
-    }
   }
 
   return (
@@ -2481,60 +2237,16 @@ function ReactorDayCanvas({
             </div>
           </div>
         ))}
-        {subsetGroups.map((group) => (
-          <div
-            key={group.parentId}
-            className="reactor-folder-group"
-            style={{
-              left: `${group.bounds.left}px`,
-              top: `${group.bounds.top}px`,
-              width: `${group.bounds.width}px`,
-              height: `${group.bounds.height}px`,
-            }}
-            onMouseDown={(event) => handleSubsetGroupDrag(group, event)}
-          >
-            <div className="reactor-folder-tab">
-              <span className="reactor-folder-dot" />
-              <span>{group.materialIds.length}</span>
-            </div>
-          </div>
-        ))}
-        <div className="reactor-subset-links" aria-hidden="true">
-          <svg width="3200" height="2400" viewBox="0 0 3200 2400">
-            {subsetLinks.map((link) => (
-              <path
-                key={`${link.fromId}-${link.toId}`}
-                d={`M ${link.from.x} ${link.from.y} C ${link.from.x} ${link.from.y + 26}, ${link.to.x} ${link.to.y - 26}, ${link.to.x} ${link.to.y}`}
-              />
-            ))}
-          </svg>
-        </div>
         {materials.map((material, index) => {
           const layout = layouts[material.id] ?? defaultReactorLayout(index);
-          const childIds = childIdsByParent.get(material.id) ?? [];
-          const isFocused = focusedMaterialId === material.id;
-          const isBackgrounded =
-            Boolean(
-              focusedGroupRootId &&
-                (material.parentId === focusedGroupRootId || material.id === focusedGroupRootId) &&
-                focusedMaterialId !== material.id,
-            );
-          const focusOffset = focusedGroupOffsets.get(material.id) ?? { x: 0, y: 0 };
           return (
             <motion.article
               key={material.id}
               className={`day-board-card reactor-board-card ${
                 clusteredMaterialIds.has(material.id) ? "reactor-board-card-clustered" : ""
-              } ${material.parentId ? "reactor-board-card-subset" : ""} ${isFocused ? "reactor-board-card-active" : ""} ${
-                isBackgrounded ? "reactor-board-card-backgrounded" : ""
               }`}
               initial={{ opacity: 0, scale: 0.97 }}
-              animate={{
-                opacity: isBackgrounded ? 0.72 : 1,
-                scale: isFocused ? 1.03 : isBackgrounded ? 0.96 : 1,
-                x: focusOffset.x,
-                y: (isFocused ? -6 : isBackgrounded ? 6 : 0) + focusOffset.y,
-              }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.7 }}
               style={{
                 left: `${layout.x}px`,
@@ -2552,60 +2264,21 @@ function ReactorDayCanvas({
                 const startY = event.clientY;
                 const startLeft = layout.x;
                 const startTop = layout.y;
-                const rootId = material.parentId ?? (childIds.length > 0 ? material.id : null);
-                const groupIds = rootId
-                  ? [rootId, ...(childIdsByParent.get(rootId) ?? [])]
-                  : [material.id];
-                const childLayouts = Object.fromEntries(
-                  childIds.map((childId, order) => [
-                    childId,
-                    layouts[childId] ?? defaultReactorLayout(index + order + 1),
-                  ]),
-                );
-                let moved = false;
-                let finalDx = 0;
-                let finalDy = 0;
-                setFocusedMaterialId(material.id);
                 const baseZ = Date.now();
-                groupIds
-                  .filter((id) => id !== material.id)
-                  .forEach((id, order) => {
-                    onUpdateLayout(id, { z: baseZ - (groupIds.length - order) });
-                  });
                 onUpdateLayout(material.id, { z: baseZ + 100 });
-                childIds.forEach((childId, order) => {
-                  if (childId !== material.id) {
-                    onUpdateLayout(childId, { z: baseZ - order });
-                  }
-                });
 
                 const handleMove = (moveEvent: MouseEvent) => {
-                  moved = true;
                   const dx = (moveEvent.clientX - startX) / canvasScale;
                   const dy = (moveEvent.clientY - startY) / canvasScale;
-                  finalDx = dx;
-                  finalDy = dy;
                   onUpdateLayout(material.id, {
-                    x: Math.max(0, startLeft + dx),
-                    y: Math.max(0, startTop + dy),
-                  });
-                  childIds.forEach((childId) => {
-                    const childLayout = childLayouts[childId];
-                    onUpdateLayout(childId, {
-                      x: Math.max(0, childLayout.x + dx),
-                      y: Math.max(0, childLayout.y + dy),
-                    });
+                    x: startLeft + dx,
+                    y: startTop + dy,
                   });
                 };
 
                 const handleUp = () => {
                   window.removeEventListener("mousemove", handleMove);
                   window.removeEventListener("mouseup", handleUp);
-                  if (material.parentId && moved) {
-                    if (Math.abs(finalDx) > 18 || Math.abs(finalDy) > 18) {
-                      void onSetParent(material.id, null);
-                    }
-                  }
                 };
 
                 window.addEventListener("mousemove", handleMove);
@@ -2700,8 +2373,8 @@ function ReactorDayCanvas({
               onClick={() => onOpenComposer("idea", dayKey)}
             >
               <span className="reactor-capture-handle" />
-              <span className="reactor-capture-title">Paste, drop, or write</span>
-              <span className="reactor-capture-meta">Links become previews. Images become image cards.</span>
+              <span className="reactor-capture-title">粘贴、拖入，或随手记下</span>
+              <span className="reactor-capture-meta">链接会变成预览卡，图片会变成图片卡。</span>
             </button>
           )}
         </div>
@@ -2837,7 +2510,7 @@ function ReactorMaterialCard({
 }
 
 function defaultMaterialTags(type: ReactorMaterialType) {
-  return [labelForMaterialType(type)];
+  return [labelForMaterialTypeZh(type)];
 }
 
 function buildReactorClusters(
@@ -2959,7 +2632,11 @@ function summarizeCluster(materials: ReactorDay["materials"]) {
   const tags = materials.flatMap((material) =>
     (material.manualTags ?? []).filter((tag) => {
       const normalized = tag.trim().toLowerCase();
-      return normalized && normalized !== labelForMaterialType(material.type).toLowerCase();
+      return (
+        normalized &&
+        normalized !== labelForMaterialType(material.type).toLowerCase() &&
+        normalized !== labelForMaterialTypeZh(material.type).toLowerCase()
+      );
     }),
   );
   const tagCount = new Map<string, number>();
@@ -3071,31 +2748,10 @@ function downloadTextFile(filename: string, contents: string) {
   URL.revokeObjectURL(url);
 }
 
-function truncateMiddle(value: string, maxLength: number) {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  const head = Math.ceil((maxLength - 1) / 2);
-  const tail = Math.floor((maxLength - 1) / 2);
-  return `${value.slice(0, head)}…${value.slice(value.length - tail)}`;
-}
-
 interface ReactorClusterSuggestion {
   title: string;
   note: string;
   subsetHint: string | null;
-}
-
-interface ReactorSubsetGroup {
-  parentId: string;
-  materialIds: string[];
-  bounds: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  };
 }
 
 function sharedMeaningfulTags(
@@ -3105,188 +2761,17 @@ function sharedMeaningfulTags(
   const leftTags = new Set(
     (left.manualTags ?? [])
       .map((tag) => tag.trim().toLowerCase())
-      .filter((tag) => tag && tag !== labelForMaterialType(left.type).toLowerCase()),
+      .filter(
+        (tag) =>
+          tag &&
+          tag !== labelForMaterialType(left.type).toLowerCase() &&
+          tag !== labelForMaterialTypeZh(left.type).toLowerCase(),
+      ),
   );
 
   return (right.manualTags ?? [])
     .map((tag) => tag.trim().toLowerCase())
     .filter((tag) => leftTags.has(tag));
-}
-
-function buildSubsetLinks(
-  materials: ReactorMaterial[],
-  layouts: Record<string, BoardLayout>,
-) {
-  const byId = new Map(materials.map((material) => [material.id, material] as const));
-
-  return materials
-    .filter((material) => material.parentId && byId.has(material.parentId))
-    .map((material, index) => {
-      const childLayout = layouts[material.id] ?? defaultReactorLayout(index);
-      const parentLayout =
-        layouts[material.parentId as string] ??
-        defaultReactorLayout(Math.max(0, index - 1));
-
-      return {
-        fromId: material.parentId as string,
-        toId: material.id,
-        from: {
-          x: parentLayout.x + parentLayout.width / 2,
-          y: parentLayout.y + defaultReactorCardHeight(byId.get(material.parentId as string)!) - 8,
-        },
-        to: {
-          x: childLayout.x + childLayout.width / 2,
-          y: childLayout.y + 8,
-        },
-      };
-    });
-}
-
-function buildSubsetGroups(
-  materials: ReactorMaterial[],
-  layouts: Record<string, BoardLayout>,
-): ReactorSubsetGroup[] {
-  const byId = new Map(materials.map((material) => [material.id, material] as const));
-  const childIdsByParent = new Map<string, string[]>();
-
-  materials.forEach((material) => {
-    if (!material.parentId || !byId.has(material.parentId)) {
-      return;
-    }
-
-    const current = childIdsByParent.get(material.parentId) ?? [];
-    current.push(material.id);
-    childIdsByParent.set(material.parentId, current);
-  });
-
-  return [...childIdsByParent.entries()].map(([parentId, childIds]) => {
-    const parent = byId.get(parentId)!;
-    const allIds = [parentId, ...childIds];
-    const nodes = allIds.map((id, index) => {
-      const material = byId.get(id)!;
-      const layout = layouts[id] ?? defaultReactorLayout(index);
-      return {
-        material,
-        layout,
-        height: defaultReactorCardHeight(material),
-      };
-    });
-
-    const left = Math.min(...nodes.map((node) => node.layout.x)) - 24;
-    const top = Math.min(...nodes.map((node) => node.layout.y)) - 28;
-    const right = Math.max(...nodes.map((node) => node.layout.x + node.layout.width)) + 24;
-    const bottom = Math.max(...nodes.map((node) => node.layout.y + node.height)) + 24;
-
-    return {
-      parentId,
-      materialIds: allIds,
-      bounds: {
-        left,
-        top,
-        width: right - left,
-        height: bottom - top,
-      },
-    };
-  });
-}
-
-function arrangeSubsetLayouts({
-  currentLayouts,
-  parent,
-  childIds,
-}: {
-  currentLayouts: Record<string, BoardLayout>;
-  parent: ReactorMaterial;
-  childIds: string[];
-}) {
-  const parentLayout = currentLayouts[parent.id] ?? defaultReactorLayout(0);
-  const orderedIds = [...childIds];
-  const next = { ...currentLayouts };
-  const childWidth = 164;
-  const verticalGap = 34;
-  const horizontalGap = 22;
-  const childStartX = parentLayout.x + 22;
-  const childStartY = parentLayout.y + defaultReactorCardHeight(parent) + verticalGap;
-
-  orderedIds.forEach((id, index) => {
-    next[id] = {
-      ...(currentLayouts[id] ?? defaultReactorLayout(index + 1)),
-      x: childStartX + (index % 2) * (childWidth + horizontalGap),
-      y: childStartY + Math.floor(index / 2) * 138,
-      width: childWidth,
-      z: parentLayout.z + index + 1,
-    };
-  });
-
-  next[parent.id] = {
-    ...parentLayout,
-    width: Math.max(parentLayout.width, orderedIds.length > 1 ? 390 : 324),
-  };
-
-  return next;
-}
-
-function normalizeSubsetLayouts({
-  materials,
-  currentLayouts,
-}: {
-  materials: ReactorMaterial[];
-  currentLayouts: Record<string, BoardLayout>;
-}) {
-  const byId = new Map(materials.map((material) => [material.id, material] as const));
-  let changed = false;
-  let nextLayouts = { ...currentLayouts };
-  const childIdsByParent = new Map<string, string[]>();
-
-  materials.forEach((material) => {
-    if (!material.parentId || !byId.has(material.parentId)) {
-      return;
-    }
-    const current = childIdsByParent.get(material.parentId) ?? [];
-    current.push(material.id);
-    childIdsByParent.set(material.parentId, current);
-  });
-
-  childIdsByParent.forEach((childIds, parentId) => {
-    const parent = byId.get(parentId);
-    if (!parent) {
-      return;
-    }
-
-    const arranged = arrangeSubsetLayouts({
-      currentLayouts: nextLayouts,
-      parent,
-      childIds,
-    });
-
-    if (!areSubsetLayoutsEquivalent(nextLayouts, arranged, [parentId, ...childIds])) {
-      nextLayouts = arranged;
-      changed = true;
-    }
-  });
-
-  return changed ? nextLayouts : null;
-}
-
-function areSubsetLayoutsEquivalent(
-  currentLayouts: Record<string, BoardLayout>,
-  nextLayouts: Record<string, BoardLayout>,
-  ids: string[],
-) {
-  return ids.every((id) => {
-    const current = currentLayouts[id];
-    const next = nextLayouts[id];
-    if (!current || !next) {
-      return false;
-    }
-
-    return (
-      current.x === next.x &&
-      current.y === next.y &&
-      current.width === next.width &&
-      current.z === next.z
-    );
-  });
 }
 
 function PixelPetSprite({
@@ -3803,6 +3288,17 @@ function labelForMaterialType(type: ReactorMaterialType) {
     link: "Link",
     sample: "Sample",
     image: "Image",
+  }[type];
+}
+
+function labelForMaterialTypeZh(type: ReactorMaterialType) {
+  return {
+    diary: "日记",
+    idea: "点子",
+    prompt: "提示词",
+    link: "链接",
+    sample: "样本",
+    image: "图片",
   }[type];
 }
 
