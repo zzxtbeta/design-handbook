@@ -763,14 +763,14 @@ img {
 
 .pin {
   position: absolute;
-  top: -24px;
+  top: -21px;
   left: 50%;
   width: 18px;
   height: 18px;
   border-radius: 999px;
   transform: translateX(-50%);
   box-shadow:
-    0 10px 18px rgba(66, 47, 34, 0.18),
+    0 7px 14px rgba(66, 47, 34, 0.16),
     inset 0 2px 3px rgba(255, 255, 255, 0.55),
     inset 0 -2px 3px rgba(79, 57, 40, 0.12);
 }
@@ -778,10 +778,10 @@ img {
 .pin::before {
   content: "";
   position: absolute;
-  top: 14px;
+  top: 13px;
   left: 50%;
   width: 3px;
-  height: 24px;
+  height: 16px;
   border-radius: 999px;
   transform: translateX(-50%);
   background: linear-gradient(180deg, rgba(183, 185, 190, 0.92), rgba(128, 131, 136, 0.88));
@@ -793,13 +793,30 @@ img {
 .pin::after {
   content: "";
   position: absolute;
-  top: 4px;
-  left: 5px;
+  top: 3px;
+  left: 4px;
   width: 6px;
   height: 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   filter: blur(0.2px);
+}
+
+.pin-amber::before,
+.pin-pink::before,
+.pin-sage::before,
+.pin-blue::before {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 14px 10px -10px rgba(58, 42, 32, 0.22);
+}
+
+.pin-amber::after,
+.pin-pink::after,
+.pin-sage::after,
+.pin-blue::after {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
 }
 
 .paper-clip {
