@@ -2214,9 +2214,7 @@ function ReactorMaterialCard({
     <article
       className={`reactor-card reactor-card-material reactor-card-style-${entryDecoration(index)} ${
         weekMode ? "reactor-card-week" : "reactor-card-canvas"
-      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity} ${
-        material.important ? "reactor-card-important" : ""
-      }`}
+      } reactor-bubble-${pet.bubble} reactor-rarity-${pet.rarity}`}
       style={weekCardStyle}
     >
       <div className={`reactor-bubble-tail reactor-bubble-tail-${pet.bubble}`} />
