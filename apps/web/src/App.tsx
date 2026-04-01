@@ -2071,6 +2071,21 @@ function ReactorDayCanvas({
   }, [materials]);
 
   useEffect(() => {
+    const nextLayouts = normalizeSubsetLayouts({
+      materials,
+      currentLayouts: layouts,
+    });
+
+    if (!nextLayouts) {
+      return;
+    }
+
+    Object.entries(nextLayouts).forEach(([materialId, next]) => {
+      onUpdateLayout(materialId, next);
+    });
+  }, [materials, layouts, onUpdateLayout]);
+
+  useEffect(() => {
     setDockPosition(readStoredJson(`creator-reactor-dock:${dayKey}`, { x: 420, y: 720 }));
   }, [dayKey]);
 
@@ -3075,17 +3090,17 @@ function arrangeSubsetLayouts({
   const parentLayout = currentLayouts[parent.id] ?? defaultReactorLayout(0);
   const orderedIds = [...siblingIds, childId];
   const next = { ...currentLayouts };
-  const childWidth = 176;
-  const verticalGap = 26;
-  const horizontalGap = 18;
-  const childStartX = parentLayout.x + 18;
+  const childWidth = 164;
+  const verticalGap = 34;
+  const horizontalGap = 22;
+  const childStartX = parentLayout.x + 22;
   const childStartY = parentLayout.y + defaultReactorCardHeight(parent) + verticalGap;
 
   orderedIds.forEach((id, index) => {
     next[id] = {
       ...(currentLayouts[id] ?? defaultReactorLayout(index + 1)),
       x: childStartX + (index % 2) * (childWidth + horizontalGap),
-      y: childStartY + Math.floor(index / 2) * 126,
+      y: childStartY + Math.floor(index / 2) * 138,
       width: childWidth,
       z: parentLayout.z + index + 1,
     };
@@ -3093,10 +3108,66 @@ function arrangeSubsetLayouts({
 
   next[parent.id] = {
     ...parentLayout,
-    width: Math.max(parentLayout.width, orderedIds.length > 1 ? 372 : 310),
+    width: Math.max(parentLayout.width, orderedIds.length > 1 ? 390 : 324),
   };
 
   return next;
+}
+
+function normalizeSubsetLayouts({
+  materials,
+  currentLayouts,
+}: {
+  materials: ReactorMaterial[];
+  currentLayouts: Record<string, BoardLayout>;
+}) {
+  const byId = new Map(materials.map((material) => [material.id, material] as const));
+  let changed = false;
+  let nextLayouts = { ...currentLayouts };
+  const childIdsByParent = new Map<string, string[]>();
+
+  materials.forEach((material) => {
+    if (!material.parentId || !byId.has(material.parentId)) {
+      return;
+    }
+    const current = childIdsByParent.get(material.parentId) ?? [];
+    current.push(material.id);
+    childIdsByParent.set(material.parentId, current);
+  });
+
+  childIdsByParent.forEach((childIds, parentId) => {
+    const parent = byId.get(parentId);
+    if (!parent) {
+      return;
+    }
+
+    const parentLayout = nextLayouts[parentId] ?? defaultReactorLayout(0);
+    const parentBottom = parentLayout.y + defaultReactorCardHeight(parent);
+    const looksCollapsed = childIds.some((childId) => {
+      const childLayout = nextLayouts[childId];
+      if (!childLayout) {
+        return true;
+      }
+
+      const dx = Math.abs(childLayout.x - parentLayout.x);
+      const dy = childLayout.y - parentBottom;
+      return dx < 110 || dy < 20;
+    });
+
+    if (!looksCollapsed) {
+      return;
+    }
+
+    nextLayouts = arrangeSubsetLayouts({
+      currentLayouts: nextLayouts,
+      parent,
+      childId: childIds[childIds.length - 1] ?? childIds[0],
+      siblingIds: childIds.slice(0, -1),
+    });
+    changed = true;
+  });
+
+  return changed ? nextLayouts : null;
 }
 
 function PixelPetSprite({
