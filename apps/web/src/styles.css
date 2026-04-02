@@ -670,12 +670,8 @@ img {
   text-align: left;
   cursor: pointer;
   transition: transform 180ms ease, border-color 180ms ease;
-}
-
-.longform-reference-card.wide {
-  grid-column: span 2;
-  grid-template-columns: minmax(220px, 0.95fr) minmax(0, 1fr);
-  align-items: center;
+  min-height: 420px;
+  align-content: start;
 }
 
 .longform-reference-card.active {
@@ -688,7 +684,7 @@ img {
 }
 
 .longform-reference-art {
-  min-height: 180px;
+  min-height: 220px;
 }
 
 .longform-reference-glass {
@@ -702,11 +698,19 @@ img {
 .longform-reference-copy {
   display: grid;
   gap: 10px;
+  align-content: start;
 }
 
 .longform-reference-card strong {
   font-size: clamp(1.45rem, 2vw, 2.3rem);
   line-height: 0.92;
+}
+
+.longform-reference-card p {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .longform-detail {

@@ -2469,12 +2469,10 @@ function LongformReferenceView({
           </div>
         </article>
         <div className="longform-card-stream">
-          {secondary.map((item, index) => (
+          {secondary.map((item) => (
             <button
               key={item.id}
-              className={`longform-reference-card ${activeId === item.id ? "active" : ""} ${
-                index % 3 === 1 ? "wide" : ""
-              }`}
+              className={`longform-reference-card ${activeId === item.id ? "active" : ""}`}
               onClick={() => onSelect(item.id)}
             >
               <div
