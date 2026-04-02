@@ -21,6 +21,7 @@ import {
 import {
   applyLongformAnalysis,
   createLongformEntry,
+  deleteLongformEntry,
   getLongformEntry,
   listLongformEntries,
   updateLongformEntry,
@@ -227,6 +228,21 @@ app.post("/api/longform/:id/analyze", async (request, response) => {
   });
   const updated = await applyLongformAnalysis(request.params.id, analysis);
   response.json(updated);
+});
+
+app.delete("/api/longform/:id", async (request, response) => {
+  const existing = await getLongformEntry(request.params.id);
+  if (!existing) {
+    response.status(404).json({ error: "Longform entry not found." });
+    return;
+  }
+
+  if (existing.coverImagePath) {
+    await deleteStoredImage(existing.coverImagePath);
+  }
+
+  const deleted = await deleteLongformEntry(request.params.id);
+  response.json(deleted);
 });
 
 app.post("/api/reactor/materials", async (request, response) => {

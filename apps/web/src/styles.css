@@ -1077,6 +1077,45 @@ img {
   align-content: start;
 }
 
+.longform-analysis-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.longform-analysis-intro {
+  display: grid;
+  gap: 8px;
+}
+
+.longform-analysis-intro p {
+  margin: 0;
+  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: rgba(62, 62, 62, 0.7);
+}
+
+.longform-analysis-state-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.longform-analysis-badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(241, 236, 229, 0.88);
+  border: 1px solid rgba(220, 214, 205, 0.92);
+  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(74, 62, 49, 0.68);
+}
+
 .longform-status-chip {
   padding: 8px 12px;
   border-radius: 999px;

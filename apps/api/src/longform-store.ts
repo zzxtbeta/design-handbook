@@ -171,6 +171,16 @@ export async function applyLongformAnalysis(
   return mapLongformEntry(updated);
 }
 
+export async function deleteLongformEntry(entryId: string) {
+  await db.delete(longformAnalysisRuns).where(eq(longformAnalysisRuns.entryId, entryId));
+  const [deleted] = await db
+    .delete(longformEntries)
+    .where(eq(longformEntries.id, entryId))
+    .returning();
+
+  return deleted ? mapLongformEntry(deleted) : null;
+}
+
 function mapLongformEntry(row: typeof longformEntries.$inferSelect): LongformEntryRecord {
   return {
     id: row.id,

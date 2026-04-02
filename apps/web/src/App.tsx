@@ -114,6 +114,12 @@ interface LongformDraft {
   analysis: LongformAnalysis;
 }
 
+interface LongformAnalysisState {
+  status: "idle" | "ready" | "failed";
+  isStale: boolean;
+  helperText: string;
+}
+
 type LongformContentBlock =
   | { type: "h1" | "h2" | "h3"; text: string }
   | { type: "paragraph"; text: string }
@@ -166,177 +172,6 @@ const reactorPets: ReactorPet[] = [
   { id: "beta", rarity: "rare", bubble: "star", mode: "float", species: "moth", palette: ["#daf4e4", "#7cc79b", "#2e5b44"] },
   { id: "nova", rarity: "legendary", bubble: "notch", mode: "float", species: "sprout", palette: ["#ffe7a8", "#f7b63f", "#77531d"] },
   { id: "gigi", rarity: "legendary", bubble: "cloud", mode: "perch", species: "owl", palette: ["#fff0b9", "#f3c44d", "#70541e"] },
-];
-
-const longformReferences: LongformReference[] = [
-  {
-    id: "khosla-hiring",
-    category: "Hiring",
-    eyebrow: "Featured Essay",
-    title: "The art of hiring: insights from Khosla Ventures, Airbnb, Ramp and Traba",
-    summary: "把一个常见话题写出高级感，不靠鸡汤，而靠视角、节奏和强信息密度。",
-    coverLabel: "Editorial Interview",
-    palette: ["#f2eee8", "#d8dfe6", "#4f5b6a"],
-    accent: "#111111",
-    author: "Lina Linder",
-    date: "12 January 2025",
-    content: [
-      "在拥有无数招聘建议的时代，真正能留下来的文章不是再重复一遍“要招对人”，而是把招聘这件事放进组织气质、判断力和创始人节奏里去写。",
-      "这篇文章成立，不是因为它信息最多，而是因为它把几个强名字放在一起后，没有滑向八卦或流水账，而是很快建立了一个更高的命题：顶级公司到底是怎么判断人的。",
-      "它在结构上保持了非常稳定的编辑感。标题先给出足够强的名词密度，随后正文快速进入可感知的观察，再逐段把经验拆成读者能拿走的判断。",
-      "阅读时会有一种很强的“我在看一篇认真做过采访和整理的东西”的信任感。这种信任感，本身就是长文最重要的钩子之一。"
-    ],
-    whyItWorks: "它成立的核心，不在于信息新，而在于把“招聘”从实用话题拉成了一个关于组织判断力的高级命题。",
-    framework: [
-      "大命题标题先建立阅读价值",
-      "用具体公司与人物建立可信度",
-      "把零散观点整理成连续的判断链",
-      "最后回到读者可迁移的结论"
-    ],
-    resonance: [
-      "读者会感觉自己不是在看技巧，而是在接近一套更高级的判断标准",
-      "它打中了“想把事情做深”的人，而不是只想要 checklist 的人"
-    ],
-    reusableMoves: [
-      "把常见话题抬高一个抽象层级",
-      "标题里放进高密度的可信名词",
-      "段落之间保持编辑式节奏，不急于抖观点",
-      "用结论感强的句子做每段收束"
-    ],
-  },
-  {
-    id: "one-person-company",
-    category: "AI Cognition",
-    eyebrow: "Reference Sample",
-    title: "一人公司的幻觉与真相",
-    summary: "典型的“反常识命题 + 数据反证 + 历史类比”结构，适合拆写法。",
-    coverLabel: "Counter Thesis",
-    palette: ["#efebe3", "#d9d0c6", "#695247"],
-    accent: "#7a4c3b",
-    author: "嘉叔养生",
-    date: "31 March 2026",
-    content: [
-      "这篇长文的厉害之处，在于它没有停在“AI 降低门槛”这种已经被说烂的结论，而是把门槛重新定义成认知、分发和信任。",
-      "它的推进也非常稳：先承认大众想象，再用数据做反证，然后给出摄影术与印象派的历史类比，最后把价值重新定义。",
-      "这样的结构会让读者产生一种被重新校准的感觉。不是简单被说服，而是觉得自己过去理解错了什么。",
-      "所以它的传播潜力，来自认知反差，也来自它让读者获得了一种更锋利的表达方式。"
-    ],
-    whyItWorks: "它最成立的地方是“把门槛从做出来重新定义到被看见、被相信”，这个重定义动作非常强。",
-    framework: [
-      "先承认大众幻想",
-      "用数据和现实打掉旧叙事",
-      "给历史类比建立可信迁移",
-      "重定义价值坐标",
-      "落回读者下一步该积累什么"
-    ],
-    resonance: [
-      "它打中了普通人最深的焦虑：学会工具后仍然没有优势怎么办",
-      "它也给了读者一种新的自我安放方式：慢能力并没有过时"
-    ],
-    reusableMoves: [
-      "标题制造幻觉与真相的反差",
-      "先站在读者一边再翻转判断",
-      "用历史类比提高说服力",
-      "把结论落成新的价值词汇"
-    ],
-  },
-  {
-    id: "real-expression",
-    category: "Expression",
-    eyebrow: "Reference Sample",
-    title: "真实表达不是更用力，而是更少修饰",
-    summary: "一句话命题足够锋利，适合作为社论式短长文样本。",
-    coverLabel: "Tone Study",
-    palette: ["#f3f0ec", "#d8d5d0", "#7d7770"],
-    accent: "#1c1c1c",
-    author: "Internal Note",
-    date: "01 April 2026",
-    content: [
-      "很多表达不成立，不是因为内容太少，而是因为修饰太多。每一句都想证明自己在思考，结果反而把真正想说的东西埋掉了。",
-      "这类文章如果写得好，往往是先找到一个足够干净的命题，然后用最少的形容词去托住它。句子一旦变轻，观点反而更重。",
-      "读者会觉得这种文字像在直接对自己说话，因为作者没有拼命摆出写作姿态。真实感，常常来自放弃表演。"
-    ],
-    whyItWorks: "它好在命题本身足够短、足够狠，所以读者很快就能感到一种判断力。",
-    framework: [
-      "一句锋利命题开场",
-      "解释常见误区",
-      "提出一个更本质的判断",
-      "用很轻的收束句留下余味"
-    ],
-    resonance: [
-      "它会让读者想到自己过去那些写得太满、太急于证明的表达",
-      "它打中了大家想更真诚但又不知道怎么做减法的状态"
-    ],
-    reusableMoves: [
-      "把命题压缩到一句话",
-      "少举例，多做判断",
-      "去掉不必要的修饰词",
-      "让句子像口头判断，不像稿件表演"
-    ],
-  },
-  {
-    id: "dwarkesh-profile",
-    category: "Profile",
-    eyebrow: "Reference Sample",
-    title: "一个 23 岁的播客新星，凭什么让硅谷大佬排队上他节目？",
-    summary: "人物长文的经典样本：用强悬念标题、场景化叙述和连续推进做出阅读粘性。",
-    coverLabel: "Profile Breakdown",
-    palette: ["#f1efe9", "#d8d4cf", "#5f5b57"],
-    accent: "#101010",
-    author: "Prompt Example",
-    date: "02 April 2026",
-    content: [
-      "这类人物长文最难的是，既要让读者迅速进入一个具体的人，又不能写成履历堆砌。这篇样本的好，在于它从第一句就把人放进了一个强悬念里。",
-      "紧接着，它没有急着解释，而是用一连串更具体的事实去抬高这个悬念，让读者自然产生“他到底特别在哪里”的追问。",
-      "这时候作者再把成长路径、内容策略和时代背景慢慢补进来，整个阅读就变成了一次连续的理解过程，而不是信息灌输。"
-    ],
-    whyItWorks: "它把人物报道写成了问题驱动式阅读，让读者始终处在想继续往下看的状态里。",
-    framework: ["一个强问题开场", "连续抬高悬念", "补足背景信息", "回到人物方法论"],
-    resonance: ["让读者觉得自己在接近一个时代人物", "满足了对成功路径和判断力的双重好奇"],
-    reusableMoves: ["人物题用问题开场", "先制造张力再补资料", "把经历写成判断演化"],
-  },
-  {
-    id: "xhs-layout-method",
-    category: "Prompt Method",
-    eyebrow: "Reference Sample",
-    title: "我写了一个 prompt，让 AI 一键排版小红书长文",
-    summary: "方法论型爆文样本：问题直给、解决方案极短、可复制性极强。",
-    coverLabel: "Prompt Method",
-    palette: ["#efeee8", "#d7d4ca", "#79685b"],
-    accent: "#8d4e3d",
-    author: "Creator Sample",
-    date: "02 April 2026",
-    content: [
-      "这类内容好，是因为它把一个具体痛点讲得足够直白：排版太难用。读者在第一句就知道这篇东西是替自己解决麻烦的。",
-      "接下来作者没有长篇铺垫，而是快速给出方法和原理，让读者相信这不是空洞技巧，而是真可复用的操作方案。",
-      "最后再把可迁移场景打开，小红书之外，PPT、海报、商品详情页都能用，传播价值就一下被放大了。"
-    ],
-    whyItWorks: "它用一个真实痛点作为入口，又用高度可复用的方法论把单点经验升级成普适技巧。",
-    framework: ["痛点开门", "给出三步法", "展示效果", "拉高到更多场景"],
-    resonance: ["读者会觉得这就是‘我也能马上用起来’的内容", "它同时满足效率感和掌控感"],
-    reusableMoves: ["痛点-方法-迁移三段式", "用效果图做信任背书", "把工具感表达成生活技巧"],
-  },
-  {
-    id: "ai-notetaking",
-    category: "Workflow",
-    eyebrow: "Reference Sample",
-    title: "把乱序笔记喂给 AI，它能帮你找出真正该写的那条主线",
-    summary: "创作者工作流样本：把碎片输入、AI 整理和表达判断串成一个有说服力的闭环。",
-    coverLabel: "Workflow Essay",
-    palette: ["#f5f0ed", "#ddd3ce", "#7f6d67"],
-    accent: "#2b211d",
-    author: "Internal Draft",
-    date: "02 April 2026",
-    content: [
-      "创作者最痛苦的不是没灵感，而是灵感太多，最后谁都没长成作品。这类文章的价值，在于它能把混乱输入重新定义成一种优势。",
-      "写得好的地方不是把 AI 神化，而是把 AI 放在恰当的位置：不是替你表达，而是帮你整理、归并、看见主线。",
-      "只要这个角色定义清楚，整篇文章就会有一种很强的产品判断感，读者也更容易把它迁移到自己的工作流里。"
-    ],
-    whyItWorks: "它把 AI 从‘万能写手’拉回‘素材剪辑师’，因此观点更稳，也更可信。",
-    framework: ["提出真实痛点", "重新定义问题", "给 AI 一个清晰角色", "落到个人工作流闭环"],
-    resonance: ["创作者会觉得被理解，因为这就是他们每天的真实状态", "它给了一个不焦虑的 AI 使用方式"],
-    reusableMoves: ["先写混乱，再写判断", "定义 AI 边界", "用闭环表达产品价值"],
-  },
 ];
 
 function parseLongformContent(raw: string) {
@@ -489,6 +324,48 @@ function formatLongformDisplayDate(value: string) {
   }
 
   return value;
+}
+
+function buildLongformAnalysisState(entry: LongformEntry | null): LongformAnalysisState {
+  if (!entry) {
+    return {
+      status: "idle",
+      isStale: false,
+      helperText: "先保存一篇文章，再决定要不要拆它的写法。这不是摘要，而是写法拆解。",
+    };
+  }
+
+  const updatedAt = Date.parse(entry.updatedAt);
+  const analysisUpdatedAt = entry.analysisUpdatedAt ? Date.parse(entry.analysisUpdatedAt) : Number.NaN;
+  const isStale =
+    entry.analysisStatus === "ready" &&
+    Number.isFinite(updatedAt) &&
+    Number.isFinite(analysisUpdatedAt) &&
+    updatedAt > analysisUpdatedAt;
+
+  if (entry.analysisStatus === "ready") {
+    return {
+      status: "ready",
+      isStale,
+      helperText: isStale
+        ? "正文已经更新，右侧拆解还是旧版本。想继续参考这篇文章的写法，先重新拆解。"
+        : "右侧不是文章摘要，而是对这篇文章为何成立、如何推进、哪些动作可复用的拆解。",
+    };
+  }
+
+  if (entry.analysisStatus === "failed") {
+    return {
+      status: "failed",
+      isStale: false,
+      helperText: "上次拆解没有成功。文章内容已经在库里，可以再次尝试拆解写法。",
+    };
+  }
+
+  return {
+    status: "idle",
+    isStale: false,
+    helperText: "读完觉得这篇文章值得学，再点“拆解写法”。系统会分析它为什么成立，而不是重写内容。",
+  };
 }
 
 function excerptFromLongformContent(blocks: string[]) {
@@ -854,6 +731,7 @@ export function App() {
   const [longformLoading, setLongformLoading] = useState(false);
   const [longformError, setLongformError] = useState<string | null>(null);
   const [isSavingLongform, setIsSavingLongform] = useState(false);
+  const [isAnalyzingLongform, setIsAnalyzingLongform] = useState(false);
   const [activeLongformId, setActiveLongformId] = useState("");
   const [longformViewMode, setLongformViewMode] = useState<LongformViewMode>("shelf");
   const [longformShelfPage, setLongformShelfPage] = useState(0);
@@ -1223,16 +1101,16 @@ export function App() {
     () => longformItems.map(buildLongformReferenceFromEntry),
     [longformItems],
   );
-  const longformShelfReferences = useMemo(() => {
-    const realIds = new Set(longformReferencesView.map((item) => item.id));
-    const fillers = longformReferences.filter((item) => !realIds.has(item.id));
-    return [...longformReferencesView, ...fillers].slice(0, Math.max(6, longformReferencesView.length));
-  }, [longformReferencesView]);
+  const longformShelfReferences = longformReferencesView;
   const activeLongformEntry =
     longformItems.find((item) => item.id === activeLongformId) ?? longformItems[0] ?? null;
   const activeLongformReference =
     longformShelfReferences.find((item) => item.id === activeLongformId) ?? longformShelfReferences[0] ?? null;
   const longformPageCount = Math.max(1, Math.ceil(longformShelfReferences.length / LONGFORM_PAGE_SIZE));
+  const longformAnalysisState = useMemo(
+    () => buildLongformAnalysisState(activeLongformEntry),
+    [activeLongformEntry],
+  );
 
   useEffect(() => {
     if (longformShelfPage > longformPageCount - 1) {
@@ -1246,8 +1124,29 @@ export function App() {
       return;
     }
 
-    if (activeLongformReference) {
-      setLongformDraft(buildLongformDraft(activeLongformReference));
+    if (!activeLongformReference) {
+      setLongformDraft({
+        id: "",
+        title: "",
+        subtitle: "",
+        summary: "",
+        author: "",
+        date: toDateInputValue(new Date().toISOString()),
+        sourcePlatform: "",
+        sourceUrl: "",
+        rawContent: "",
+        content: [],
+        coverLabel: "",
+        coverUrl: null,
+        coverImageDataUrl: null,
+        palette: ["#f2eee8", "#d8dfe6", "#4f5b6a"],
+        analysis: {
+          whyItWorks: "",
+          framework: [],
+          resonance: [],
+          reusableMoves: [],
+        },
+      });
     }
   }, [activeLongformEntry, activeLongformReference]);
 
@@ -1379,6 +1278,82 @@ export function App() {
     event.target.value = "";
   }
 
+  async function handleLongformCoverPaste(event: React.ClipboardEvent<HTMLElement>) {
+    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith("image/"));
+    if (!imageItem) {
+      return;
+    }
+
+    const file = imageItem.getAsFile();
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (file.size > 4 * 1024 * 1024) {
+      setLongformFeedback("Cover must be under 4MB");
+      return;
+    }
+
+    const dataUrl = await fileToDataUrl(file);
+    setLongformDraft((current) => ({ ...current, coverUrl: dataUrl, coverImageDataUrl: dataUrl }));
+    setLongformFeedback("Pasted cover ready to save");
+  }
+
+  function handleCreateLongform() {
+    setActiveLongformId("");
+    setLongformViewMode("detail");
+    setLongformDraft({
+      id: "",
+      title: "",
+      subtitle: "",
+      summary: "",
+      author: "",
+      date: toDateInputValue(new Date().toISOString()),
+      sourcePlatform: "",
+      sourceUrl: "",
+      rawContent: "",
+      content: [],
+      coverLabel: "",
+      coverUrl: null,
+      coverImageDataUrl: null,
+      palette: ["#f2eee8", "#d8dfe6", "#4f5b6a"],
+      analysis: {
+        whyItWorks: "",
+        framework: [],
+        resonance: [],
+        reusableMoves: [],
+      },
+    });
+    setLongformFeedback(null);
+  }
+
+  async function handleDeleteLongform() {
+    if (!activeLongformEntry) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/longform/${activeLongformEntry.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Longform delete failed with status ${response.status}`);
+      }
+
+      const deleted = (await response.json()) as LongformEntry;
+      setLongformItems((current) => current.filter((item) => item.id !== deleted.id));
+      setActiveLongformId((current) => (current === deleted.id ? "" : current));
+      setLongformViewMode("shelf");
+      setLongformFeedback("Deleted");
+    } catch (error) {
+      console.error("[web] handleDeleteLongform failed", error);
+      setLongformFeedback("Delete failed");
+    }
+  }
+
   async function handleSaveLongform() {
     try {
       setIsSavingLongform(true);
@@ -1433,13 +1408,14 @@ export function App() {
   }
 
   async function handleLongformAnalyze() {
-    const saved = await handleSaveLongform();
-    if (!saved) {
+    if (!activeLongformEntry) {
+      setLongformFeedback("先保存文章，再拆解写法");
       return;
     }
 
     try {
-      const response = await fetch(`/api/longform/${saved.id}/analyze`, {
+      setIsAnalyzingLongform(true);
+      const response = await fetch(`/api/longform/${activeLongformEntry.id}/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1455,10 +1431,12 @@ export function App() {
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
       setLongformDraft(buildLongformDraftFromEntry(updated));
-      setLongformFeedback("AI extracted");
+      setLongformFeedback("Writing breakdown ready");
     } catch (error) {
       console.error("[web] handleLongformAnalyze failed", error);
       setLongformFeedback("Analyze failed");
+    } finally {
+      setIsAnalyzingLongform(false);
     }
   }
 
@@ -2192,10 +2170,15 @@ export function App() {
                   isLoading={longformLoading}
                   error={longformError}
                   isSaving={isSavingLongform}
+                  isAnalyzing={isAnalyzingLongform}
+                  hasActiveEntry={Boolean(activeLongformEntry)}
+                  analysisState={longformAnalysisState}
                   onSelect={(id) => {
                     setActiveLongformId(id);
                     setLongformViewMode("detail");
                   }}
+                  onCreate={handleCreateLongform}
+                  onDelete={handleDeleteLongform}
                   onBack={() => setLongformViewMode("shelf")}
                   onShelfPageChange={setLongformShelfPage}
                   onDraftFieldChange={handleLongformDraftField}
@@ -2204,6 +2187,7 @@ export function App() {
                   onSave={handleSaveLongform}
                   onOpenCoverPicker={() => longformCoverInputRef.current?.click()}
                   onOpenImportPicker={() => longformImportInputRef.current?.click()}
+                  onPasteCover={handleLongformCoverPaste}
                 />
               </motion.div>
             )}
@@ -2819,7 +2803,12 @@ function LongformReferenceView({
   isLoading,
   error,
   isSaving,
+  isAnalyzing,
+  hasActiveEntry,
+  analysisState,
   onSelect,
+  onCreate,
+  onDelete,
   onBack,
   onShelfPageChange,
   onDraftFieldChange,
@@ -2828,6 +2817,7 @@ function LongformReferenceView({
   onSave,
   onOpenCoverPicker,
   onOpenImportPicker,
+  onPasteCover,
 }: {
   items: LongformReference[];
   activeId: string;
@@ -2840,7 +2830,12 @@ function LongformReferenceView({
   isLoading: boolean;
   error: string | null;
   isSaving: boolean;
+  isAnalyzing: boolean;
+  hasActiveEntry: boolean;
+  analysisState: LongformAnalysisState;
   onSelect: (id: string) => void;
+  onCreate: () => void;
+  onDelete: () => void;
   onBack: () => void;
   onShelfPageChange: (page: number) => void;
   onDraftFieldChange: <K extends keyof LongformDraft>(field: K, value: LongformDraft[K]) => void;
@@ -2849,6 +2844,7 @@ function LongformReferenceView({
   onSave: () => void;
   onOpenCoverPicker: () => void;
   onOpenImportPicker: () => void;
+  onPasteCover: (event: React.ClipboardEvent<HTMLElement>) => void;
 }) {
   const [longformBrowseMode, setLongformBrowseMode] = useState<"grid" | "flow">("grid");
   const [flowIndex, setFlowIndex] = useState(() => items.findIndex((item) => item.id === activeId) || 0);
@@ -2861,6 +2857,26 @@ function LongformReferenceView({
     shelfPage * LONGFORM_PAGE_SIZE + LONGFORM_PAGE_SIZE,
   );
   const renderedBlocks = useMemo(() => parseLongformBlocks(draft.rawContent), [draft.rawContent]);
+  const detailItem =
+    activeItem ??
+    ({
+      id: draft.id || "draft",
+      category: draft.sourcePlatform || "Draft",
+      eyebrow: hasActiveEntry ? "Longform Entry" : "New Article",
+      title: draft.title || "Untitled article",
+      summary: draft.summary || "Start with a title, summary, and the full text.",
+      coverLabel: draft.coverLabel,
+      palette: draft.palette,
+      accent: "#111111",
+      author: draft.author || "Unknown",
+      date: formatLongformDisplayDate(draft.date),
+      content: draft.content.length > 0 ? draft.content : parseLongformContent(draft.rawContent),
+      whyItWorks: draft.analysis.whyItWorks,
+      framework: draft.analysis.framework,
+      resonance: draft.analysis.resonance,
+      reusableMoves: draft.analysis.reusableMoves,
+      coverUrl: draft.coverUrl,
+    } satisfies LongformReference);
 
   useEffect(() => {
     const nextIndex = items.findIndex((item) => item.id === activeId);
@@ -2922,8 +2938,17 @@ function LongformReferenceView({
     return <section className="longform-shell"><div className="reactor-status reactor-status-error">{error}</div></section>;
   }
 
-  if (items.length === 0 || !activeItem) {
-    return <section className="longform-shell"><div className="reactor-status">No longform references yet.</div></section>;
+  if (viewMode === "shelf" && (items.length === 0 || !activeItem)) {
+    return (
+      <section className="longform-shell">
+        <div className="reactor-status">
+          <p>No longform references yet.</p>
+          <button className="today-button" onClick={onCreate}>
+            New Article
+          </button>
+        </div>
+      </section>
+    );
   }
 
   return viewMode === "shelf" ? (
@@ -2931,6 +2956,9 @@ function LongformReferenceView({
       <section className="longform-shelf">
         <div className="longform-shelf-head">
           <div className="longform-shelf-pager">
+            <button className="today-button" onClick={onCreate}>
+              New Article
+            </button>
             <button
               className={`nav-button icon-only ${longformBrowseMode === "grid" ? "active" : ""}`}
               onClick={() => setLongformBrowseMode("grid")}
@@ -3097,17 +3125,21 @@ function LongformReferenceView({
             <>
               <button className="nav-button" onClick={onOpenImportPicker}>Import text</button>
               <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
-              <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
               <button className="today-button" onClick={handleSaveAndClose} disabled={isSaving}>
                 {isSaving ? "Saving..." : "Save"}
               </button>
             </>
           ) : (
-            <button className="nav-button" onClick={() => setIsEditingDetail(true)}>
-              Edit
-            </button>
+            <>
+              <button className="nav-button" onClick={onCreate}>New Article</button>
+              {hasActiveEntry ? (
+                <button className="nav-button" onClick={onDelete}>Delete</button>
+              ) : null}
+              <button className="nav-button" onClick={() => setIsEditingDetail(true)}>
+                Edit
+              </button>
+            </>
           )}
-          {feedback ? <span className="longform-status-chip">{feedback}</span> : null}
         </div>
       </div>
 
@@ -3115,7 +3147,7 @@ function LongformReferenceView({
         <div className="longform-detail-main">
           <header className="longform-detail-hero">
             <div className="longform-detail-heading">
-              <span className="longform-eyebrow">{activeItem.eyebrow}</span>
+              <span className="longform-eyebrow">{detailItem.eyebrow}</span>
               {isEditingDetail ? (
                 <textarea
                   className="longform-inline-title"
@@ -3178,10 +3210,11 @@ function LongformReferenceView({
             </div>
             <div
               className="longform-detail-visual"
+              onPaste={onPasteCover}
               style={{
-                ["--longform-a" as string]: activeItem.palette[0],
-                ["--longform-b" as string]: activeItem.palette[1],
-                ["--longform-c" as string]: activeItem.palette[2],
+                ["--longform-a" as string]: detailItem.palette[0],
+                ["--longform-b" as string]: detailItem.palette[1],
+                ["--longform-c" as string]: detailItem.palette[2],
               }}
             >
               {draft.coverUrl ? (
@@ -3237,14 +3270,49 @@ function LongformReferenceView({
               )}
             </article>
             <aside className="longform-analysis-panel">
+              <div className="longform-analysis-header">
+                <div className="longform-analysis-intro">
+                  <span className="longform-analysis-kicker">Writing Breakdown</span>
+                  <p>{analysisState.helperText}</p>
+                </div>
+                {!isEditingDetail ? (
+                  <button
+                    className="nav-button"
+                    onClick={onAnalyze}
+                    disabled={!hasActiveEntry || isAnalyzing}
+                  >
+                    {isAnalyzing
+                      ? "拆解中..."
+                      : analysisState.status === "ready"
+                        ? analysisState.isStale
+                          ? "重新拆解"
+                          : "重新拆解写法"
+                        : "拆解写法"}
+                  </button>
+                ) : null}
+              </div>
+              <div className="longform-analysis-state-row">
+                <span className="longform-analysis-badge">
+                  {analysisState.status === "ready"
+                    ? analysisState.isStale
+                      ? "Analysis outdated"
+                      : "Writing breakdown ready"
+                    : analysisState.status === "failed"
+                      ? "Analysis failed"
+                      : "Not analyzed yet"}
+                </span>
+                {feedback ? <span className="longform-status-chip">{feedback}</span> : null}
+              </div>
               <section>
                 <span className="longform-analysis-kicker">Why it works</span>
-                <p>{draft.analysis.whyItWorks}</p>
+                <p>{draft.analysis.whyItWorks || "还没有拆解结果。完成保存后，可以让系统解释这篇文章为什么成立。"}</p>
               </section>
               <section>
                 <span className="longform-analysis-kicker">Framework</span>
                 <ul>
-                  {draft.analysis.framework.map((item) => (
+                  {(draft.analysis.framework.length > 0
+                    ? draft.analysis.framework
+                    : ["系统会在这里提炼文章的推进结构与段落节奏。"]).map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
@@ -3252,7 +3320,9 @@ function LongformReferenceView({
               <section>
                 <span className="longform-analysis-kicker">Resonance</span>
                 <ul>
-                  {draft.analysis.resonance.map((item) => (
+                  {(draft.analysis.resonance.length > 0
+                    ? draft.analysis.resonance
+                    : ["系统会标出它为什么容易让人继续读、愿意转发或产生共鸣。"]).map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
@@ -3260,7 +3330,9 @@ function LongformReferenceView({
               <section>
                 <span className="longform-analysis-kicker">Reusable moves</span>
                 <ul>
-                  {draft.analysis.reusableMoves.map((item) => (
+                  {(draft.analysis.reusableMoves.length > 0
+                    ? draft.analysis.reusableMoves
+                    : ["系统会把可复用的写法动作拆出来，方便你迁移到自己的文章里。"]).map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
