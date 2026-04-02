@@ -113,6 +113,13 @@ interface LongformDraft {
   analysis: LongformAnalysis;
 }
 
+type LongformContentBlock =
+  | { type: "h1" | "h2" | "h3"; text: string }
+  | { type: "paragraph"; text: string }
+  | { type: "quote"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "rule" };
+
 interface LongformEntry {
   id: string;
   status: "draft" | "ready" | "archived";
@@ -462,6 +469,85 @@ async function fileToDataUrl(file: File) {
     reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
     reader.readAsDataURL(file);
   });
+}
+
+function parseLongformBlocks(raw: string): LongformContentBlock[] {
+  const lines = raw.split("\n");
+  const blocks: LongformContentBlock[] = [];
+  let paragraphBuffer: string[] = [];
+  let listBuffer: string[] = [];
+  let quoteBuffer: string[] = [];
+
+  function flushParagraph() {
+    if (paragraphBuffer.length > 0) {
+      blocks.push({ type: "paragraph", text: paragraphBuffer.join(" ").trim() });
+      paragraphBuffer = [];
+    }
+  }
+
+  function flushList() {
+    if (listBuffer.length > 0) {
+      blocks.push({ type: "list", items: [...listBuffer] });
+      listBuffer = [];
+    }
+  }
+
+  function flushQuote() {
+    if (quoteBuffer.length > 0) {
+      blocks.push({ type: "quote", text: quoteBuffer.join(" ").trim() });
+      quoteBuffer = [];
+    }
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      const level = headingMatch[1].length;
+      const text = headingMatch[2].trim();
+      blocks.push({ type: level === 1 ? "h1" : level === 2 ? "h2" : "h3", text });
+      continue;
+    }
+
+    if (/^---+$/.test(trimmed)) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      blocks.push({ type: "rule" });
+      continue;
+    }
+
+    if (trimmed.startsWith(">")) {
+      flushParagraph();
+      flushList();
+      quoteBuffer.push(trimmed.replace(/^>\s?/, ""));
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
+      flushParagraph();
+      flushQuote();
+      listBuffer.push(trimmed.replace(/^([-*]|\d+\.)\s+/, ""));
+      continue;
+    }
+
+    paragraphBuffer.push(trimmed);
+  }
+
+  flushParagraph();
+  flushList();
+  flushQuote();
+  return blocks;
 }
 
 const toolsCatalog: Array<{
@@ -1103,11 +1189,16 @@ export function App() {
     () => longformItems.map(buildLongformReferenceFromEntry),
     [longformItems],
   );
+  const longformShelfReferences = useMemo(() => {
+    const realIds = new Set(longformReferencesView.map((item) => item.id));
+    const fillers = longformReferences.filter((item) => !realIds.has(item.id));
+    return [...longformReferencesView, ...fillers].slice(0, Math.max(6, longformReferencesView.length));
+  }, [longformReferencesView]);
   const activeLongformEntry =
     longformItems.find((item) => item.id === activeLongformId) ?? longformItems[0] ?? null;
   const activeLongformReference =
-    longformReferencesView.find((item) => item.id === activeLongformId) ?? longformReferencesView[0] ?? null;
-  const longformPageCount = Math.max(1, Math.ceil(longformReferencesView.length / LONGFORM_PAGE_SIZE));
+    longformShelfReferences.find((item) => item.id === activeLongformId) ?? longformShelfReferences[0] ?? null;
+  const longformPageCount = Math.max(1, Math.ceil(longformShelfReferences.length / LONGFORM_PAGE_SIZE));
 
   useEffect(() => {
     if (longformShelfPage > longformPageCount - 1) {
@@ -1116,12 +1207,15 @@ export function App() {
   }, [longformPageCount, longformShelfPage]);
 
   useEffect(() => {
-    if (!activeLongformEntry) {
+    if (activeLongformEntry) {
+      setLongformDraft(buildLongformDraftFromEntry(activeLongformEntry));
       return;
     }
 
-    setLongformDraft(buildLongformDraftFromEntry(activeLongformEntry));
-  }, [activeLongformEntry]);
+    if (activeLongformReference) {
+      setLongformDraft(buildLongformDraft(activeLongformReference));
+    }
+  }, [activeLongformEntry, activeLongformReference]);
 
   useEffect(() => {
     if (!longformFeedback) {
@@ -1246,61 +1340,69 @@ export function App() {
   }
 
   async function handleSaveLongform() {
-    if (!longformDraft.id) {
-      return;
-    }
-
     try {
       setIsSavingLongform(true);
       const contentBlocks = parseLongformContent(longformDraft.rawContent);
-      const response = await fetch(`/api/longform/${longformDraft.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
+      const payload = {
+        title: longformDraft.title,
+        subtitle: longformDraft.subtitle || null,
+        excerpt: longformDraft.summary || excerptFromLongformContent(contentBlocks),
+        authorName: longformDraft.author,
+        sourcePlatform: longformDraft.sourcePlatform || null,
+        sourceUrl: longformDraft.sourceUrl || null,
+        rawText: longformDraft.rawContent,
+        contentBlocks,
+        coverCaption: longformDraft.coverLabel,
+        coverPalette: longformDraft.palette,
+        coverImageDataUrl: longformDraft.coverImageDataUrl,
+      };
+      const response = await fetch(
+        activeLongformEntry ? `/api/longform/${activeLongformEntry.id}` : "/api/longform",
+        {
+          method: activeLongformEntry ? "PATCH" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify({
-          title: longformDraft.title,
-          subtitle: longformDraft.subtitle || null,
-          excerpt: longformDraft.summary || excerptFromLongformContent(contentBlocks),
-          authorName: longformDraft.author,
-          sourcePlatform: longformDraft.sourcePlatform || null,
-          sourceUrl: longformDraft.sourceUrl || null,
-          rawText: longformDraft.rawContent,
-          contentBlocks,
-          coverCaption: longformDraft.coverLabel,
-          coverPalette: longformDraft.palette,
-          coverImageDataUrl: longformDraft.coverImageDataUrl,
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`Longform save failed with status ${response.status}`);
       }
 
       const updated = (await response.json()) as LongformEntry;
-      setLongformItems((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
+      setLongformItems((current) => {
+        const hasExisting = current.some((item) => item.id === updated.id);
+        return hasExisting
+          ? current.map((item) => (item.id === updated.id ? updated : item))
+          : [updated, ...current];
+      });
+      setActiveLongformId(updated.id);
       setLongformDraft(buildLongformDraftFromEntry(updated));
       setLongformFeedback("Saved");
+      return updated;
     } catch (error) {
       console.error("[web] handleSaveLongform failed", error);
       setLongformFeedback("Save failed");
+      return null;
     } finally {
       setIsSavingLongform(false);
     }
   }
 
   async function handleLongformAnalyze() {
-    if (!longformDraft.id) {
+    const saved = await handleSaveLongform();
+    if (!saved) {
       return;
     }
 
-    await handleSaveLongform();
-
     try {
-      const response = await fetch(`/api/longform/${longformDraft.id}/analyze`, {
+      const response = await fetch(`/api/longform/${saved.id}/analyze`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
       if (!response.ok) {
@@ -2031,7 +2133,7 @@ export function App() {
                 transition={{ duration: 0.24, ease: "easeOut" }}
               >
                 <LongformReferenceView
-                  items={longformReferencesView}
+                  items={longformShelfReferences}
                   activeId={activeLongformReference?.id ?? ""}
                   activeItem={activeLongformReference}
                   viewMode={longformViewMode}
@@ -2709,6 +2811,7 @@ function LongformReferenceView({
     shelfPage * LONGFORM_PAGE_SIZE,
     shelfPage * LONGFORM_PAGE_SIZE + LONGFORM_PAGE_SIZE,
   );
+  const renderedBlocks = useMemo(() => parseLongformBlocks(draft.rawContent), [draft.rawContent]);
 
   useEffect(() => {
     const nextIndex = items.findIndex((item) => item.id === activeId);
@@ -2938,86 +3041,7 @@ function LongformReferenceView({
         </div>
       </div>
 
-      <section className={`longform-detail ${isEditingDetail ? "editing" : ""}`}>
-        {isEditingDetail ? (
-          <aside className="longform-detail-side">
-            <span className="longform-eyebrow">Reference Controls</span>
-            <section className="longform-control-card">
-              <strong>Content</strong>
-              <label className="longform-field">
-                <span>Title</span>
-                <input
-                  value={draft.title}
-                  onChange={(event) => onDraftFieldChange("title", event.target.value)}
-                />
-              </label>
-              <label className="longform-field">
-                <span>Subtitle</span>
-                <input
-                  value={draft.subtitle}
-                  onChange={(event) => onDraftFieldChange("subtitle", event.target.value)}
-                />
-              </label>
-              <label className="longform-field">
-                <span>Summary</span>
-                <textarea
-                  rows={3}
-                  value={draft.summary}
-                  onChange={(event) => onDraftFieldChange("summary", event.target.value)}
-                />
-              </label>
-              <label className="longform-field">
-                <span>Paste article</span>
-                <textarea
-                  rows={10}
-                  value={draft.rawContent}
-                  onChange={(event) => onContentChange(event.target.value)}
-                />
-              </label>
-              <label className="longform-field">
-                <span>Source Platform</span>
-                <input
-                  value={draft.sourcePlatform}
-                  onChange={(event) => onDraftFieldChange("sourcePlatform", event.target.value)}
-                />
-              </label>
-              <label className="longform-field">
-                <span>Source URL</span>
-                <input
-                  value={draft.sourceUrl}
-                  onChange={(event) => onDraftFieldChange("sourceUrl", event.target.value)}
-                />
-              </label>
-              <div className="longform-inline-actions">
-                <label className="today-button longform-upload-button">
-                  Import text
-                  <input type="file" accept=".txt,.md,.markdown,text/plain" hidden onChange={onImport} />
-                </label>
-                <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
-              </div>
-            </section>
-
-            <section className="longform-control-card">
-              <strong>Cover</strong>
-              <label className="longform-field">
-                <span>Label</span>
-                <input
-                  value={draft.coverLabel}
-                  onChange={(event) => onDraftFieldChange("coverLabel", event.target.value)}
-                />
-              </label>
-              <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
-              <label className="longform-field">
-                <span>Author</span>
-                <input
-                  value={draft.author}
-                  onChange={(event) => onDraftFieldChange("author", event.target.value)}
-                />
-              </label>
-            </section>
-          </aside>
-        ) : null}
-
+      <section className="longform-detail">
         <div className="longform-detail-main">
           <header className="longform-detail-hero">
             <div className="longform-detail-heading">
@@ -3046,9 +3070,33 @@ function LongformReferenceView({
 
           <section className="longform-reading-grid">
             <article className="longform-reading-article">
-              {draft.content.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
+              {renderedBlocks.map((block, index) => {
+                if (block.type === "h1") {
+                  return <h1 key={index}>{block.text}</h1>;
+                }
+                if (block.type === "h2") {
+                  return <h2 key={index}>{block.text}</h2>;
+                }
+                if (block.type === "h3") {
+                  return <h3 key={index}>{block.text}</h3>;
+                }
+                if (block.type === "quote") {
+                  return <blockquote key={index}>{block.text}</blockquote>;
+                }
+                if (block.type === "list") {
+                  return (
+                    <ul key={index}>
+                      {block.items.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  );
+                }
+                if (block.type === "rule") {
+                  return <hr key={index} />;
+                }
+                return <p key={index}>{block.text}</p>;
+              })}
             </article>
             <aside className="longform-analysis-panel">
               <section>
@@ -3083,6 +3131,104 @@ function LongformReferenceView({
           </section>
         </div>
       </section>
+      <AnimatePresence>
+        {isEditingDetail ? (
+          <motion.div
+            className="summary-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsEditingDetail(false)}
+          >
+            <motion.section
+              className="longform-edit-modal"
+              initial={{ scale: 0.94, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.98, y: 10 }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="longform-edit-modal-head">
+                <strong>Edit reference</strong>
+                <button className="ghost-action" onClick={() => setIsEditingDetail(false)}>Close</button>
+              </div>
+              <div className="longform-edit-modal-grid">
+                <section className="longform-control-card">
+                  <strong>Content</strong>
+                  <label className="longform-field">
+                    <span>Title</span>
+                    <input
+                      value={draft.title}
+                      onChange={(event) => onDraftFieldChange("title", event.target.value)}
+                    />
+                  </label>
+                  <label className="longform-field">
+                    <span>Subtitle</span>
+                    <input
+                      value={draft.subtitle}
+                      onChange={(event) => onDraftFieldChange("subtitle", event.target.value)}
+                    />
+                  </label>
+                  <label className="longform-field">
+                    <span>Summary</span>
+                    <textarea
+                      rows={3}
+                      value={draft.summary}
+                      onChange={(event) => onDraftFieldChange("summary", event.target.value)}
+                    />
+                  </label>
+                  <label className="longform-field">
+                    <span>Paste article</span>
+                    <textarea
+                      rows={12}
+                      value={draft.rawContent}
+                      onChange={(event) => onContentChange(event.target.value)}
+                    />
+                  </label>
+                  <div className="longform-inline-actions">
+                    <label className="today-button longform-upload-button">
+                      Import text
+                      <input type="file" accept=".txt,.md,.markdown,text/plain" hidden onChange={onImport} />
+                    </label>
+                    <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
+                  </div>
+                </section>
+                <section className="longform-control-card">
+                  <strong>Meta</strong>
+                  <label className="longform-field">
+                    <span>Source Platform</span>
+                    <input
+                      value={draft.sourcePlatform}
+                      onChange={(event) => onDraftFieldChange("sourcePlatform", event.target.value)}
+                    />
+                  </label>
+                  <label className="longform-field">
+                    <span>Source URL</span>
+                    <input
+                      value={draft.sourceUrl}
+                      onChange={(event) => onDraftFieldChange("sourceUrl", event.target.value)}
+                    />
+                  </label>
+                  <label className="longform-field">
+                    <span>Author</span>
+                    <input
+                      value={draft.author}
+                      onChange={(event) => onDraftFieldChange("author", event.target.value)}
+                    />
+                  </label>
+                  <label className="longform-field">
+                    <span>Cover Label</span>
+                    <input
+                      value={draft.coverLabel}
+                      onChange={(event) => onDraftFieldChange("coverLabel", event.target.value)}
+                    />
+                  </label>
+                  <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
+                </section>
+              </div>
+            </motion.section>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </section>
   );
 }
