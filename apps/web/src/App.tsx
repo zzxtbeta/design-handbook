@@ -77,6 +77,7 @@ interface LongformReference {
   title: string;
   summary: string;
   coverLabel: string;
+  coverUrl?: string | null;
   palette: [string, string, string];
   accent: string;
   author: string;
@@ -399,7 +400,7 @@ function buildLongformDraft(item: LongformReference): LongformDraft {
     rawContent,
     content: item.content,
     coverLabel: item.coverLabel,
-    coverUrl: null,
+    coverUrl: item.coverUrl ?? null,
     coverImageDataUrl: null,
     palette: item.palette,
     analysis: {
@@ -420,6 +421,7 @@ function buildLongformReferenceFromEntry(entry: LongformEntry): LongformReferenc
     title: entry.title,
     summary: entry.excerpt || content[0] || "",
     coverLabel: entry.coverCaption || "Editorial Reference",
+    coverUrl: entry.coverImagePath,
     palette: entry.coverPalette ?? ["#f2eee8", "#d8dfe6", "#4f5b6a"],
     accent: "#111111",
     author: entry.authorName || "Unknown",
@@ -2852,6 +2854,7 @@ function LongformReferenceView({
   const [flowIndex, setFlowIndex] = useState(() => items.findIndex((item) => item.id === activeId) || 0);
   const [isEditingDetail, setIsEditingDetail] = useState(false);
   const [flowDragOffset, setFlowDragOffset] = useState(0);
+  const flowDidDragRef = useRef(false);
   const flowDragState = useRef<{ pointerId: number; startX: number; dragging: boolean } | null>(null);
   const shelfItems = items.slice(
     shelfPage * LONGFORM_PAGE_SIZE,
@@ -2891,6 +2894,9 @@ function LongformReferenceView({
       return;
     }
 
+    if (Math.abs(event.clientX - flowDragState.current.startX) > 8) {
+      flowDidDragRef.current = true;
+    }
     setFlowDragOffset(event.clientX - flowDragState.current.startX);
   }
 
@@ -2903,6 +2909,9 @@ function LongformReferenceView({
     }
     setFlowDragOffset(0);
     flowDragState.current = null;
+    window.setTimeout(() => {
+      flowDidDragRef.current = false;
+    }, 0);
   }
 
   if (isLoading) {
@@ -2991,6 +3000,7 @@ function LongformReferenceView({
                     ["--longform-c" as string]: item.palette[2],
                   }}
                 >
+                  {item.coverUrl ? <img className="longform-reference-cover" src={item.coverUrl} alt={item.title} /> : null}
                   <span className="longform-reference-glass" />
                 </div>
                 <div className="longform-reference-copy">
@@ -3048,7 +3058,12 @@ function LongformReferenceView({
                     zIndex: 40 - Math.abs(offset),
                     pointerEvents: hidden ? "none" : "auto",
                   }}
-                  onClick={() => (offset === 0 ? onSelect(item.id) : setFlowIndex(index))}
+                  onClick={() => {
+                    if (flowDidDragRef.current) {
+                      return;
+                    }
+                    onSelect(item.id);
+                  }}
                 >
                   <div
                     className="longform-reference-art"
@@ -3058,6 +3073,7 @@ function LongformReferenceView({
                       ["--longform-c" as string]: item.palette[2],
                     }}
                   >
+                    {item.coverUrl ? <img className="longform-reference-cover" src={item.coverUrl} alt={item.title} /> : null}
                     <span className="longform-reference-glass" />
                   </div>
                   <div className="longform-reference-copy">
