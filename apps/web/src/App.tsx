@@ -2834,6 +2834,11 @@ function LongformReferenceView({
     }
   }, [activeId, viewMode]);
 
+  async function handleSaveAndClose() {
+    await onSave();
+    setIsEditingDetail(false);
+  }
+
   function handleFlowPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     flowDragState.current = {
       pointerId: event.pointerId,
@@ -3039,8 +3044,7 @@ function LongformReferenceView({
               <button className="nav-button" onClick={onOpenImportPicker}>Import text</button>
               <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
               <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
-              <button className="nav-button" onClick={() => setIsEditingDetail(false)}>Done</button>
-              <button className="today-button" onClick={onSave} disabled={isSaving}>
+              <button className="today-button" onClick={handleSaveAndClose} disabled={isSaving}>
                 {isSaving ? "Saving..." : "Save"}
               </button>
             </>
