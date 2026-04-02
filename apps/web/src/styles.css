@@ -523,24 +523,23 @@ img {
 
 .longform-shelf,
 .longform-detail {
-  background: rgba(249, 248, 244, 0.96);
-  border: 1px solid rgba(210, 205, 196, 0.55);
-  border-radius: 34px;
-  padding: 28px;
+  background: rgba(244, 243, 240, 0.98);
+  border: 1px solid rgba(222, 218, 210, 0.7);
+  border-radius: 38px;
+  padding: 32px;
 }
 
 .longform-shelf {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 18px;
+  gap: 22px;
 }
 
 .longform-hero-panel {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(280px, 1.05fr);
-  gap: 20px;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.25fr);
+  gap: 24px;
   align-items: stretch;
-  min-height: 320px;
+  min-height: 360px;
 }
 
 .longform-hero-copy,
@@ -549,16 +548,16 @@ img {
 .longform-detail-hero,
 .longform-analysis-panel,
 .longform-reading-article {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(218, 212, 203, 0.65);
-  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(228, 223, 214, 0.8);
+  border-radius: 34px;
 }
 
 .longform-hero-copy {
-  padding: 28px;
+  padding: 30px;
   display: grid;
   align-content: space-between;
-  gap: 14px;
+  gap: 16px;
 }
 
 .longform-eyebrow,
@@ -577,14 +576,14 @@ img {
   margin: 0;
   font-family: "Inter", "Helvetica Neue", sans-serif;
   font-weight: 800;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.065em;
   color: #121212;
 }
 
 .longform-hero-copy h2 {
-  font-size: clamp(2.6rem, 5vw, 4.5rem);
-  line-height: 0.93;
-  max-width: 7ch;
+  font-size: clamp(3.2rem, 7vw, 6.4rem);
+  line-height: 0.88;
+  max-width: 8ch;
 }
 
 .longform-hero-copy p,
@@ -602,12 +601,12 @@ img {
   position: relative;
   overflow: hidden;
   min-height: 280px;
-  border-radius: 32px;
+  border-radius: 30px;
   background:
     radial-gradient(circle at 26% 24%, rgba(255, 255, 255, 0.95), transparent 18%),
-    radial-gradient(circle at 78% 26%, var(--longform-b), transparent 28%),
-    radial-gradient(circle at 34% 72%, var(--longform-c), transparent 30%),
-    linear-gradient(160deg, var(--longform-a) 8%, rgba(255, 255, 255, 0.84) 55%, rgba(240, 239, 236, 0.96) 100%);
+    radial-gradient(circle at 78% 26%, color-mix(in srgb, var(--longform-b) 85%, white), transparent 28%),
+    radial-gradient(circle at 34% 72%, color-mix(in srgb, var(--longform-c) 82%, white), transparent 30%),
+    linear-gradient(160deg, color-mix(in srgb, var(--longform-a) 84%, white) 8%, rgba(255, 255, 255, 0.92) 55%, rgba(241, 240, 236, 0.98) 100%);
 }
 
 .longform-hero-orb,
@@ -658,28 +657,34 @@ img {
 
 .longform-card-stream {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
   align-content: start;
 }
 
 .longform-reference-card {
   border: 0;
-  padding: 18px;
+  padding: 20px;
   display: grid;
-  gap: 16px;
+  gap: 18px;
   text-align: left;
   cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease;
 }
 
 .longform-reference-card.wide {
   grid-column: span 2;
-  grid-template-columns: minmax(180px, 0.86fr) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 0.95fr) minmax(0, 1fr);
   align-items: center;
 }
 
 .longform-reference-card.active {
   outline: 2px solid rgba(24, 24, 24, 0.12);
+}
+
+.longform-reference-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(192, 186, 176, 0.9);
 }
 
 .longform-reference-art {
@@ -700,57 +705,99 @@ img {
 }
 
 .longform-reference-card strong {
-  font-size: clamp(1.5rem, 2vw, 2.2rem);
-  line-height: 0.95;
+  font-size: clamp(1.45rem, 2vw, 2.3rem);
+  line-height: 0.92;
 }
 
 .longform-detail {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 26px;
   align-items: start;
 }
 
 .longform-detail-topbar {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .longform-detail-side {
-  padding: 20px 18px;
+  padding: 24px 22px;
   display: grid;
-  gap: 22px;
+  gap: 18px;
   position: sticky;
   top: 20px;
 }
 
-.longform-share-stack {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.longform-control-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 26px;
+  background: rgba(251, 250, 247, 0.92);
+  border: 1px solid rgba(225, 220, 211, 0.86);
 }
 
-.longform-toc {
+.longform-control-card strong,
+.longform-toc strong {
+  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-weight: 700;
+  color: #111;
+}
+
+.longform-field {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   font-family: "Inter", "Helvetica Neue", sans-serif;
   color: rgba(62, 62, 62, 0.68);
 }
 
-.longform-toc strong {
-  color: #111;
+.longform-field span {
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(91, 86, 79, 0.56);
+}
+
+.longform-field input,
+.longform-field textarea {
+  width: 100%;
+  border: 1px solid rgba(223, 217, 208, 0.92);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 14px 16px;
+  font: inherit;
+  color: #181818;
+  resize: vertical;
+}
+
+.longform-field textarea {
+  min-height: 120px;
+  line-height: 1.65;
+}
+
+.longform-inline-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.longform-upload-button {
+  position: relative;
+  overflow: hidden;
 }
 
 .longform-detail-main {
   display: grid;
-  gap: 20px;
+  gap: 24px;
 }
 
 .longform-detail-hero {
-  padding: 26px;
+  padding: 30px;
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+  gap: 28px;
   align-items: center;
 }
 
@@ -762,12 +809,21 @@ img {
 .longform-detail-heading h2 {
   margin: 0;
   font-family: "Iowan Old Style", "Georgia", "Times New Roman", serif;
-  font-size: clamp(2.5rem, 4vw, 4.8rem);
+  font-size: clamp(2.6rem, 4vw, 5rem);
   font-weight: 500;
   line-height: 0.96;
   letter-spacing: -0.04em;
   color: #171717;
   max-width: 11ch;
+}
+
+.longform-detail-summary {
+  margin: 0;
+  max-width: 54ch;
+  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: rgba(63, 63, 63, 0.7);
 }
 
 .longform-byline {
@@ -782,9 +838,17 @@ img {
   min-height: 320px;
 }
 
+.longform-detail-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .longform-reading-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.7fr);
+  grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.72fr);
   gap: 24px;
 }
 
@@ -809,6 +873,18 @@ img {
   display: grid;
   gap: 20px;
   align-content: start;
+}
+
+.longform-status-chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(220, 214, 205, 0.92);
+  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(53, 53, 53, 0.6);
 }
 
 .longform-analysis-panel section {

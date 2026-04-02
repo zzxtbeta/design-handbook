@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import type {
   DaySlot,
   ReactorBoard,
@@ -85,6 +85,25 @@ interface LongformReference {
   framework: string[];
   resonance: string[];
   reusableMoves: string[];
+}
+
+interface LongformAnalysis {
+  whyItWorks: string;
+  framework: string[];
+  resonance: string[];
+  reusableMoves: string[];
+}
+
+interface LongformDraft {
+  title: string;
+  summary: string;
+  author: string;
+  date: string;
+  rawContent: string;
+  content: string[];
+  coverLabel: string;
+  coverUrl: string | null;
+  analysis: LongformAnalysis;
 }
 
 const reactorPets: ReactorPet[] = [
@@ -214,7 +233,136 @@ const longformReferences: LongformReference[] = [
       "让句子像口头判断，不像稿件表演"
     ],
   },
+  {
+    id: "dwarkesh-profile",
+    category: "Profile",
+    eyebrow: "Reference Sample",
+    title: "一个 23 岁的播客新星，凭什么让硅谷大佬排队上他节目？",
+    summary: "人物长文的经典样本：用强悬念标题、场景化叙述和连续推进做出阅读粘性。",
+    coverLabel: "Profile Breakdown",
+    palette: ["#f1efe9", "#d8d4cf", "#5f5b57"],
+    accent: "#101010",
+    author: "Prompt Example",
+    date: "02 April 2026",
+    content: [
+      "这类人物长文最难的是，既要让读者迅速进入一个具体的人，又不能写成履历堆砌。这篇样本的好，在于它从第一句就把人放进了一个强悬念里。",
+      "紧接着，它没有急着解释，而是用一连串更具体的事实去抬高这个悬念，让读者自然产生“他到底特别在哪里”的追问。",
+      "这时候作者再把成长路径、内容策略和时代背景慢慢补进来，整个阅读就变成了一次连续的理解过程，而不是信息灌输。"
+    ],
+    whyItWorks: "它把人物报道写成了问题驱动式阅读，让读者始终处在想继续往下看的状态里。",
+    framework: ["一个强问题开场", "连续抬高悬念", "补足背景信息", "回到人物方法论"],
+    resonance: ["让读者觉得自己在接近一个时代人物", "满足了对成功路径和判断力的双重好奇"],
+    reusableMoves: ["人物题用问题开场", "先制造张力再补资料", "把经历写成判断演化"],
+  },
+  {
+    id: "xhs-layout-method",
+    category: "Prompt Method",
+    eyebrow: "Reference Sample",
+    title: "我写了一个 prompt，让 AI 一键排版小红书长文",
+    summary: "方法论型爆文样本：问题直给、解决方案极短、可复制性极强。",
+    coverLabel: "Prompt Method",
+    palette: ["#efeee8", "#d7d4ca", "#79685b"],
+    accent: "#8d4e3d",
+    author: "Creator Sample",
+    date: "02 April 2026",
+    content: [
+      "这类内容好，是因为它把一个具体痛点讲得足够直白：排版太难用。读者在第一句就知道这篇东西是替自己解决麻烦的。",
+      "接下来作者没有长篇铺垫，而是快速给出方法和原理，让读者相信这不是空洞技巧，而是真可复用的操作方案。",
+      "最后再把可迁移场景打开，小红书之外，PPT、海报、商品详情页都能用，传播价值就一下被放大了。"
+    ],
+    whyItWorks: "它用一个真实痛点作为入口，又用高度可复用的方法论把单点经验升级成普适技巧。",
+    framework: ["痛点开门", "给出三步法", "展示效果", "拉高到更多场景"],
+    resonance: ["读者会觉得这就是‘我也能马上用起来’的内容", "它同时满足效率感和掌控感"],
+    reusableMoves: ["痛点-方法-迁移三段式", "用效果图做信任背书", "把工具感表达成生活技巧"],
+  },
+  {
+    id: "ai-notetaking",
+    category: "Workflow",
+    eyebrow: "Reference Sample",
+    title: "把乱序笔记喂给 AI，它能帮你找出真正该写的那条主线",
+    summary: "创作者工作流样本：把碎片输入、AI 整理和表达判断串成一个有说服力的闭环。",
+    coverLabel: "Workflow Essay",
+    palette: ["#f5f0ed", "#ddd3ce", "#7f6d67"],
+    accent: "#2b211d",
+    author: "Internal Draft",
+    date: "02 April 2026",
+    content: [
+      "创作者最痛苦的不是没灵感，而是灵感太多，最后谁都没长成作品。这类文章的价值，在于它能把混乱输入重新定义成一种优势。",
+      "写得好的地方不是把 AI 神化，而是把 AI 放在恰当的位置：不是替你表达，而是帮你整理、归并、看见主线。",
+      "只要这个角色定义清楚，整篇文章就会有一种很强的产品判断感，读者也更容易把它迁移到自己的工作流里。"
+    ],
+    whyItWorks: "它把 AI 从‘万能写手’拉回‘素材剪辑师’，因此观点更稳，也更可信。",
+    framework: ["提出真实痛点", "重新定义问题", "给 AI 一个清晰角色", "落到个人工作流闭环"],
+    resonance: ["创作者会觉得被理解，因为这就是他们每天的真实状态", "它给了一个不焦虑的 AI 使用方式"],
+    reusableMoves: ["先写混乱，再写判断", "定义 AI 边界", "用闭环表达产品价值"],
+  },
 ];
+
+function parseLongformContent(raw: string) {
+  return raw
+    .split(/\n\s*\n/g)
+    .map((chunk) => chunk.replace(/\n+/g, " ").trim())
+    .filter(Boolean);
+}
+
+function formatLongformDate() {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+}
+
+function deriveLongformAnalysis(title: string, paragraphs: string[]): LongformAnalysis {
+  const joined = paragraphs.join(" ");
+  const hasQuestion = /[？?]/.test(title);
+  const hasNumbers = /\d/.test(title + joined);
+  const hasContrast = /(不是|而是|真相|幻觉|反而|重新定义|却)/.test(joined);
+
+  return {
+    whyItWorks: hasQuestion
+      ? "这篇素材最强的地方，是它先抛出一个读者会立刻想继续看的问题，再在正文里不断补充判断和证据，让阅读带着追问往前走。"
+      : hasContrast
+        ? "这篇素材成立，是因为它不只是提供信息，而是通过反差和重定义，把读者熟悉的话题重新校准成一个更值得传播的命题。"
+        : "这篇素材写得好，主要在于它的信息组织很稳：开头先给阅读价值，中段持续递进，结尾留下可迁移的判断。",
+    framework: [
+      hasQuestion ? "用问题式标题制造阅读动机" : "先亮出一个清晰命题",
+      hasNumbers ? "中段用数据或事实抬高可信度" : "中段用案例或观察推进论证",
+      "每一段都围绕同一条主线继续收束",
+      "结尾把理解落成一个读者可复用的判断",
+    ],
+    resonance: [
+      "它不是空泛地讲道理，而是把读者熟悉的焦虑、欲望或判断困境写得很具体。",
+      "读者读完会感觉自己获得了一种更锋利的表达方式，而不只是看完一段信息。",
+    ],
+    reusableMoves: [
+      "标题先给出冲突或悬念",
+      "正文里持续做命题收束，不让段落散掉",
+      "少堆结论，多做节奏推进",
+      "最后留下一个适合被引用和转述的判断句",
+    ],
+  };
+}
+
+function buildLongformDraft(item: LongformReference): LongformDraft {
+  const rawContent = item.content.join("\n\n");
+  return {
+    title: item.title,
+    summary: item.summary,
+    author: item.author,
+    date: item.date,
+    rawContent,
+    content: item.content,
+    coverLabel: item.coverLabel,
+    coverUrl: null,
+    analysis: {
+      whyItWorks: item.whyItWorks,
+      framework: item.framework,
+      resonance: item.resonance,
+      reusableMoves: item.reusableMoves,
+    },
+  };
+}
 
 const toolsCatalog: Array<{
   id: ToolId;
@@ -485,10 +633,15 @@ export function App() {
   const [showSummary, setShowSummary] = useState(false);
   const [activeLongformId, setActiveLongformId] = useState(longformReferences[0]?.id ?? "");
   const [longformViewMode, setLongformViewMode] = useState<LongformViewMode>("shelf");
+  const [longformDraft, setLongformDraft] = useState<LongformDraft>(() =>
+    buildLongformDraft(longformReferences[0]),
+  );
+  const [longformFeedback, setLongformFeedback] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [zoomedEntry, setZoomedEntry] = useState<WeekEntry | null>(null);
   const [processingStage, setProcessingStage] = useState("Preparing image...");
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const longformCoverInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     void loadWeek();
@@ -818,6 +971,19 @@ export function App() {
     longformReferences.find((item) => item.id === activeLongformId) ?? longformReferences[0];
 
   useEffect(() => {
+    setLongformDraft(buildLongformDraft(activeLongformReference));
+  }, [activeLongformReference]);
+
+  useEffect(() => {
+    if (!longformFeedback) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setLongformFeedback(null), 1500);
+    return () => window.clearTimeout(timeout);
+  }, [longformFeedback]);
+
+  useEffect(() => {
     if (!reactorBoard) {
       return;
     }
@@ -868,6 +1034,48 @@ export function App() {
     } finally {
       setReactorLoading(false);
     }
+  }
+
+  function handleLongformDraftField<K extends keyof LongformDraft>(field: K, value: LongformDraft[K]) {
+    setLongformDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleLongformContentChange(value: string) {
+    setLongformDraft((current) => ({
+      ...current,
+      rawContent: value,
+      content: parseLongformContent(value),
+    }));
+  }
+
+  async function handleLongformImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const text = await file.text();
+    handleLongformContentChange(text);
+    setLongformFeedback("Imported");
+    event.target.value = "";
+  }
+
+  function handleLongformCoverUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setLongformDraft((current) => ({ ...current, coverUrl: url }));
+    setLongformFeedback("Cover updated");
+    event.target.value = "";
+  }
+
+  function handleLongformAnalyze() {
+    const analysis = deriveLongformAnalysis(longformDraft.title, longformDraft.content);
+    setLongformDraft((current) => ({ ...current, analysis }));
+    setLongformFeedback("AI extracted");
   }
 
   function openComposer(type: ReactorMaterialType, dayKey = activeReactorDayKey) {
@@ -1230,6 +1438,13 @@ export function App() {
             reader.readAsDataURL(file);
           }}
         />
+        <input
+          ref={longformCoverInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={handleLongformCoverUpload}
+        />
         <header className="topbar">
           <div className="title-block">
             <h1>
@@ -1579,11 +1794,18 @@ export function App() {
                   activeId={activeLongformReference.id}
                   activeItem={activeLongformReference}
                   viewMode={longformViewMode}
+                  draft={longformDraft}
+                  feedback={longformFeedback}
                   onSelect={(id) => {
                     setActiveLongformId(id);
                     setLongformViewMode("detail");
                   }}
                   onBack={() => setLongformViewMode("shelf")}
+                  onDraftFieldChange={handleLongformDraftField}
+                  onContentChange={handleLongformContentChange}
+                  onImport={handleLongformImport}
+                  onAnalyze={handleLongformAnalyze}
+                  onOpenCoverPicker={() => longformCoverInputRef.current?.click()}
                 />
               </motion.div>
             )}
@@ -2192,18 +2414,33 @@ function LongformReferenceView({
   activeId,
   activeItem,
   viewMode,
+  draft,
+  feedback,
   onSelect,
   onBack,
+  onDraftFieldChange,
+  onContentChange,
+  onImport,
+  onAnalyze,
+  onOpenCoverPicker,
 }: {
   items: LongformReference[];
   activeId: string;
   activeItem: LongformReference;
   viewMode: LongformViewMode;
+  draft: LongformDraft;
+  feedback: string | null;
   onSelect: (id: string) => void;
   onBack: () => void;
+  onDraftFieldChange: <K extends keyof LongformDraft>(field: K, value: LongformDraft[K]) => void;
+  onContentChange: (value: string) => void;
+  onImport: (event: ChangeEvent<HTMLInputElement>) => void;
+  onAnalyze: () => void;
+  onOpenCoverPicker: () => void;
 }) {
-  const hero = items[0];
-  const secondary = items.slice(1);
+  const shelfItems = items.slice(0, 6);
+  const hero = shelfItems[0];
+  const secondary = shelfItems.slice(1);
 
   return viewMode === "shelf" ? (
     <section className="longform-shell longform-shell-shelf">
@@ -2211,10 +2448,10 @@ function LongformReferenceView({
         <article className="longform-hero-panel">
           <div className="longform-hero-copy">
             <span className="longform-eyebrow">Editorial Shelf</span>
-            <h2>{hero.title}</h2>
-            <p>{hero.summary}</p>
+            <h2>Longform references worth stealing from.</h2>
+            <p>最多六篇，先被标题和气质吸引，再进入详情页拆为什么它写得好。</p>
             <button className="today-button" onClick={() => onSelect(hero.id)}>
-              Open Reference
+              Open featured
             </button>
           </div>
           <div
@@ -2264,34 +2501,76 @@ function LongformReferenceView({
     <section className="longform-shell longform-shell-detail">
       <div className="longform-detail-topbar">
         <button className="nav-button" onClick={onBack}>Back to Shelf</button>
+        {feedback ? <span className="longform-status-chip">{feedback}</span> : null}
       </div>
 
       <section className="longform-detail">
         <aside className="longform-detail-side">
-          <span className="longform-eyebrow">In This Reference</span>
-          <div className="longform-share-stack">
-            <button className="board-side-button" title="Share">𝕏</button>
-            <button className="board-side-button" title="Copy">⧉</button>
-            <button className="board-side-button" title="Save">◎</button>
-          </div>
-          <nav className="longform-toc">
-            <strong>Analysis</strong>
-            <span>Why it works</span>
-            <span>Framework</span>
-            <span>Resonance</span>
-            <span>Reusable moves</span>
-          </nav>
+          <span className="longform-eyebrow">Reference Controls</span>
+          <section className="longform-control-card">
+            <strong>Content</strong>
+            <label className="longform-field">
+              <span>Title</span>
+              <input
+                value={draft.title}
+                onChange={(event) => onDraftFieldChange("title", event.target.value)}
+              />
+            </label>
+            <label className="longform-field">
+              <span>Summary</span>
+              <textarea
+                rows={3}
+                value={draft.summary}
+                onChange={(event) => onDraftFieldChange("summary", event.target.value)}
+              />
+            </label>
+            <label className="longform-field">
+              <span>Paste article</span>
+              <textarea
+                rows={10}
+                value={draft.rawContent}
+                onChange={(event) => onContentChange(event.target.value)}
+              />
+            </label>
+            <div className="longform-inline-actions">
+              <label className="today-button longform-upload-button">
+                Import text
+                <input type="file" accept=".txt,.md,.markdown,text/plain" hidden onChange={onImport} />
+              </label>
+              <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
+            </div>
+          </section>
+
+          <section className="longform-control-card">
+            <strong>Cover</strong>
+            <label className="longform-field">
+              <span>Label</span>
+              <input
+                value={draft.coverLabel}
+                onChange={(event) => onDraftFieldChange("coverLabel", event.target.value)}
+              />
+            </label>
+            <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
+            <label className="longform-field">
+              <span>Author</span>
+              <input
+                value={draft.author}
+                onChange={(event) => onDraftFieldChange("author", event.target.value)}
+              />
+            </label>
+          </section>
         </aside>
 
         <div className="longform-detail-main">
           <header className="longform-detail-hero">
             <div className="longform-detail-heading">
               <span className="longform-eyebrow">{activeItem.eyebrow}</span>
-              <h2>{activeItem.title}</h2>
+              <h2>{draft.title}</h2>
               <div className="longform-byline">
-                <span>{activeItem.author}</span>
-                <span>{activeItem.date}</span>
+                <span>{draft.author}</span>
+                <span>{draft.date || formatLongformDate()}</span>
               </div>
+              <p className="longform-detail-summary">{draft.summary}</p>
             </div>
             <div
               className="longform-detail-visual"
@@ -2301,25 +2580,28 @@ function LongformReferenceView({
                 ["--longform-c" as string]: activeItem.palette[2],
               }}
             >
-              <span className="longform-detail-visual-label">{activeItem.coverLabel}</span>
+              {draft.coverUrl ? (
+                <img className="longform-detail-cover" src={draft.coverUrl} alt={draft.title} />
+              ) : null}
+              <span className="longform-detail-visual-label">{draft.coverLabel}</span>
             </div>
           </header>
 
           <section className="longform-reading-grid">
             <article className="longform-reading-article">
-              {activeItem.content.map((paragraph) => (
+              {draft.content.map((paragraph) => (
                 <p key={paragraph}>{paragraph}</p>
               ))}
             </article>
             <aside className="longform-analysis-panel">
               <section>
                 <span className="longform-analysis-kicker">Why it works</span>
-                <p>{activeItem.whyItWorks}</p>
+                <p>{draft.analysis.whyItWorks}</p>
               </section>
               <section>
                 <span className="longform-analysis-kicker">Framework</span>
                 <ul>
-                  {activeItem.framework.map((item) => (
+                  {draft.analysis.framework.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
@@ -2327,7 +2609,7 @@ function LongformReferenceView({
               <section>
                 <span className="longform-analysis-kicker">Resonance</span>
                 <ul>
-                  {activeItem.resonance.map((item) => (
+                  {draft.analysis.resonance.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
@@ -2335,7 +2617,7 @@ function LongformReferenceView({
               <section>
                 <span className="longform-analysis-kicker">Reusable moves</span>
                 <ul>
-                  {activeItem.reusableMoves.map((item) => (
+                  {draft.analysis.reusableMoves.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
