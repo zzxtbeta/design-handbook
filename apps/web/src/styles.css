@@ -534,15 +534,8 @@ img {
   gap: 22px;
 }
 
-.longform-hero-panel {
-  display: grid;
-  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.25fr);
-  gap: 24px;
-  align-items: stretch;
-  min-height: 360px;
-}
-
-.longform-hero-copy,
+.longform-shelf-head,
+.longform-shelf-copy,
 .longform-reference-card,
 .longform-detail-side,
 .longform-detail-hero,
@@ -553,11 +546,17 @@ img {
   border-radius: 34px;
 }
 
-.longform-hero-copy {
-  padding: 30px;
+.longform-shelf-head {
+  padding: 6px 4px 4px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.longform-shelf-copy {
   display: grid;
-  align-content: space-between;
-  gap: 16px;
+  gap: 10px;
 }
 
 .longform-eyebrow,
@@ -571,7 +570,7 @@ img {
   color: rgba(96, 92, 84, 0.58);
 }
 
-.longform-hero-copy h2,
+.longform-shelf-copy h2,
 .longform-reference-card strong {
   margin: 0;
   font-family: "Inter", "Helvetica Neue", sans-serif;
@@ -580,13 +579,12 @@ img {
   color: #121212;
 }
 
-.longform-hero-copy h2 {
-  font-size: clamp(3.2rem, 7vw, 6.4rem);
-  line-height: 0.88;
-  max-width: 8ch;
+.longform-shelf-copy h2 {
+  font-size: clamp(2.6rem, 5vw, 4rem);
+  line-height: 0.9;
 }
 
-.longform-hero-copy p,
+.longform-shelf-copy p,
 .longform-reference-card p {
   margin: 0;
   font-family: "Inter", "Helvetica Neue", sans-serif;
@@ -595,7 +593,6 @@ img {
   color: rgba(62, 62, 62, 0.7);
 }
 
-.longform-hero-visual,
 .longform-reference-art,
 .longform-detail-visual {
   position: relative;
@@ -609,7 +606,6 @@ img {
     linear-gradient(160deg, color-mix(in srgb, var(--longform-a) 84%, white) 8%, rgba(255, 255, 255, 0.92) 55%, rgba(241, 240, 236, 0.98) 100%);
 }
 
-.longform-hero-orb,
 .longform-reference-glass {
   position: absolute;
   border-radius: 999px;
@@ -618,29 +614,17 @@ img {
   backdrop-filter: blur(18px);
 }
 
-.longform-hero-orb-a {
-  width: 200px;
-  height: 200px;
-  top: 24px;
-  left: 34px;
+.longform-shelf-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(96, 92, 84, 0.58);
 }
 
-.longform-hero-orb-b {
-  width: 320px;
-  height: 74px;
-  right: 16px;
-  top: 92px;
-  border-radius: 28px;
-}
-
-.longform-hero-orb-c {
-  width: 220px;
-  height: 220px;
-  right: 36px;
-  bottom: 26px;
-}
-
-.longform-hero-label,
 .longform-detail-visual-label {
   position: absolute;
   left: 22px;
@@ -660,6 +644,7 @@ img {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   align-content: start;
+  justify-items: stretch;
 }
 
 .longform-reference-card {

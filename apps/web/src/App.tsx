@@ -50,6 +50,7 @@ type ViewMode = "week" | "day";
 type BoardMode = "aesthetic" | "reactor" | "longform";
 type LongformViewMode = "shelf" | "detail";
 type ToolId = "xhs-layout" | "screenshot-rebuild";
+const LONGFORM_PAGE_SIZE = 6;
 
 interface BoardLayout {
   x: number;
@@ -633,6 +634,7 @@ export function App() {
   const [showSummary, setShowSummary] = useState(false);
   const [activeLongformId, setActiveLongformId] = useState(longformReferences[0]?.id ?? "");
   const [longformViewMode, setLongformViewMode] = useState<LongformViewMode>("shelf");
+  const [longformShelfPage, setLongformShelfPage] = useState(0);
   const [longformDraft, setLongformDraft] = useState<LongformDraft>(() =>
     buildLongformDraft(longformReferences[0]),
   );
@@ -969,6 +971,13 @@ export function App() {
   const reactorWeeklySummary = useMemo(() => buildReactorWeeklySummary(reactorBoard), [reactorBoard]);
   const activeLongformReference =
     longformReferences.find((item) => item.id === activeLongformId) ?? longformReferences[0];
+  const longformPageCount = Math.max(1, Math.ceil(longformReferences.length / LONGFORM_PAGE_SIZE));
+
+  useEffect(() => {
+    if (longformShelfPage > longformPageCount - 1) {
+      setLongformShelfPage(longformPageCount - 1);
+    }
+  }, [longformPageCount, longformShelfPage]);
 
   useEffect(() => {
     setLongformDraft(buildLongformDraft(activeLongformReference));
@@ -1794,6 +1803,8 @@ export function App() {
                   activeId={activeLongformReference.id}
                   activeItem={activeLongformReference}
                   viewMode={longformViewMode}
+                  shelfPage={longformShelfPage}
+                  pageCount={longformPageCount}
                   draft={longformDraft}
                   feedback={longformFeedback}
                   onSelect={(id) => {
@@ -1801,6 +1812,7 @@ export function App() {
                     setLongformViewMode("detail");
                   }}
                   onBack={() => setLongformViewMode("shelf")}
+                  onShelfPageChange={setLongformShelfPage}
                   onDraftFieldChange={handleLongformDraftField}
                   onContentChange={handleLongformContentChange}
                   onImport={handleLongformImport}
@@ -2414,10 +2426,13 @@ function LongformReferenceView({
   activeId,
   activeItem,
   viewMode,
+  shelfPage,
+  pageCount,
   draft,
   feedback,
   onSelect,
   onBack,
+  onShelfPageChange,
   onDraftFieldChange,
   onContentChange,
   onImport,
@@ -2428,48 +2443,53 @@ function LongformReferenceView({
   activeId: string;
   activeItem: LongformReference;
   viewMode: LongformViewMode;
+  shelfPage: number;
+  pageCount: number;
   draft: LongformDraft;
   feedback: string | null;
   onSelect: (id: string) => void;
   onBack: () => void;
+  onShelfPageChange: (page: number) => void;
   onDraftFieldChange: <K extends keyof LongformDraft>(field: K, value: LongformDraft[K]) => void;
   onContentChange: (value: string) => void;
   onImport: (event: ChangeEvent<HTMLInputElement>) => void;
   onAnalyze: () => void;
   onOpenCoverPicker: () => void;
 }) {
-  const shelfItems = items.slice(0, 6);
-  const hero = shelfItems[0];
-  const secondary = shelfItems.slice(1);
+  const shelfItems = items.slice(
+    shelfPage * LONGFORM_PAGE_SIZE,
+    shelfPage * LONGFORM_PAGE_SIZE + LONGFORM_PAGE_SIZE,
+  );
 
   return viewMode === "shelf" ? (
     <section className="longform-shell longform-shell-shelf">
       <section className="longform-shelf">
-        <article className="longform-hero-panel">
-          <div className="longform-hero-copy">
+        <div className="longform-shelf-head">
+          <div className="longform-shelf-copy">
             <span className="longform-eyebrow">Editorial Shelf</span>
-            <h2>Longform references worth stealing from.</h2>
-            <p>最多六篇，先被标题和气质吸引，再进入详情页拆为什么它写得好。</p>
-            <button className="today-button" onClick={() => onSelect(hero.id)}>
-              Open featured
+            <h2>Six references per page.</h2>
+            <p>简洁浏览，点进再深读与拆解。</p>
+          </div>
+          <div className="longform-shelf-pager">
+            <button
+              className="nav-button icon-only"
+              onClick={() => onShelfPageChange(Math.max(0, shelfPage - 1))}
+              disabled={shelfPage === 0}
+            >
+              ←
+            </button>
+            <span>{String(shelfPage + 1).padStart(2, "0")} / {String(pageCount).padStart(2, "0")}</span>
+            <button
+              className="nav-button icon-only"
+              onClick={() => onShelfPageChange(Math.min(pageCount - 1, shelfPage + 1))}
+              disabled={shelfPage >= pageCount - 1}
+            >
+              →
             </button>
           </div>
-          <div
-            className="longform-hero-visual"
-            style={{
-              ["--longform-a" as string]: hero.palette[0],
-              ["--longform-b" as string]: hero.palette[1],
-              ["--longform-c" as string]: hero.palette[2],
-            }}
-          >
-            <span className="longform-hero-orb longform-hero-orb-a" />
-            <span className="longform-hero-orb longform-hero-orb-b" />
-            <span className="longform-hero-orb longform-hero-orb-c" />
-            <span className="longform-hero-label">{hero.coverLabel}</span>
-          </div>
-        </article>
+        </div>
         <div className="longform-card-stream">
-          {secondary.map((item) => (
+          {shelfItems.map((item) => (
             <button
               key={item.id}
               className={`longform-reference-card ${activeId === item.id ? "active" : ""}`}
