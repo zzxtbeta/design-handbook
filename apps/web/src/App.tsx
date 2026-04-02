@@ -3001,7 +3001,7 @@ function LongformReferenceView({
                   }}
                 >
                   {item.coverUrl ? <img className="longform-reference-cover" src={item.coverUrl} alt={item.title} /> : null}
-                  <span className="longform-reference-glass" />
+                  {item.coverUrl ? null : <span className="longform-reference-glass" />}
                 </div>
                 <div className="longform-reference-copy">
                   <span className="longform-reference-kicker">{item.category}</span>
@@ -3074,7 +3074,7 @@ function LongformReferenceView({
                     }}
                   >
                     {item.coverUrl ? <img className="longform-reference-cover" src={item.coverUrl} alt={item.title} /> : null}
-                    <span className="longform-reference-glass" />
+                    {item.coverUrl ? null : <span className="longform-reference-glass" />}
                   </div>
                   <div className="longform-reference-copy">
                     <span className="longform-reference-kicker">{item.category}</span>
