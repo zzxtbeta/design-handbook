@@ -440,7 +440,7 @@ function buildLongformDraftFromEntry(entry: LongformEntry): LongformDraft {
     subtitle: entry.subtitle ?? "",
     summary: entry.excerpt || "",
     author: entry.authorName,
-    date: formatLongformDate(entry.publishedAt || entry.updatedAt || entry.createdAt),
+    date: toDateInputValue(entry.publishedAt || entry.updatedAt || entry.createdAt),
     sourcePlatform: entry.sourcePlatform ?? "",
     sourceUrl: entry.sourceUrl ?? "",
     rawContent: entry.rawText,
@@ -456,6 +456,37 @@ function buildLongformDraftFromEntry(entry: LongformEntry): LongformDraft {
       reusableMoves: entry.reusableMoves,
     },
   };
+}
+
+function toDateInputValue(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const direct = new Date(value);
+  if (!Number.isNaN(direct.getTime())) {
+    return direct.toISOString().slice(0, 10);
+  }
+
+  const parsed = new Date(`${value} UTC`);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  return "";
+}
+
+function formatLongformDisplayDate(value: string) {
+  if (!value) {
+    return formatLongformDate();
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return formatLongformDate(parsed.toISOString());
+  }
+
+  return value;
 }
 
 function excerptFromLongformContent(blocks: string[]) {
@@ -1334,9 +1365,15 @@ export function App() {
       return;
     }
 
+    if (file.size > 4 * 1024 * 1024) {
+      setLongformFeedback("Cover must be under 4MB");
+      event.target.value = "";
+      return;
+    }
+
     const dataUrl = await fileToDataUrl(file);
     setLongformDraft((current) => ({ ...current, coverUrl: dataUrl, coverImageDataUrl: dataUrl }));
-    setLongformFeedback("Cover updated");
+    setLongformFeedback("Cover ready to save");
     event.target.value = "";
   }
 
@@ -1351,6 +1388,7 @@ export function App() {
         authorName: longformDraft.author,
         sourcePlatform: longformDraft.sourcePlatform || null,
         sourceUrl: longformDraft.sourceUrl || null,
+        publishedAt: longformDraft.date || null,
         rawText: longformDraft.rawContent,
         contentBlocks,
         coverCaption: longformDraft.coverLabel,
@@ -3084,6 +3122,7 @@ function LongformReferenceView({
                     />
                     <input
                       className="longform-inline-meta"
+                      type="date"
                       value={draft.date}
                       onChange={(event) => onDraftFieldChange("date", event.target.value)}
                       placeholder="Date"
@@ -3104,7 +3143,7 @@ function LongformReferenceView({
                 ) : (
                   <>
                     <span>{draft.author}</span>
-                    <span>{draft.date || formatLongformDate()}</span>
+                    <span>{formatLongformDisplayDate(draft.date)}</span>
                     {draft.sourcePlatform ? <span>{draft.sourcePlatform}</span> : null}
                   </>
                 )}
@@ -3134,17 +3173,11 @@ function LongformReferenceView({
               ) : null}
               {isEditingDetail ? (
                 <div className="longform-detail-cover-tools">
-                  <input
-                    className="longform-inline-cover-label"
-                    value={draft.coverLabel}
-                    onChange={(event) => onDraftFieldChange("coverLabel", event.target.value)}
-                    placeholder="Cover label"
-                  />
-                  <button className="nav-button" onClick={onOpenCoverPicker}>Change cover</button>
+                  <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
                 </div>
-              ) : (
+              ) : draft.coverLabel ? (
                 <span className="longform-detail-visual-label">{draft.coverLabel}</span>
-              )}
+              ) : null}
             </div>
           </header>
 

@@ -911,6 +911,7 @@ img {
   min-width: 0;
   padding: 10px 14px;
   font: inherit;
+  appearance: none;
 }
 
 .longform-inline-meta-wide {
@@ -941,12 +942,9 @@ img {
 
 .longform-detail-cover-tools {
   position: absolute;
-  left: 18px;
   right: 18px;
   bottom: 18px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  display: inline-flex;
   z-index: 2;
 }
 
@@ -976,6 +974,28 @@ img {
   font-family: "Inter", "Helvetica Neue", sans-serif;
   font-size: 1.06rem;
   line-height: 1.85;
+  scrollbar-width: none;
+}
+
+.longform-inline-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.longform-inline-body:hover,
+.longform-inline-body:focus {
+  scrollbar-width: thin;
+}
+
+.longform-inline-body:hover::-webkit-scrollbar,
+.longform-inline-body:focus::-webkit-scrollbar {
+  width: 8px;
+}
+
+.longform-inline-body:hover::-webkit-scrollbar-thumb,
+.longform-inline-body:focus::-webkit-scrollbar-thumb {
+  background: rgba(164, 154, 139, 0.42);
+  border-radius: 999px;
 }
 
 .longform-reading-article h1,
