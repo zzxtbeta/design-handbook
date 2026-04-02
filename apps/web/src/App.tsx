@@ -47,7 +47,7 @@ interface ReactorStorylineInsight {
 }
 
 type ViewMode = "week" | "day";
-type BoardMode = "aesthetic" | "reactor";
+type BoardMode = "aesthetic" | "reactor" | "longform";
 type ToolId = "xhs-layout" | "screenshot-rebuild";
 
 interface BoardLayout {
@@ -66,6 +66,24 @@ interface ReactorPet {
   mode: "peek" | "perch" | "float";
   species: "fox" | "sprout" | "moth" | "slime" | "pup" | "owl";
   palette: [string, string, string];
+}
+
+interface LongformReference {
+  id: string;
+  category: string;
+  eyebrow: string;
+  title: string;
+  summary: string;
+  coverLabel: string;
+  palette: [string, string, string];
+  accent: string;
+  author: string;
+  date: string;
+  content: string[];
+  whyItWorks: string;
+  framework: string[];
+  resonance: string[];
+  reusableMoves: string[];
 }
 
 const reactorPets: ReactorPet[] = [
@@ -87,6 +105,114 @@ const reactorPets: ReactorPet[] = [
   { id: "beta", rarity: "rare", bubble: "star", mode: "float", species: "moth", palette: ["#daf4e4", "#7cc79b", "#2e5b44"] },
   { id: "nova", rarity: "legendary", bubble: "notch", mode: "float", species: "sprout", palette: ["#ffe7a8", "#f7b63f", "#77531d"] },
   { id: "gigi", rarity: "legendary", bubble: "cloud", mode: "perch", species: "owl", palette: ["#fff0b9", "#f3c44d", "#70541e"] },
+];
+
+const longformReferences: LongformReference[] = [
+  {
+    id: "khosla-hiring",
+    category: "Hiring",
+    eyebrow: "Featured Essay",
+    title: "The art of hiring: insights from Khosla Ventures, Airbnb, Ramp and Traba",
+    summary: "把一个常见话题写出高级感，不靠鸡汤，而靠视角、节奏和强信息密度。",
+    coverLabel: "Editorial Interview",
+    palette: ["#f2eee8", "#d8dfe6", "#4f5b6a"],
+    accent: "#111111",
+    author: "Lina Linder",
+    date: "12 January 2025",
+    content: [
+      "在拥有无数招聘建议的时代，真正能留下来的文章不是再重复一遍“要招对人”，而是把招聘这件事放进组织气质、判断力和创始人节奏里去写。",
+      "这篇文章成立，不是因为它信息最多，而是因为它把几个强名字放在一起后，没有滑向八卦或流水账，而是很快建立了一个更高的命题：顶级公司到底是怎么判断人的。",
+      "它在结构上保持了非常稳定的编辑感。标题先给出足够强的名词密度，随后正文快速进入可感知的观察，再逐段把经验拆成读者能拿走的判断。",
+      "阅读时会有一种很强的“我在看一篇认真做过采访和整理的东西”的信任感。这种信任感，本身就是长文最重要的钩子之一。"
+    ],
+    whyItWorks: "它成立的核心，不在于信息新，而在于把“招聘”从实用话题拉成了一个关于组织判断力的高级命题。",
+    framework: [
+      "大命题标题先建立阅读价值",
+      "用具体公司与人物建立可信度",
+      "把零散观点整理成连续的判断链",
+      "最后回到读者可迁移的结论"
+    ],
+    resonance: [
+      "读者会感觉自己不是在看技巧，而是在接近一套更高级的判断标准",
+      "它打中了“想把事情做深”的人，而不是只想要 checklist 的人"
+    ],
+    reusableMoves: [
+      "把常见话题抬高一个抽象层级",
+      "标题里放进高密度的可信名词",
+      "段落之间保持编辑式节奏，不急于抖观点",
+      "用结论感强的句子做每段收束"
+    ],
+  },
+  {
+    id: "one-person-company",
+    category: "AI Cognition",
+    eyebrow: "Reference Sample",
+    title: "一人公司的幻觉与真相",
+    summary: "典型的“反常识命题 + 数据反证 + 历史类比”结构，适合拆写法。",
+    coverLabel: "Counter Thesis",
+    palette: ["#efebe3", "#d9d0c6", "#695247"],
+    accent: "#7a4c3b",
+    author: "嘉叔养生",
+    date: "31 March 2026",
+    content: [
+      "这篇长文的厉害之处，在于它没有停在“AI 降低门槛”这种已经被说烂的结论，而是把门槛重新定义成认知、分发和信任。",
+      "它的推进也非常稳：先承认大众想象，再用数据做反证，然后给出摄影术与印象派的历史类比，最后把价值重新定义。",
+      "这样的结构会让读者产生一种被重新校准的感觉。不是简单被说服，而是觉得自己过去理解错了什么。",
+      "所以它的传播潜力，来自认知反差，也来自它让读者获得了一种更锋利的表达方式。"
+    ],
+    whyItWorks: "它最成立的地方是“把门槛从做出来重新定义到被看见、被相信”，这个重定义动作非常强。",
+    framework: [
+      "先承认大众幻想",
+      "用数据和现实打掉旧叙事",
+      "给历史类比建立可信迁移",
+      "重定义价值坐标",
+      "落回读者下一步该积累什么"
+    ],
+    resonance: [
+      "它打中了普通人最深的焦虑：学会工具后仍然没有优势怎么办",
+      "它也给了读者一种新的自我安放方式：慢能力并没有过时"
+    ],
+    reusableMoves: [
+      "标题制造幻觉与真相的反差",
+      "先站在读者一边再翻转判断",
+      "用历史类比提高说服力",
+      "把结论落成新的价值词汇"
+    ],
+  },
+  {
+    id: "real-expression",
+    category: "Expression",
+    eyebrow: "Reference Sample",
+    title: "真实表达不是更用力，而是更少修饰",
+    summary: "一句话命题足够锋利，适合作为社论式短长文样本。",
+    coverLabel: "Tone Study",
+    palette: ["#f3f0ec", "#d8d5d0", "#7d7770"],
+    accent: "#1c1c1c",
+    author: "Internal Note",
+    date: "01 April 2026",
+    content: [
+      "很多表达不成立，不是因为内容太少，而是因为修饰太多。每一句都想证明自己在思考，结果反而把真正想说的东西埋掉了。",
+      "这类文章如果写得好，往往是先找到一个足够干净的命题，然后用最少的形容词去托住它。句子一旦变轻，观点反而更重。",
+      "读者会觉得这种文字像在直接对自己说话，因为作者没有拼命摆出写作姿态。真实感，常常来自放弃表演。"
+    ],
+    whyItWorks: "它好在命题本身足够短、足够狠，所以读者很快就能感到一种判断力。",
+    framework: [
+      "一句锋利命题开场",
+      "解释常见误区",
+      "提出一个更本质的判断",
+      "用很轻的收束句留下余味"
+    ],
+    resonance: [
+      "它会让读者想到自己过去那些写得太满、太急于证明的表达",
+      "它打中了大家想更真诚但又不知道怎么做减法的状态"
+    ],
+    reusableMoves: [
+      "把命题压缩到一句话",
+      "少举例，多做判断",
+      "去掉不必要的修饰词",
+      "让句子像口头判断，不像稿件表演"
+    ],
+  },
 ];
 
 const toolsCatalog: Array<{
@@ -356,6 +482,7 @@ export function App() {
   const [weekCardSizes, setWeekCardSizes] = useState<WeekCardSizes>({});
   const [copiedTerm, setCopiedTerm] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [activeLongformId, setActiveLongformId] = useState(longformReferences[0]?.id ?? "");
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [zoomedEntry, setZoomedEntry] = useState<WeekEntry | null>(null);
   const [processingStage, setProcessingStage] = useState("Preparing image...");
@@ -685,6 +812,8 @@ export function App() {
   const processingCount = week ? week.entries.filter((entry) => entry.status === "processing").length : 0;
   const weeklySummary = useMemo(() => buildWeeklySummary(week), [week]);
   const reactorWeeklySummary = useMemo(() => buildReactorWeeklySummary(reactorBoard), [reactorBoard]);
+  const activeLongformReference =
+    longformReferences.find((item) => item.id === activeLongformId) ?? longformReferences[0];
 
   useEffect(() => {
     if (!reactorBoard) {
@@ -1102,17 +1231,25 @@ export function App() {
         <header className="topbar">
           <div className="title-block">
             <h1>
-              {boardMode === "aesthetic" ? "Aesthetic Board" : "Creator Reactor"}
+              {boardMode === "aesthetic"
+                ? "Aesthetic Board"
+                : boardMode === "reactor"
+                  ? "Creator Reactor"
+                  : "Longform Library"}
             </h1>
             <span className="title-side-note">
               {boardMode === "reactor"
                 ? "Drop loose thoughts into the week."
-                : "Collect visual cues into the week."}
+                : boardMode === "aesthetic"
+                  ? "Collect visual cues into the week."
+                  : "Collect sharp essays worth studying."}
             </span>
             <p className="date-range">
               {boardMode === "aesthetic"
                 ? week?.label ?? "Weekly Board"
-                : week?.label ?? ""}
+                : boardMode === "reactor"
+                  ? week?.label ?? ""
+                  : "Editorial Reference Room"}
             </p>
           </div>
           <div className="week-actions">
@@ -1158,6 +1295,14 @@ export function App() {
             aria-label="Creator Reactor"
           >
             ✎
+          </button>
+          <button
+            className={`board-side-button ${boardMode === "longform" ? "active" : ""}`}
+            onClick={() => setBoardMode("longform")}
+            title="Longform Library"
+            aria-label="Longform Library"
+          >
+            ❐
           </button>
           <button
             className={`board-side-button ${toolsOpen || activeToolId ? "active" : ""}`}
@@ -1362,7 +1507,7 @@ export function App() {
                   />
                 </motion.div>
               )
-            ) : (
+            ) : boardMode === "reactor" ? (
               <motion.div
                 key="reactor-view"
                 initial={{ opacity: 0, scale: 0.98 }}
@@ -1417,6 +1562,21 @@ export function App() {
                       },
                     }))
                   }
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="longform-view"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.02 }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+              >
+                <LongformReferenceView
+                  items={longformReferences}
+                  activeId={activeLongformReference.id}
+                  activeItem={activeLongformReference}
+                  onSelect={setActiveLongformId}
                 />
               </motion.div>
             )}
@@ -2017,6 +2177,157 @@ function ReactorBoardView({
       exportOpen={exportOpen}
       onToggleExportOpen={onToggleExportOpen}
     />
+  );
+}
+
+function LongformReferenceView({
+  items,
+  activeId,
+  activeItem,
+  onSelect,
+}: {
+  items: LongformReference[];
+  activeId: string;
+  activeItem: LongformReference;
+  onSelect: (id: string) => void;
+}) {
+  const hero = items[0];
+  const secondary = items.slice(1);
+
+  return (
+    <section className="longform-shell">
+      <section className="longform-shelf">
+        <article className="longform-hero-panel">
+          <div className="longform-hero-copy">
+            <span className="longform-eyebrow">Editorial Shelf</span>
+            <h2>{hero.title}</h2>
+            <p>{hero.summary}</p>
+            <button className="today-button" onClick={() => onSelect(hero.id)}>
+              Open Reference
+            </button>
+          </div>
+          <div
+            className="longform-hero-visual"
+            style={{
+              ["--longform-a" as string]: hero.palette[0],
+              ["--longform-b" as string]: hero.palette[1],
+              ["--longform-c" as string]: hero.palette[2],
+            }}
+          >
+            <span className="longform-hero-orb longform-hero-orb-a" />
+            <span className="longform-hero-orb longform-hero-orb-b" />
+            <span className="longform-hero-orb longform-hero-orb-c" />
+            <span className="longform-hero-label">{hero.coverLabel}</span>
+          </div>
+        </article>
+        <div className="longform-card-stream">
+          {secondary.map((item, index) => (
+            <button
+              key={item.id}
+              className={`longform-reference-card ${activeId === item.id ? "active" : ""} ${
+                index % 3 === 1 ? "wide" : ""
+              }`}
+              onClick={() => onSelect(item.id)}
+            >
+              <div
+                className="longform-reference-art"
+                style={{
+                  ["--longform-a" as string]: item.palette[0],
+                  ["--longform-b" as string]: item.palette[1],
+                  ["--longform-c" as string]: item.palette[2],
+                }}
+              >
+                <span className="longform-reference-glass" />
+              </div>
+              <div className="longform-reference-copy">
+                <span className="longform-reference-kicker">{item.category}</span>
+                <strong>{item.title}</strong>
+                <p>{item.summary}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="longform-detail">
+        <aside className="longform-detail-side">
+          <span className="longform-eyebrow">In This Reference</span>
+          <div className="longform-share-stack">
+            <button className="board-side-button" title="Share">𝕏</button>
+            <button className="board-side-button" title="Copy">⧉</button>
+            <button className="board-side-button" title="Save">◎</button>
+          </div>
+          <nav className="longform-toc">
+            <strong>Analysis</strong>
+            <span>Why it works</span>
+            <span>Framework</span>
+            <span>Resonance</span>
+            <span>Reusable moves</span>
+          </nav>
+        </aside>
+
+        <div className="longform-detail-main">
+          <header className="longform-detail-hero">
+            <div className="longform-detail-heading">
+              <span className="longform-eyebrow">{activeItem.eyebrow}</span>
+              <h2>{activeItem.title}</h2>
+              <div className="longform-byline">
+                <span>{activeItem.author}</span>
+                <span>{activeItem.date}</span>
+              </div>
+            </div>
+            <div
+              className="longform-detail-visual"
+              style={{
+                ["--longform-a" as string]: activeItem.palette[0],
+                ["--longform-b" as string]: activeItem.palette[1],
+                ["--longform-c" as string]: activeItem.palette[2],
+              }}
+            >
+              <span className="longform-detail-visual-label">{activeItem.coverLabel}</span>
+            </div>
+          </header>
+
+          <section className="longform-reading-grid">
+            <article className="longform-reading-article">
+              {activeItem.content.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </article>
+            <aside className="longform-analysis-panel">
+              <section>
+                <span className="longform-analysis-kicker">Why it works</span>
+                <p>{activeItem.whyItWorks}</p>
+              </section>
+              <section>
+                <span className="longform-analysis-kicker">Framework</span>
+                <ul>
+                  {activeItem.framework.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+              <section>
+                <span className="longform-analysis-kicker">Resonance</span>
+                <ul>
+                  {activeItem.resonance.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+              <section>
+                <span className="longform-analysis-kicker">Reusable moves</span>
+                <ul>
+                  {activeItem.reusableMoves.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+            </aside>
+          </section>
+        </div>
+      </section>
+    </section>
   );
 }
 
