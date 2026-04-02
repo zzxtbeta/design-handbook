@@ -3,7 +3,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import express from "express";
 import cors from "cors";
-import { generateDesignTerms, generateReactorClusterInsight, generateReactorStorylineInsight } from "./ai";
+import {
+  generateDesignTerms,
+  generateLongformAnalysisInsight,
+  generateReactorClusterInsight,
+  generateReactorStorylineInsight,
+} from "./ai";
 import { config } from "./config";
 import { deleteStoredImage, saveImageDataUrl, saveRemoteImageUrl } from "./image-storage";
 import { fetchLinkPreview } from "./link-preview";
@@ -13,6 +18,13 @@ import {
   getReactorBoard,
   updateReactorMaterial,
 } from "./reactor-store";
+import {
+  applyLongformAnalysis,
+  createLongformEntry,
+  getLongformEntry,
+  listLongformEntries,
+  updateLongformEntry,
+} from "./longform-store";
 import {
   createEntry,
   deleteEntry,
@@ -74,6 +86,147 @@ app.get("/api/reactor/days", async (request, response) => {
   const days = Number.isFinite(rawDays) ? Math.max(1, Math.min(7, rawDays)) : 3;
   const offset = Number.isFinite(rawOffset) ? Math.max(-52, Math.min(52, rawOffset)) : 0;
   response.json(await getReactorBoard(days, offset));
+});
+
+app.get("/api/longform", async (_request, response) => {
+  response.json(await listLongformEntries());
+});
+
+app.get("/api/longform/:id", async (request, response) => {
+  const entry = await getLongformEntry(request.params.id);
+  if (!entry) {
+    response.status(404).json({ error: "Longform entry not found." });
+    return;
+  }
+
+  response.json(entry);
+});
+
+app.post("/api/longform", async (request, response) => {
+  const {
+    title,
+    subtitle,
+    excerpt,
+    authorName,
+    sourcePlatform,
+    sourceUrl,
+    publishedAt,
+    language,
+    rawText,
+    contentBlocks,
+    coverCaption,
+    coverPalette,
+    coverImageDataUrl,
+  } = request.body ?? {};
+
+  if (typeof title !== "string" || title.trim() === "") {
+    response.status(400).json({ error: "title is required." });
+    return;
+  }
+
+  let coverImagePath: string | null = null;
+  if (typeof coverImageDataUrl === "string" && coverImageDataUrl.trim() !== "") {
+    const image = await saveImageDataUrl({ imageDataUrl: coverImageDataUrl });
+    coverImagePath = image.publicUrl;
+  }
+
+  response.status(201).json(
+    await createLongformEntry({
+      title,
+      subtitle: typeof subtitle === "string" ? subtitle : null,
+      excerpt: typeof excerpt === "string" ? excerpt : "",
+      authorName: typeof authorName === "string" ? authorName : "",
+      sourcePlatform: typeof sourcePlatform === "string" ? sourcePlatform : null,
+      sourceUrl: typeof sourceUrl === "string" ? sourceUrl : null,
+      publishedAt: typeof publishedAt === "string" && publishedAt ? new Date(publishedAt) : null,
+      language: typeof language === "string" ? language : "zh-CN",
+      rawText: typeof rawText === "string" ? rawText : "",
+      contentBlocks: Array.isArray(contentBlocks) ? contentBlocks.filter((item) => typeof item === "string") : [],
+      coverImagePath,
+      coverCaption: typeof coverCaption === "string" ? coverCaption : "",
+      coverPalette:
+        Array.isArray(coverPalette) && coverPalette.length === 3
+          ? (coverPalette as [string, string, string])
+          : null,
+    }),
+  );
+});
+
+app.patch("/api/longform/:id", async (request, response) => {
+  const existing = await getLongformEntry(request.params.id);
+  if (!existing) {
+    response.status(404).json({ error: "Longform entry not found." });
+    return;
+  }
+
+  const patch = request.body ?? {};
+  let coverImagePath = undefined as string | null | undefined;
+  if (patch.coverImageDataUrl === null) {
+    if (existing.coverImagePath) {
+      await deleteStoredImage(existing.coverImagePath);
+    }
+    coverImagePath = null;
+  } else if (typeof patch.coverImageDataUrl === "string" && patch.coverImageDataUrl.trim() !== "") {
+    if (existing.coverImagePath) {
+      await deleteStoredImage(existing.coverImagePath);
+    }
+    const image = await saveImageDataUrl({ imageDataUrl: patch.coverImageDataUrl });
+    coverImagePath = image.publicUrl;
+  }
+
+  const updated = await updateLongformEntry(request.params.id, {
+    status:
+      patch.status === "draft" || patch.status === "ready" || patch.status === "archived"
+        ? patch.status
+        : undefined,
+    title: typeof patch.title === "string" ? patch.title : undefined,
+    subtitle: typeof patch.subtitle === "string" ? patch.subtitle : patch.subtitle === null ? null : undefined,
+    excerpt: typeof patch.excerpt === "string" ? patch.excerpt : undefined,
+    authorName: typeof patch.authorName === "string" ? patch.authorName : undefined,
+    sourcePlatform:
+      typeof patch.sourcePlatform === "string"
+        ? patch.sourcePlatform
+        : patch.sourcePlatform === null
+          ? null
+          : undefined,
+    sourceUrl:
+      typeof patch.sourceUrl === "string" ? patch.sourceUrl : patch.sourceUrl === null ? null : undefined,
+    publishedAt:
+      typeof patch.publishedAt === "string"
+        ? new Date(patch.publishedAt)
+        : patch.publishedAt === null
+          ? null
+          : undefined,
+    language: typeof patch.language === "string" ? patch.language : undefined,
+    rawText: typeof patch.rawText === "string" ? patch.rawText : undefined,
+    contentBlocks: Array.isArray(patch.contentBlocks)
+      ? patch.contentBlocks.filter((item: unknown) => typeof item === "string")
+      : undefined,
+    coverImagePath,
+    coverCaption: typeof patch.coverCaption === "string" ? patch.coverCaption : undefined,
+    coverPalette:
+      Array.isArray(patch.coverPalette) && patch.coverPalette.length === 3
+        ? (patch.coverPalette as [string, string, string])
+        : undefined,
+  });
+
+  response.json(updated);
+});
+
+app.post("/api/longform/:id/analyze", async (request, response) => {
+  const entry = await getLongformEntry(request.params.id);
+  if (!entry) {
+    response.status(404).json({ error: "Longform entry not found." });
+    return;
+  }
+
+  const analysis = await generateLongformAnalysisInsight({
+    title: entry.title,
+    excerpt: entry.excerpt,
+    rawText: entry.rawText,
+  });
+  const updated = await applyLongformAnalysis(request.params.id, analysis);
+  response.json(updated);
 });
 
 app.post("/api/reactor/materials", async (request, response) => {

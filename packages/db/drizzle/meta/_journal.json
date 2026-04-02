@@ -64,6 +64,13 @@
       "when": 1775323800000,
       "tag": "0008_expand_entry_prompt_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1775362800000,
+      "tag": "0009_longform_library",
+      "breakpoints": true
     }
   ]
 }

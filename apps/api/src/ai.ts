@@ -29,6 +29,13 @@ export interface ReactorStorylineInsight {
   prompt: string;
 }
 
+export interface LongformAnalysisInsight {
+  whyItWorks: string;
+  framework: string[];
+  resonance: string[];
+  reusableMoves: string[];
+}
+
 const prompt =
   "请基于这张截图的具体使用场景和界面语境，从专业UI/视觉设计角度，提炼 6-8 个最关键的设计关键词。" +
   "关键词必须具体、可检索、可复刻，避免空泛词、常见套话和同义重复。" +
@@ -81,6 +88,29 @@ const reactorStorylinePrompt = (input: {
     "",
     "素材：",
     JSON.stringify(input.materials),
+  ].join("\n");
+
+const longformAnalysisPrompt = (input: {
+  title: string;
+  excerpt: string;
+  rawText: string;
+}) =>
+  [
+    "你在帮助内容创作者拆解一篇长文样本为什么写得好。",
+    "不要总结全文，不要提炼内容概要，而是分析这篇文章为什么容易引人阅读、共鸣或传播。",
+    "只输出 JSON，不要输出额外解释。",
+    '输出格式：{"whyItWorks":"...","framework":["..."],"resonance":["..."],"reusableMoves":["..."]}',
+    "规则：",
+    "- whyItWorks：中文，一段 60 到 180 字的判断，明确说明这篇文章最成立的地方。",
+    "- framework：中文数组，3 到 5 条，说明这篇文章的写作框架或推进方式。",
+    "- resonance：中文数组，2 到 4 条，说明它为什么容易引发共鸣或让读者愿意继续读。",
+    "- reusableMoves：中文数组，3 到 5 条，说明创作者可复用的写法、动作或结构。",
+    "- 语气像成熟编辑，不要像课堂总结，不要空泛。",
+    "",
+    `标题：${input.title}`,
+    `摘要：${input.excerpt || "（空）"}`,
+    "正文：",
+    input.rawText.slice(0, 12000),
   ].join("\n");
 
 export async function generateDesignTerms(input: GenerateTermsInput) {
@@ -157,6 +187,31 @@ export async function generateReactorStorylineInsight(input: {
   } catch (error) {
     console.error("[ai] storyline insight failed", error);
     return generateMockStorylineInsight(input.diary, materials);
+  }
+}
+
+export async function generateLongformAnalysisInsight(input: {
+  title: string;
+  excerpt: string;
+  rawText: string;
+}): Promise<LongformAnalysisInsight> {
+  try {
+    switch (config.ai.provider) {
+      case "openai-compatible":
+        return await generateLongformViaOpenAiCompatible(input);
+      case "anthropic":
+        return await generateLongformViaAnthropic(input);
+      case "gemini":
+        return await generateLongformViaGemini(input);
+      case "litellm":
+        return await generateLongformViaLiteLlm(input);
+      case "mock":
+      default:
+        return generateMockLongformAnalysis(input);
+    }
+  } catch (error) {
+    console.error("[ai] longform analysis failed", error);
+    return generateMockLongformAnalysis(input);
   }
 }
 
@@ -515,6 +570,116 @@ async function generateStorylineViaLiteLlm(diary: string, materials: ReactorClus
   return parseStorylineInsight(result, diary, materials);
 }
 
+async function generateLongformViaOpenAiCompatible(input: {
+  title: string;
+  excerpt: string;
+  rawText: string;
+}) {
+  const apiKey = config.ai.openaiApiKey || config.ai.apiKey;
+  const baseUrl = config.ai.openaiBaseUrl || config.ai.baseUrl || "https://api.openai.com/v1";
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.ai.model,
+      response_format: { type: "json_object" },
+      messages: [{ role: "user", content: longformAnalysisPrompt(input) }],
+    }),
+  });
+
+  await ensureOk(response, "openai-compatible");
+  const data = await response.json();
+  const raw = data?.choices?.[0]?.message?.content ?? "{}";
+  return parseLongformAnalysisInsight(raw, input);
+}
+
+async function generateLongformViaAnthropic(input: {
+  title: string;
+  excerpt: string;
+  rawText: string;
+}) {
+  const apiKey = config.ai.anthropicApiKey || config.ai.apiKey;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: config.ai.anthropicModel,
+      max_tokens: 500,
+      messages: [{ role: "user", content: longformAnalysisPrompt(input) }],
+    }),
+  });
+
+  await ensureOk(response, "anthropic");
+  const data = await response.json();
+  const raw = data?.content?.find?.((item: { type?: string }) => item.type === "text")?.text ?? "{}";
+  return parseLongformAnalysisInsight(raw, input);
+}
+
+async function generateLongformViaGemini(input: {
+  title: string;
+  excerpt: string;
+  rawText: string;
+}) {
+  const apiKey = config.ai.geminiApiKey || config.ai.apiKey;
+  const model = config.ai.geminiModel;
+  const baseUrl = config.ai.geminiBaseUrl;
+
+  if (baseUrl) {
+    const result = await generateTextViaOpenAiLikeBaseUrl({
+      baseUrl,
+      apiKey,
+      model,
+      promptText: longformAnalysisPrompt(input),
+      providerName: "gemini-baseurl",
+    });
+    return parseLongformAnalysisInsight(result, input);
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: longformAnalysisPrompt(input) }] }],
+      }),
+    },
+  );
+
+  await ensureOk(response, "gemini");
+  const data = await response.json();
+  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+  return parseLongformAnalysisInsight(raw, input);
+}
+
+async function generateLongformViaLiteLlm(input: {
+  title: string;
+  excerpt: string;
+  rawText: string;
+}) {
+  const apiKey = config.ai.litellmApiKey || config.ai.apiKey;
+  const baseUrl = config.ai.litellmBaseUrl || config.ai.baseUrl || "http://localhost:4000";
+  const result = await generateTextViaOpenAiLikeBaseUrl({
+    baseUrl,
+    apiKey,
+    model: config.ai.litellmModel,
+    promptText: longformAnalysisPrompt(input),
+    providerName: "litellm",
+  });
+  return parseLongformAnalysisInsight(result, input);
+}
+
 async function generateViaOpenAiLikeBaseUrl({
   baseUrl,
   apiKey,
@@ -732,6 +897,63 @@ function generateMockStorylineInsight(
       "素材使用要求：优先使用我提供的日记感受和画布素材，不要编造经历。",
       "请先给一个完整母稿，再补 3 个可替换标题。",
     ].join("\n"),
+  };
+}
+
+function parseLongformAnalysisInsight(
+  raw: string,
+  input: { title: string; excerpt: string; rawText: string },
+): LongformAnalysisInsight {
+  try {
+    const cleaned = String(raw).trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "");
+    const parsed = JSON.parse(cleaned);
+    const whyItWorks = typeof parsed?.whyItWorks === "string" ? parsed.whyItWorks.trim().slice(0, 400) : "";
+    const framework = Array.isArray(parsed?.framework) ? sanitizeTerms(parsed.framework).slice(0, 5) : [];
+    const resonance = Array.isArray(parsed?.resonance) ? sanitizeTerms(parsed.resonance).slice(0, 4) : [];
+    const reusableMoves = Array.isArray(parsed?.reusableMoves) ? sanitizeTerms(parsed.reusableMoves).slice(0, 5) : [];
+
+    if (!whyItWorks || framework.length === 0 || resonance.length === 0 || reusableMoves.length === 0) {
+      return generateMockLongformAnalysis(input);
+    }
+
+    return { whyItWorks, framework, resonance, reusableMoves };
+  } catch {
+    return generateMockLongformAnalysis(input);
+  }
+}
+
+function generateMockLongformAnalysis(input: {
+  title: string;
+  excerpt: string;
+  rawText: string;
+}): LongformAnalysisInsight {
+  const joined = `${input.title} ${input.excerpt} ${input.rawText}`;
+  const hasQuestion = /[？?]/.test(input.title);
+  const hasContrast = /(不是|而是|真相|幻觉|重定义|反而|却)/.test(joined);
+  const hasConcrete = /(数据|例子|历史|采访|案例|人物)/.test(joined);
+
+  return {
+    whyItWorks: hasQuestion
+      ? "这篇样本最成立的地方，是它先抛出一个读者会立刻想追下去的问题，然后持续用更具体的事实和判断抬高这个问题。"
+      : hasContrast
+        ? "这篇样本好，不在于信息多，而在于它通过反差和重定义，把读者熟悉的话题重新推到了一个更值得传播的角度。"
+        : "这篇样本的阅读感很稳，因为它先给阅读价值，再持续推进判断，不会让段落散掉。",
+    framework: [
+      hasQuestion ? "先用问题式标题制造阅读动机" : "先亮出一个清晰命题",
+      hasConcrete ? "中段不断补充具体案例或事实" : "中段用连续段落推进判断",
+      "每一段都围绕同一条主线收束",
+      "结尾留下读者可迁移的判断",
+    ],
+    resonance: [
+      "它打中的不是表层信息需求，而是读者想获得更好判断力的心理。",
+      "它让读者感觉自己不仅看懂了一篇文章，还拿到了一种可以复用的表达方法。",
+    ],
+    reusableMoves: [
+      "标题先给冲突、悬念或重定义",
+      "少堆事实，多用事实服务主判断",
+      "段落结尾尽量落成可被引用的句子",
+      "始终让文章围着一个主线转，不发散",
+    ],
   };
 }
 
