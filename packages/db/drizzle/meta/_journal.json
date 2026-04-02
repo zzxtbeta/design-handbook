@@ -29,6 +29,48 @@
       "when": 1774799130549,
       "tag": "0003_exotic_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774922400000,
+      "tag": "0004_reactor_board",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774969500000,
+      "tag": "0005_reactor_rich_materials",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775233800000,
+      "tag": "0006_reactor_important",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775240400000,
+      "tag": "0007_reactor_parent_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775323800000,
+      "tag": "0008_expand_entry_prompt_summary",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1775362800000,
+      "tag": "0009_longform_library",
+      "breakpoints": true
     }
   ]
 }

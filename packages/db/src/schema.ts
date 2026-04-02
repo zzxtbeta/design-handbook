@@ -1,13 +1,17 @@
 import {
+  boolean,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
+  serial,
   text,
   timestamp,
   uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const daySlotEnum = pgEnum("day_slot", [
   "mon",
@@ -34,6 +38,27 @@ export const entryTermSourceEnum = pgEnum("entry_term_source", [
   "manual",
 ]);
 
+export const reactorMaterialTypeEnum = pgEnum("reactor_material_type", [
+  "diary",
+  "idea",
+  "prompt",
+  "link",
+  "sample",
+  "image",
+]);
+
+export const longformStatusEnum = pgEnum("longform_status", [
+  "draft",
+  "ready",
+  "archived",
+]);
+
+export const longformAnalysisStatusEnum = pgEnum("longform_analysis_status", [
+  "idle",
+  "ready",
+  "failed",
+]);
+
 export const weeks = pgTable("weeks", {
   id: uuid("id").defaultRandom().primaryKey(),
   weekKey: varchar("week_key", { length: 32 }).notNull(),
@@ -54,7 +79,7 @@ export const entries = pgTable("entries", {
   imageUrl: text("image_url").notNull(),
   imageWidth: integer("image_width"),
   imageHeight: integer("image_height"),
-  promptSummary: varchar("prompt_summary", { length: 180 }),
+  promptSummary: text("prompt_summary"),
   status: entryStatusEnum("status").notNull().default("processing"),
   errorMessage: text("error_message"),
   decorationStyle: varchar("decoration_style", { length: 32 }).notNull(),
@@ -93,3 +118,64 @@ export const dayNotes = pgTable("day_notes", {
 }, (table) => ({
   weekDayUnique: uniqueIndex("day_notes_week_id_day_slot_unique").on(table.weekId, table.daySlot),
 }));
+
+export const reactorMaterials = pgTable("reactor_materials", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderIndex: serial("order_index").notNull(),
+  dayKey: varchar("day_key", { length: 10 }).notNull(),
+  parentId: uuid("parent_id"),
+  type: reactorMaterialTypeEnum("type").notNull(),
+  content: text("content").notNull(),
+  important: boolean("important").notNull().default(false),
+  note: text("note").notNull().default(""),
+  manualTags: jsonb("manual_tags").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  meta: jsonb("meta").$type<{
+    sourceUrl?: string;
+    previewTitle?: string;
+    siteName?: string;
+    previewImageUrl?: string;
+    imageUrl?: string;
+    imageWidth?: number | null;
+    imageHeight?: number | null;
+  }>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const longformEntries = pgTable("longform_entries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderIndex: serial("order_index").notNull(),
+  status: longformStatusEnum("status").notNull().default("draft"),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  excerpt: text("excerpt").notNull().default(""),
+  authorName: text("author_name").notNull().default(""),
+  sourcePlatform: varchar("source_platform", { length: 80 }),
+  sourceUrl: text("source_url"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  language: varchar("language", { length: 24 }).notNull().default("zh-CN"),
+  rawText: text("raw_text").notNull().default(""),
+  contentBlocks: jsonb("content_blocks").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  coverImagePath: text("cover_image_path"),
+  coverCaption: text("cover_caption").notNull().default(""),
+  coverPalette: jsonb("cover_palette").$type<[string, string, string] | null>(),
+  analysisStatus: longformAnalysisStatusEnum("analysis_status").notNull().default("idle"),
+  whyItWorks: text("why_it_works").notNull().default(""),
+  framework: jsonb("framework").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  resonance: jsonb("resonance").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  reusableMoves: jsonb("reusable_moves").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  analysisUpdatedAt: timestamp("analysis_updated_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const longformAnalysisRuns = pgTable("longform_analysis_runs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  entryId: uuid("entry_id").notNull().references(() => longformEntries.id),
+  whyItWorks: text("why_it_works").notNull().default(""),
+  framework: jsonb("framework").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  resonance: jsonb("resonance").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  reusableMoves: jsonb("reusable_moves").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  promptVersion: varchar("prompt_version", { length: 32 }).notNull().default("v1"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});

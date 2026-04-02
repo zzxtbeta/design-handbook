@@ -1,4 +1,7 @@
+import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 
 export type AiProvider =
   | "mock"
@@ -29,15 +32,14 @@ export interface AppConfig {
   };
 }
 
+loadEnv();
+
 export const config: AppConfig = {
   port: Number(process.env.PORT ?? 8787),
   databaseUrl:
     process.env.DATABASE_URL ??
     "postgres://handbook:handbook@127.0.0.1:54329/handbook",
-  uploadDir: path.resolve(
-    process.cwd(),
-    process.env.UPLOAD_DIR ?? "../../ARTIFACTS/runtime/uploads",
-  ),
+  uploadDir: resolveUploadDir(),
   ai: {
     provider: (process.env.AI_PROVIDER ?? "mock") as AiProvider,
     model: process.env.AI_MODEL ?? "gpt-4.1-mini",
@@ -58,3 +60,48 @@ export const config: AppConfig = {
     litellmModel: process.env.LITELLM_MODEL ?? "gpt-4.1-mini",
   },
 };
+
+function loadEnv() {
+  const appRoot = path.resolve(moduleDir(), "..");
+  const repoRoot = repositoryRoot();
+  const candidates = [
+    path.resolve(appRoot, ".env.local"),
+    path.resolve(appRoot, ".env"),
+    path.resolve(repoRoot, ".env.local"),
+    path.resolve(repoRoot, ".env"),
+  ];
+
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) {
+      continue;
+    }
+
+    dotenv.config({
+      path: candidate,
+      override: false,
+    });
+  }
+}
+
+function resolveUploadDir() {
+  const repoRoot = repositoryRoot();
+  const configured = process.env.UPLOAD_DIR;
+
+  if (!configured) {
+    return path.resolve(repoRoot, "ARTIFACTS/runtime/uploads");
+  }
+
+  if (path.isAbsolute(configured)) {
+    return configured;
+  }
+
+  return path.resolve(repoRoot, configured);
+}
+
+function moduleDir() {
+  return path.dirname(fileURLToPath(import.meta.url));
+}
+
+function repositoryRoot() {
+  return path.resolve(moduleDir(), "../../..");
+}
