@@ -715,15 +715,25 @@ img {
 
 .longform-detail {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 26px;
   align-items: start;
+}
+
+.longform-detail.editing {
+  grid-template-columns: 320px minmax(0, 1fr);
 }
 
 .longform-detail-topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.longform-detail-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .longform-detail-side {

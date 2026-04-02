@@ -2458,6 +2458,7 @@ function LongformReferenceView({
 }) {
   const [longformBrowseMode, setLongformBrowseMode] = useState<"grid" | "flow">("grid");
   const [flowIndex, setFlowIndex] = useState(() => items.findIndex((item) => item.id === activeId) || 0);
+  const [isEditingDetail, setIsEditingDetail] = useState(false);
   const shelfItems = items.slice(
     shelfPage * LONGFORM_PAGE_SIZE,
     shelfPage * LONGFORM_PAGE_SIZE + LONGFORM_PAGE_SIZE,
@@ -2469,6 +2470,12 @@ function LongformReferenceView({
       setFlowIndex(nextIndex);
     }
   }, [activeId, items]);
+
+  useEffect(() => {
+    if (viewMode === "detail") {
+      setIsEditingDetail(false);
+    }
+  }, [activeId, viewMode]);
 
   return viewMode === "shelf" ? (
     <section className="longform-shell longform-shell-shelf">
@@ -2599,65 +2606,75 @@ function LongformReferenceView({
     <section className="longform-shell longform-shell-detail">
       <div className="longform-detail-topbar">
         <button className="nav-button" onClick={onBack}>Back to Shelf</button>
-        {feedback ? <span className="longform-status-chip">{feedback}</span> : null}
+        <div className="longform-detail-actions">
+          <button
+            className={`nav-button ${isEditingDetail ? "active" : ""}`}
+            onClick={() => setIsEditingDetail((value) => !value)}
+          >
+            {isEditingDetail ? "Done" : "Edit"}
+          </button>
+          {feedback ? <span className="longform-status-chip">{feedback}</span> : null}
+        </div>
       </div>
 
-      <section className="longform-detail">
-        <aside className="longform-detail-side">
-          <span className="longform-eyebrow">Reference Controls</span>
-          <section className="longform-control-card">
-            <strong>Content</strong>
-            <label className="longform-field">
-              <span>Title</span>
-              <input
-                value={draft.title}
-                onChange={(event) => onDraftFieldChange("title", event.target.value)}
-              />
-            </label>
-            <label className="longform-field">
-              <span>Summary</span>
-              <textarea
-                rows={3}
-                value={draft.summary}
-                onChange={(event) => onDraftFieldChange("summary", event.target.value)}
-              />
-            </label>
-            <label className="longform-field">
-              <span>Paste article</span>
-              <textarea
-                rows={10}
-                value={draft.rawContent}
-                onChange={(event) => onContentChange(event.target.value)}
-              />
-            </label>
-            <div className="longform-inline-actions">
-              <label className="today-button longform-upload-button">
-                Import text
-                <input type="file" accept=".txt,.md,.markdown,text/plain" hidden onChange={onImport} />
+      <section className={`longform-detail ${isEditingDetail ? "editing" : ""}`}>
+        {isEditingDetail ? (
+          <aside className="longform-detail-side">
+            <span className="longform-eyebrow">Reference Controls</span>
+            <section className="longform-control-card">
+              <strong>Content</strong>
+              <label className="longform-field">
+                <span>Title</span>
+                <input
+                  value={draft.title}
+                  onChange={(event) => onDraftFieldChange("title", event.target.value)}
+                />
               </label>
-              <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
-            </div>
-          </section>
+              <label className="longform-field">
+                <span>Summary</span>
+                <textarea
+                  rows={3}
+                  value={draft.summary}
+                  onChange={(event) => onDraftFieldChange("summary", event.target.value)}
+                />
+              </label>
+              <label className="longform-field">
+                <span>Paste article</span>
+                <textarea
+                  rows={10}
+                  value={draft.rawContent}
+                  onChange={(event) => onContentChange(event.target.value)}
+                />
+              </label>
+              <div className="longform-inline-actions">
+                <label className="today-button longform-upload-button">
+                  Import text
+                  <input type="file" accept=".txt,.md,.markdown,text/plain" hidden onChange={onImport} />
+                </label>
+                <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
+              </div>
+            </section>
 
-          <section className="longform-control-card">
-            <strong>Cover</strong>
-            <label className="longform-field">
-              <span>Label</span>
-              <input
-                value={draft.coverLabel}
-                onChange={(event) => onDraftFieldChange("coverLabel", event.target.value)}
-              />
-            </label>
-            <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
-            <label className="longform-field">
-              <span>Author</span>
-              <input
-                value={draft.author}
-                onChange={(event) => onDraftFieldChange("author", event.target.value)}
-              />
-            </label>
-          </section>
-        </aside>
+            <section className="longform-control-card">
+              <strong>Cover</strong>
+              <label className="longform-field">
+                <span>Label</span>
+                <input
+                  value={draft.coverLabel}
+                  onChange={(event) => onDraftFieldChange("coverLabel", event.target.value)}
+                />
+              </label>
+              <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
+              <label className="longform-field">
+                <span>Author</span>
+                <input
+                  value={draft.author}
+                  onChange={(event) => onDraftFieldChange("author", event.target.value)}
+                />
+              </label>
+            </section>
+          </aside>
+        ) : null}
 
         <div className="longform-detail-main">
           <header className="longform-detail-hero">
