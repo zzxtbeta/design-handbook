@@ -852,6 +852,7 @@ export function App() {
   const [processingStage, setProcessingStage] = useState("Preparing image...");
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const longformCoverInputRef = useRef<HTMLInputElement | null>(null);
+  const longformImportInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     void loadWeek();
@@ -1788,6 +1789,13 @@ export function App() {
           hidden
           onChange={handleLongformCoverUpload}
         />
+        <input
+          ref={longformImportInputRef}
+          type="file"
+          accept=".txt,.md,.markdown,text/plain"
+          hidden
+          onChange={handleLongformImport}
+        />
         <header className="topbar">
           <div className="title-block">
             <h1>
@@ -2152,10 +2160,10 @@ export function App() {
                   onShelfPageChange={setLongformShelfPage}
                   onDraftFieldChange={handleLongformDraftField}
                   onContentChange={handleLongformContentChange}
-                  onImport={handleLongformImport}
                   onAnalyze={handleLongformAnalyze}
                   onSave={handleSaveLongform}
                   onOpenCoverPicker={() => longformCoverInputRef.current?.click()}
+                  onOpenImportPicker={() => longformImportInputRef.current?.click()}
                 />
               </motion.div>
             )}
@@ -2776,10 +2784,10 @@ function LongformReferenceView({
   onShelfPageChange,
   onDraftFieldChange,
   onContentChange,
-  onImport,
   onAnalyze,
   onSave,
   onOpenCoverPicker,
+  onOpenImportPicker,
 }: {
   items: LongformReference[];
   activeId: string;
@@ -2797,10 +2805,10 @@ function LongformReferenceView({
   onShelfPageChange: (page: number) => void;
   onDraftFieldChange: <K extends keyof LongformDraft>(field: K, value: LongformDraft[K]) => void;
   onContentChange: (value: string) => void;
-  onImport: (event: ChangeEvent<HTMLInputElement>) => void;
   onAnalyze: () => void;
   onSave: () => void;
   onOpenCoverPicker: () => void;
+  onOpenImportPicker: () => void;
 }) {
   const [longformBrowseMode, setLongformBrowseMode] = useState<"grid" | "flow">("grid");
   const [flowIndex, setFlowIndex] = useState(() => items.findIndex((item) => item.id === activeId) || 0);
@@ -3026,17 +3034,21 @@ function LongformReferenceView({
       <div className="longform-detail-topbar">
         <button className="nav-button" onClick={onBack}>Back to Shelf</button>
         <div className="longform-detail-actions">
-          <button
-            className={`nav-button ${isEditingDetail ? "active" : ""}`}
-            onClick={() => setIsEditingDetail((value) => !value)}
-          >
-            {isEditingDetail ? "Done" : "Edit"}
-          </button>
           {isEditingDetail ? (
-            <button className="today-button" onClick={onSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save"}
+            <>
+              <button className="nav-button" onClick={onOpenImportPicker}>Import text</button>
+              <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
+              <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
+              <button className="nav-button" onClick={() => setIsEditingDetail(false)}>Done</button>
+              <button className="today-button" onClick={onSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save"}
+              </button>
+            </>
+          ) : (
+            <button className="nav-button" onClick={() => setIsEditingDetail(true)}>
+              Edit
             </button>
-          ) : null}
+          )}
           {feedback ? <span className="longform-status-chip">{feedback}</span> : null}
         </div>
       </div>
@@ -3046,12 +3058,64 @@ function LongformReferenceView({
           <header className="longform-detail-hero">
             <div className="longform-detail-heading">
               <span className="longform-eyebrow">{activeItem.eyebrow}</span>
-              <h2>{draft.title}</h2>
+              {isEditingDetail ? (
+                <textarea
+                  className="longform-inline-title"
+                  rows={3}
+                  value={draft.title}
+                  onChange={(event) => onDraftFieldChange("title", event.target.value)}
+                  placeholder="Article title"
+                />
+              ) : (
+                <h2>{draft.title}</h2>
+              )}
               <div className="longform-byline">
-                <span>{draft.author}</span>
-                <span>{draft.date || formatLongformDate()}</span>
+                {isEditingDetail ? (
+                  <>
+                    <input
+                      className="longform-inline-meta"
+                      value={draft.author}
+                      onChange={(event) => onDraftFieldChange("author", event.target.value)}
+                      placeholder="Author"
+                    />
+                    <input
+                      className="longform-inline-meta"
+                      value={draft.date}
+                      onChange={(event) => onDraftFieldChange("date", event.target.value)}
+                      placeholder="Date"
+                    />
+                    <input
+                      className="longform-inline-meta"
+                      value={draft.sourcePlatform}
+                      onChange={(event) => onDraftFieldChange("sourcePlatform", event.target.value)}
+                      placeholder="Platform"
+                    />
+                    <input
+                      className="longform-inline-meta longform-inline-meta-wide"
+                      value={draft.sourceUrl}
+                      onChange={(event) => onDraftFieldChange("sourceUrl", event.target.value)}
+                      placeholder="Source URL"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <span>{draft.author}</span>
+                    <span>{draft.date || formatLongformDate()}</span>
+                    {draft.sourcePlatform ? <span>{draft.sourcePlatform}</span> : null}
+                  </>
+                )}
               </div>
-              <p className="longform-detail-summary">{draft.summary}</p>
+              {isEditingDetail ? (
+                <textarea
+                  className="longform-inline-summary"
+                  rows={4}
+                  value={draft.summary}
+                  onChange={(event) => onDraftFieldChange("summary", event.target.value)}
+                  placeholder="Short summary for shelf preview"
+                />
+              ) : (
+                <p className="longform-detail-summary">{draft.summary}</p>
+              )}
             </div>
             <div
               className="longform-detail-visual"
@@ -3064,39 +3128,60 @@ function LongformReferenceView({
               {draft.coverUrl ? (
                 <img className="longform-detail-cover" src={draft.coverUrl} alt={draft.title} />
               ) : null}
-              <span className="longform-detail-visual-label">{draft.coverLabel}</span>
+              {isEditingDetail ? (
+                <div className="longform-detail-cover-tools">
+                  <input
+                    className="longform-inline-cover-label"
+                    value={draft.coverLabel}
+                    onChange={(event) => onDraftFieldChange("coverLabel", event.target.value)}
+                    placeholder="Cover label"
+                  />
+                  <button className="nav-button" onClick={onOpenCoverPicker}>Change cover</button>
+                </div>
+              ) : (
+                <span className="longform-detail-visual-label">{draft.coverLabel}</span>
+              )}
             </div>
           </header>
 
           <section className="longform-reading-grid">
             <article className="longform-reading-article">
-              {renderedBlocks.map((block, index) => {
-                if (block.type === "h1") {
-                  return <h1 key={index}>{block.text}</h1>;
-                }
-                if (block.type === "h2") {
-                  return <h2 key={index}>{block.text}</h2>;
-                }
-                if (block.type === "h3") {
-                  return <h3 key={index}>{block.text}</h3>;
-                }
-                if (block.type === "quote") {
-                  return <blockquote key={index}>{block.text}</blockquote>;
-                }
-                if (block.type === "list") {
-                  return (
-                    <ul key={index}>
-                      {block.items.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  );
-                }
-                if (block.type === "rule") {
-                  return <hr key={index} />;
-                }
-                return <p key={index}>{block.text}</p>;
-              })}
+              {isEditingDetail ? (
+                <textarea
+                  className="longform-inline-body"
+                  value={draft.rawContent}
+                  onChange={(event) => onContentChange(event.target.value)}
+                  placeholder="Paste or write the article here..."
+                />
+              ) : (
+                renderedBlocks.map((block, index) => {
+                  if (block.type === "h1") {
+                    return <h1 key={index}>{block.text}</h1>;
+                  }
+                  if (block.type === "h2") {
+                    return <h2 key={index}>{block.text}</h2>;
+                  }
+                  if (block.type === "h3") {
+                    return <h3 key={index}>{block.text}</h3>;
+                  }
+                  if (block.type === "quote") {
+                    return <blockquote key={index}>{block.text}</blockquote>;
+                  }
+                  if (block.type === "list") {
+                    return (
+                      <ul key={index}>
+                        {block.items.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    );
+                  }
+                  if (block.type === "rule") {
+                    return <hr key={index} />;
+                  }
+                  return <p key={index}>{block.text}</p>;
+                })
+              )}
             </article>
             <aside className="longform-analysis-panel">
               <section>
@@ -3131,104 +3216,6 @@ function LongformReferenceView({
           </section>
         </div>
       </section>
-      <AnimatePresence>
-        {isEditingDetail ? (
-          <motion.div
-            className="summary-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsEditingDetail(false)}
-          >
-            <motion.section
-              className="longform-edit-modal"
-              initial={{ scale: 0.94, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.98, y: 10 }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="longform-edit-modal-head">
-                <strong>Edit reference</strong>
-                <button className="ghost-action" onClick={() => setIsEditingDetail(false)}>Close</button>
-              </div>
-              <div className="longform-edit-modal-grid">
-                <section className="longform-control-card">
-                  <strong>Content</strong>
-                  <label className="longform-field">
-                    <span>Title</span>
-                    <input
-                      value={draft.title}
-                      onChange={(event) => onDraftFieldChange("title", event.target.value)}
-                    />
-                  </label>
-                  <label className="longform-field">
-                    <span>Subtitle</span>
-                    <input
-                      value={draft.subtitle}
-                      onChange={(event) => onDraftFieldChange("subtitle", event.target.value)}
-                    />
-                  </label>
-                  <label className="longform-field">
-                    <span>Summary</span>
-                    <textarea
-                      rows={3}
-                      value={draft.summary}
-                      onChange={(event) => onDraftFieldChange("summary", event.target.value)}
-                    />
-                  </label>
-                  <label className="longform-field">
-                    <span>Paste article</span>
-                    <textarea
-                      rows={12}
-                      value={draft.rawContent}
-                      onChange={(event) => onContentChange(event.target.value)}
-                    />
-                  </label>
-                  <div className="longform-inline-actions">
-                    <label className="today-button longform-upload-button">
-                      Import text
-                      <input type="file" accept=".txt,.md,.markdown,text/plain" hidden onChange={onImport} />
-                    </label>
-                    <button className="nav-button" onClick={onAnalyze}>AI analyse</button>
-                  </div>
-                </section>
-                <section className="longform-control-card">
-                  <strong>Meta</strong>
-                  <label className="longform-field">
-                    <span>Source Platform</span>
-                    <input
-                      value={draft.sourcePlatform}
-                      onChange={(event) => onDraftFieldChange("sourcePlatform", event.target.value)}
-                    />
-                  </label>
-                  <label className="longform-field">
-                    <span>Source URL</span>
-                    <input
-                      value={draft.sourceUrl}
-                      onChange={(event) => onDraftFieldChange("sourceUrl", event.target.value)}
-                    />
-                  </label>
-                  <label className="longform-field">
-                    <span>Author</span>
-                    <input
-                      value={draft.author}
-                      onChange={(event) => onDraftFieldChange("author", event.target.value)}
-                    />
-                  </label>
-                  <label className="longform-field">
-                    <span>Cover Label</span>
-                    <input
-                      value={draft.coverLabel}
-                      onChange={(event) => onDraftFieldChange("coverLabel", event.target.value)}
-                    />
-                  </label>
-                  <button className="nav-button" onClick={onOpenCoverPicker}>Upload cover</button>
-                </section>
-              </div>
-            </motion.section>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
     </section>
   );
 }
