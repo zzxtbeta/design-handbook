@@ -513,6 +513,14 @@ img {
   gap: 26px;
 }
 
+.longform-shell-shelf {
+  gap: 0;
+}
+
+.longform-shell-detail {
+  gap: 18px;
+}
+
 .longform-shelf,
 .longform-detail {
   background: rgba(249, 248, 244, 0.96);
@@ -701,6 +709,11 @@ img {
   grid-template-columns: 180px minmax(0, 1fr);
   gap: 24px;
   align-items: start;
+}
+
+.longform-detail-topbar {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .longform-detail-side {

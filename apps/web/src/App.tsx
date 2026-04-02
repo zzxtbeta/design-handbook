@@ -48,6 +48,7 @@ interface ReactorStorylineInsight {
 
 type ViewMode = "week" | "day";
 type BoardMode = "aesthetic" | "reactor" | "longform";
+type LongformViewMode = "shelf" | "detail";
 type ToolId = "xhs-layout" | "screenshot-rebuild";
 
 interface BoardLayout {
@@ -483,6 +484,7 @@ export function App() {
   const [copiedTerm, setCopiedTerm] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [activeLongformId, setActiveLongformId] = useState(longformReferences[0]?.id ?? "");
+  const [longformViewMode, setLongformViewMode] = useState<LongformViewMode>("shelf");
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [zoomedEntry, setZoomedEntry] = useState<WeekEntry | null>(null);
   const [processingStage, setProcessingStage] = useState("Preparing image...");
@@ -1576,7 +1578,12 @@ export function App() {
                   items={longformReferences}
                   activeId={activeLongformReference.id}
                   activeItem={activeLongformReference}
-                  onSelect={setActiveLongformId}
+                  viewMode={longformViewMode}
+                  onSelect={(id) => {
+                    setActiveLongformId(id);
+                    setLongformViewMode("detail");
+                  }}
+                  onBack={() => setLongformViewMode("shelf")}
                 />
               </motion.div>
             )}
@@ -2184,18 +2191,22 @@ function LongformReferenceView({
   items,
   activeId,
   activeItem,
+  viewMode,
   onSelect,
+  onBack,
 }: {
   items: LongformReference[];
   activeId: string;
   activeItem: LongformReference;
+  viewMode: LongformViewMode;
   onSelect: (id: string) => void;
+  onBack: () => void;
 }) {
   const hero = items[0];
   const secondary = items.slice(1);
 
-  return (
-    <section className="longform-shell">
+  return viewMode === "shelf" ? (
+    <section className="longform-shell longform-shell-shelf">
       <section className="longform-shelf">
         <article className="longform-hero-panel">
           <div className="longform-hero-copy">
@@ -2248,6 +2259,12 @@ function LongformReferenceView({
           ))}
         </div>
       </section>
+    </section>
+  ) : (
+    <section className="longform-shell longform-shell-detail">
+      <div className="longform-detail-topbar">
+        <button className="nav-button" onClick={onBack}>Back to Shelf</button>
+      </div>
 
       <section className="longform-detail">
         <aside className="longform-detail-side">
