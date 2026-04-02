@@ -96,15 +96,47 @@ interface LongformAnalysis {
 }
 
 interface LongformDraft {
+  id: string;
   title: string;
+  subtitle: string;
   summary: string;
   author: string;
   date: string;
+  sourcePlatform: string;
+  sourceUrl: string;
   rawContent: string;
   content: string[];
   coverLabel: string;
   coverUrl: string | null;
+  coverImageDataUrl: string | null;
+  palette: [string, string, string];
   analysis: LongformAnalysis;
+}
+
+interface LongformEntry {
+  id: string;
+  status: "draft" | "ready" | "archived";
+  title: string;
+  subtitle: string | null;
+  excerpt: string;
+  authorName: string;
+  sourcePlatform: string | null;
+  sourceUrl: string | null;
+  publishedAt: string | null;
+  language: string;
+  rawText: string;
+  contentBlocks: string[];
+  coverImagePath: string | null;
+  coverCaption: string;
+  coverPalette: [string, string, string] | null;
+  analysisStatus: "idle" | "ready" | "failed";
+  whyItWorks: string;
+  framework: string[];
+  resonance: string[];
+  reusableMoves: string[];
+  analysisUpdatedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const reactorPets: ReactorPet[] = [
@@ -306,12 +338,13 @@ function parseLongformContent(raw: string) {
     .filter(Boolean);
 }
 
-function formatLongformDate() {
+function formatLongformDate(value?: string | null) {
+  const date = value ? new Date(value) : new Date();
   return new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "long",
     year: "numeric",
-  }).format(new Date());
+  }).format(date);
 }
 
 function deriveLongformAnalysis(title: string, paragraphs: string[]): LongformAnalysis {
@@ -348,14 +381,20 @@ function deriveLongformAnalysis(title: string, paragraphs: string[]): LongformAn
 function buildLongformDraft(item: LongformReference): LongformDraft {
   const rawContent = item.content.join("\n\n");
   return {
+    id: item.id,
     title: item.title,
+    subtitle: "",
     summary: item.summary,
     author: item.author,
     date: item.date,
+    sourcePlatform: "",
+    sourceUrl: "",
     rawContent,
     content: item.content,
     coverLabel: item.coverLabel,
     coverUrl: null,
+    coverImageDataUrl: null,
+    palette: item.palette,
     analysis: {
       whyItWorks: item.whyItWorks,
       framework: item.framework,
@@ -363,6 +402,66 @@ function buildLongformDraft(item: LongformReference): LongformDraft {
       reusableMoves: item.reusableMoves,
     },
   };
+}
+
+function buildLongformReferenceFromEntry(entry: LongformEntry): LongformReference {
+  const content = entry.contentBlocks.length > 0 ? entry.contentBlocks : parseLongformContent(entry.rawText);
+  return {
+    id: entry.id,
+    category: entry.sourcePlatform || "Reference",
+    eyebrow: entry.status === "ready" ? "Reference Sample" : "Draft",
+    title: entry.title,
+    summary: entry.excerpt || content[0] || "",
+    coverLabel: entry.coverCaption || "Editorial Reference",
+    palette: entry.coverPalette ?? ["#f2eee8", "#d8dfe6", "#4f5b6a"],
+    accent: "#111111",
+    author: entry.authorName || "Unknown",
+    date: formatLongformDate(entry.publishedAt || entry.updatedAt || entry.createdAt),
+    content,
+    whyItWorks: entry.whyItWorks || "点击 Analyze，让系统拆解这篇文章为什么成立。",
+    framework: entry.framework,
+    resonance: entry.resonance,
+    reusableMoves: entry.reusableMoves,
+  };
+}
+
+function buildLongformDraftFromEntry(entry: LongformEntry): LongformDraft {
+  const content = entry.contentBlocks.length > 0 ? entry.contentBlocks : parseLongformContent(entry.rawText);
+  return {
+    id: entry.id,
+    title: entry.title,
+    subtitle: entry.subtitle ?? "",
+    summary: entry.excerpt || "",
+    author: entry.authorName,
+    date: formatLongformDate(entry.publishedAt || entry.updatedAt || entry.createdAt),
+    sourcePlatform: entry.sourcePlatform ?? "",
+    sourceUrl: entry.sourceUrl ?? "",
+    rawContent: entry.rawText,
+    content,
+    coverLabel: entry.coverCaption,
+    coverUrl: entry.coverImagePath,
+    coverImageDataUrl: null,
+    palette: entry.coverPalette ?? ["#f2eee8", "#d8dfe6", "#4f5b6a"],
+    analysis: {
+      whyItWorks: entry.whyItWorks,
+      framework: entry.framework,
+      resonance: entry.resonance,
+      reusableMoves: entry.reusableMoves,
+    },
+  };
+}
+
+function excerptFromLongformContent(blocks: string[]) {
+  return blocks.find((block) => block.length > 14)?.slice(0, 140) ?? "";
+}
+
+async function fileToDataUrl(file: File) {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
+    reader.readAsDataURL(file);
+  });
 }
 
 const toolsCatalog: Array<{
@@ -632,12 +731,35 @@ export function App() {
   const [weekCardSizes, setWeekCardSizes] = useState<WeekCardSizes>({});
   const [copiedTerm, setCopiedTerm] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
-  const [activeLongformId, setActiveLongformId] = useState(longformReferences[0]?.id ?? "");
+  const [longformItems, setLongformItems] = useState<LongformEntry[]>([]);
+  const [longformLoading, setLongformLoading] = useState(false);
+  const [longformError, setLongformError] = useState<string | null>(null);
+  const [isSavingLongform, setIsSavingLongform] = useState(false);
+  const [activeLongformId, setActiveLongformId] = useState("");
   const [longformViewMode, setLongformViewMode] = useState<LongformViewMode>("shelf");
   const [longformShelfPage, setLongformShelfPage] = useState(0);
-  const [longformDraft, setLongformDraft] = useState<LongformDraft>(() =>
-    buildLongformDraft(longformReferences[0]),
-  );
+  const [longformDraft, setLongformDraft] = useState<LongformDraft>({
+    id: "",
+    title: "",
+    subtitle: "",
+    summary: "",
+    author: "",
+    date: formatLongformDate(),
+    sourcePlatform: "",
+    sourceUrl: "",
+    rawContent: "",
+    content: [],
+    coverLabel: "",
+    coverUrl: null,
+    coverImageDataUrl: null,
+    palette: ["#f2eee8", "#d8dfe6", "#4f5b6a"],
+    analysis: {
+      whyItWorks: "",
+      framework: [],
+      resonance: [],
+      reusableMoves: [],
+    },
+  });
   const [longformFeedback, setLongformFeedback] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [zoomedEntry, setZoomedEntry] = useState<WeekEntry | null>(null);
@@ -652,6 +774,14 @@ export function App() {
   useEffect(() => {
     void loadReactorBoard();
   }, [boardMode, weekOffset]);
+
+  useEffect(() => {
+    if (boardMode !== "longform") {
+      return;
+    }
+
+    void loadLongformEntries();
+  }, [boardMode]);
 
   useEffect(() => {
     if (!week) {
@@ -969,9 +1099,15 @@ export function App() {
   const processingCount = week ? week.entries.filter((entry) => entry.status === "processing").length : 0;
   const weeklySummary = useMemo(() => buildWeeklySummary(week), [week]);
   const reactorWeeklySummary = useMemo(() => buildReactorWeeklySummary(reactorBoard), [reactorBoard]);
+  const longformReferencesView = useMemo(
+    () => longformItems.map(buildLongformReferenceFromEntry),
+    [longformItems],
+  );
+  const activeLongformEntry =
+    longformItems.find((item) => item.id === activeLongformId) ?? longformItems[0] ?? null;
   const activeLongformReference =
-    longformReferences.find((item) => item.id === activeLongformId) ?? longformReferences[0];
-  const longformPageCount = Math.max(1, Math.ceil(longformReferences.length / LONGFORM_PAGE_SIZE));
+    longformReferencesView.find((item) => item.id === activeLongformId) ?? longformReferencesView[0] ?? null;
+  const longformPageCount = Math.max(1, Math.ceil(longformReferencesView.length / LONGFORM_PAGE_SIZE));
 
   useEffect(() => {
     if (longformShelfPage > longformPageCount - 1) {
@@ -980,8 +1116,12 @@ export function App() {
   }, [longformPageCount, longformShelfPage]);
 
   useEffect(() => {
-    setLongformDraft(buildLongformDraft(activeLongformReference));
-  }, [activeLongformReference]);
+    if (!activeLongformEntry) {
+      return;
+    }
+
+    setLongformDraft(buildLongformDraftFromEntry(activeLongformEntry));
+  }, [activeLongformEntry]);
 
   useEffect(() => {
     if (!longformFeedback) {
@@ -1045,6 +1185,30 @@ export function App() {
     }
   }
 
+  async function loadLongformEntries() {
+    try {
+      setLongformLoading(true);
+      const response = await fetch("/api/longform");
+      if (!response.ok) {
+        throw new Error(`Longform load failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as LongformEntry[];
+      setLongformItems(data);
+      setLongformError(null);
+      if (data.length > 0) {
+        setActiveLongformId((current) =>
+          data.some((item) => item.id === current) ? current : data[0].id,
+        );
+      }
+    } catch (error) {
+      console.error("[web] loadLongformEntries failed", error);
+      setLongformError("Longform Library 暂时不可用。");
+    } finally {
+      setLongformLoading(false);
+    }
+  }
+
   function handleLongformDraftField<K extends keyof LongformDraft>(field: K, value: LongformDraft[K]) {
     setLongformDraft((current) => ({ ...current, [field]: value }));
   }
@@ -1069,22 +1233,90 @@ export function App() {
     event.target.value = "";
   }
 
-  function handleLongformCoverUpload(event: ChangeEvent<HTMLInputElement>) {
+  async function handleLongformCoverUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
 
-    const url = URL.createObjectURL(file);
-    setLongformDraft((current) => ({ ...current, coverUrl: url }));
+    const dataUrl = await fileToDataUrl(file);
+    setLongformDraft((current) => ({ ...current, coverUrl: dataUrl, coverImageDataUrl: dataUrl }));
     setLongformFeedback("Cover updated");
     event.target.value = "";
   }
 
-  function handleLongformAnalyze() {
-    const analysis = deriveLongformAnalysis(longformDraft.title, longformDraft.content);
-    setLongformDraft((current) => ({ ...current, analysis }));
-    setLongformFeedback("AI extracted");
+  async function handleSaveLongform() {
+    if (!longformDraft.id) {
+      return;
+    }
+
+    try {
+      setIsSavingLongform(true);
+      const contentBlocks = parseLongformContent(longformDraft.rawContent);
+      const response = await fetch(`/api/longform/${longformDraft.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: longformDraft.title,
+          subtitle: longformDraft.subtitle || null,
+          excerpt: longformDraft.summary || excerptFromLongformContent(contentBlocks),
+          authorName: longformDraft.author,
+          sourcePlatform: longformDraft.sourcePlatform || null,
+          sourceUrl: longformDraft.sourceUrl || null,
+          rawText: longformDraft.rawContent,
+          contentBlocks,
+          coverCaption: longformDraft.coverLabel,
+          coverPalette: longformDraft.palette,
+          coverImageDataUrl: longformDraft.coverImageDataUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Longform save failed with status ${response.status}`);
+      }
+
+      const updated = (await response.json()) as LongformEntry;
+      setLongformItems((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setLongformDraft(buildLongformDraftFromEntry(updated));
+      setLongformFeedback("Saved");
+    } catch (error) {
+      console.error("[web] handleSaveLongform failed", error);
+      setLongformFeedback("Save failed");
+    } finally {
+      setIsSavingLongform(false);
+    }
+  }
+
+  async function handleLongformAnalyze() {
+    if (!longformDraft.id) {
+      return;
+    }
+
+    await handleSaveLongform();
+
+    try {
+      const response = await fetch(`/api/longform/${longformDraft.id}/analyze`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Longform analyze failed with status ${response.status}`);
+      }
+
+      const updated = (await response.json()) as LongformEntry;
+      setLongformItems((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setLongformDraft(buildLongformDraftFromEntry(updated));
+      setLongformFeedback("AI extracted");
+    } catch (error) {
+      console.error("[web] handleLongformAnalyze failed", error);
+      setLongformFeedback("Analyze failed");
+    }
   }
 
   function openComposer(type: ReactorMaterialType, dayKey = activeReactorDayKey) {
@@ -1799,14 +2031,17 @@ export function App() {
                 transition={{ duration: 0.24, ease: "easeOut" }}
               >
                 <LongformReferenceView
-                  items={longformReferences}
-                  activeId={activeLongformReference.id}
+                  items={longformReferencesView}
+                  activeId={activeLongformReference?.id ?? ""}
                   activeItem={activeLongformReference}
                   viewMode={longformViewMode}
                   shelfPage={longformShelfPage}
                   pageCount={longformPageCount}
                   draft={longformDraft}
                   feedback={longformFeedback}
+                  isLoading={longformLoading}
+                  error={longformError}
+                  isSaving={isSavingLongform}
                   onSelect={(id) => {
                     setActiveLongformId(id);
                     setLongformViewMode("detail");
@@ -1817,6 +2052,7 @@ export function App() {
                   onContentChange={handleLongformContentChange}
                   onImport={handleLongformImport}
                   onAnalyze={handleLongformAnalyze}
+                  onSave={handleSaveLongform}
                   onOpenCoverPicker={() => longformCoverInputRef.current?.click()}
                 />
               </motion.div>
@@ -2430,6 +2666,9 @@ function LongformReferenceView({
   pageCount,
   draft,
   feedback,
+  isLoading,
+  error,
+  isSaving,
   onSelect,
   onBack,
   onShelfPageChange,
@@ -2437,16 +2676,20 @@ function LongformReferenceView({
   onContentChange,
   onImport,
   onAnalyze,
+  onSave,
   onOpenCoverPicker,
 }: {
   items: LongformReference[];
   activeId: string;
-  activeItem: LongformReference;
+  activeItem: LongformReference | null;
   viewMode: LongformViewMode;
   shelfPage: number;
   pageCount: number;
   draft: LongformDraft;
   feedback: string | null;
+  isLoading: boolean;
+  error: string | null;
+  isSaving: boolean;
   onSelect: (id: string) => void;
   onBack: () => void;
   onShelfPageChange: (page: number) => void;
@@ -2454,11 +2697,14 @@ function LongformReferenceView({
   onContentChange: (value: string) => void;
   onImport: (event: ChangeEvent<HTMLInputElement>) => void;
   onAnalyze: () => void;
+  onSave: () => void;
   onOpenCoverPicker: () => void;
 }) {
   const [longformBrowseMode, setLongformBrowseMode] = useState<"grid" | "flow">("grid");
   const [flowIndex, setFlowIndex] = useState(() => items.findIndex((item) => item.id === activeId) || 0);
   const [isEditingDetail, setIsEditingDetail] = useState(false);
+  const [flowDragOffset, setFlowDragOffset] = useState(0);
+  const flowDragState = useRef<{ pointerId: number; startX: number; dragging: boolean } | null>(null);
   const shelfItems = items.slice(
     shelfPage * LONGFORM_PAGE_SIZE,
     shelfPage * LONGFORM_PAGE_SIZE + LONGFORM_PAGE_SIZE,
@@ -2476,6 +2722,46 @@ function LongformReferenceView({
       setIsEditingDetail(false);
     }
   }, [activeId, viewMode]);
+
+  function handleFlowPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    flowDragState.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      dragging: true,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleFlowPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!flowDragState.current?.dragging) {
+      return;
+    }
+
+    setFlowDragOffset(event.clientX - flowDragState.current.startX);
+  }
+
+  function finishFlowDrag() {
+    const offset = flowDragOffset;
+    if (Math.abs(offset) > 80) {
+      setFlowIndex((current) =>
+        Math.max(0, Math.min(items.length - 1, current + (offset < 0 ? 1 : -1))),
+      );
+    }
+    setFlowDragOffset(0);
+    flowDragState.current = null;
+  }
+
+  if (isLoading) {
+    return <section className="longform-shell"><div className="reactor-status">Loading library...</div></section>;
+  }
+
+  if (error) {
+    return <section className="longform-shell"><div className="reactor-status reactor-status-error">{error}</div></section>;
+  }
+
+  if (items.length === 0 || !activeItem) {
+    return <section className="longform-shell"><div className="reactor-status">No longform references yet.</div></section>;
+  }
 
   return viewMode === "shelf" ? (
     <section className="longform-shell longform-shell-shelf">
@@ -2562,7 +2848,37 @@ function LongformReferenceView({
             ))}
           </div>
         ) : (
-          <div className="longform-flow-stage">
+          <div
+            className="longform-flow-stage"
+            onPointerDown={handleFlowPointerDown}
+            onPointerMove={handleFlowPointerMove}
+            onPointerUp={finishFlowDrag}
+            onPointerCancel={finishFlowDrag}
+            onWheel={(event) => {
+              if (Math.abs(event.deltaX) < Math.abs(event.deltaY)) {
+                return;
+              }
+
+              event.preventDefault();
+              if (event.deltaX > 10) {
+                setFlowIndex((value) => Math.min(items.length - 1, value + 1));
+              } else if (event.deltaX < -10) {
+                setFlowIndex((value) => Math.max(0, value - 1));
+              }
+            }}
+          >
+            <div className="longform-flow-particles" aria-hidden="true">
+              {Array.from({ length: 18 }).map((_, index) => (
+                <span
+                  key={index}
+                  style={{
+                    ["--particle-x" as string]: `${(index % 6) * 18 + 6}%`,
+                    ["--particle-y" as string]: `${Math.floor(index / 6) * 24 + 18}%`,
+                    ["--particle-delay" as string]: `${index * 0.18}s`,
+                  }}
+                />
+              ))}
+            </div>
             {items.map((item, index) => {
               const offset = index - flowIndex;
               const hidden = Math.abs(offset) > 3;
@@ -2574,7 +2890,7 @@ function LongformReferenceView({
                   className={`longform-flow-card ${offset === 0 ? "current" : ""}`}
                   style={{
                     opacity: hidden ? 0 : 1,
-                    transform: `translateX(${offset * 32}%) translateZ(${-depth}px) rotateY(${offset * -22}deg) scale(${scale})`,
+                    transform: `translateX(${offset * 360 + flowDragOffset}px) translateZ(${-depth}px) rotateY(${offset * -22}deg) scale(${scale})`,
                     zIndex: 40 - Math.abs(offset),
                     pointerEvents: hidden ? "none" : "auto",
                   }}
@@ -2613,6 +2929,11 @@ function LongformReferenceView({
           >
             {isEditingDetail ? "Done" : "Edit"}
           </button>
+          {isEditingDetail ? (
+            <button className="today-button" onClick={onSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </button>
+          ) : null}
           {feedback ? <span className="longform-status-chip">{feedback}</span> : null}
         </div>
       </div>
@@ -2631,6 +2952,13 @@ function LongformReferenceView({
                 />
               </label>
               <label className="longform-field">
+                <span>Subtitle</span>
+                <input
+                  value={draft.subtitle}
+                  onChange={(event) => onDraftFieldChange("subtitle", event.target.value)}
+                />
+              </label>
+              <label className="longform-field">
                 <span>Summary</span>
                 <textarea
                   rows={3}
@@ -2644,6 +2972,20 @@ function LongformReferenceView({
                   rows={10}
                   value={draft.rawContent}
                   onChange={(event) => onContentChange(event.target.value)}
+                />
+              </label>
+              <label className="longform-field">
+                <span>Source Platform</span>
+                <input
+                  value={draft.sourcePlatform}
+                  onChange={(event) => onDraftFieldChange("sourcePlatform", event.target.value)}
+                />
+              </label>
+              <label className="longform-field">
+                <span>Source URL</span>
+                <input
+                  value={draft.sourceUrl}
+                  onChange={(event) => onDraftFieldChange("sourceUrl", event.target.value)}
                 />
               </label>
               <div className="longform-inline-actions">
