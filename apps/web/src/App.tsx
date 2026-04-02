@@ -2456,63 +2456,143 @@ function LongformReferenceView({
   onAnalyze: () => void;
   onOpenCoverPicker: () => void;
 }) {
+  const [longformBrowseMode, setLongformBrowseMode] = useState<"grid" | "flow">("grid");
+  const [flowIndex, setFlowIndex] = useState(() => items.findIndex((item) => item.id === activeId) || 0);
   const shelfItems = items.slice(
     shelfPage * LONGFORM_PAGE_SIZE,
     shelfPage * LONGFORM_PAGE_SIZE + LONGFORM_PAGE_SIZE,
   );
 
+  useEffect(() => {
+    const nextIndex = items.findIndex((item) => item.id === activeId);
+    if (nextIndex >= 0) {
+      setFlowIndex(nextIndex);
+    }
+  }, [activeId, items]);
+
   return viewMode === "shelf" ? (
     <section className="longform-shell longform-shell-shelf">
       <section className="longform-shelf">
         <div className="longform-shelf-head">
-          <div className="longform-shelf-copy">
-            <span className="longform-eyebrow">Editorial Shelf</span>
-            <h2>Six references per page.</h2>
-            <p>简洁浏览，点进再深读与拆解。</p>
-          </div>
           <div className="longform-shelf-pager">
             <button
-              className="nav-button icon-only"
-              onClick={() => onShelfPageChange(Math.max(0, shelfPage - 1))}
-              disabled={shelfPage === 0}
+              className={`nav-button icon-only ${longformBrowseMode === "grid" ? "active" : ""}`}
+              onClick={() => setLongformBrowseMode("grid")}
+              title="Grid"
             >
-              ←
+              ⌗
             </button>
-            <span>{String(shelfPage + 1).padStart(2, "0")} / {String(pageCount).padStart(2, "0")}</span>
             <button
-              className="nav-button icon-only"
-              onClick={() => onShelfPageChange(Math.min(pageCount - 1, shelfPage + 1))}
-              disabled={shelfPage >= pageCount - 1}
+              className={`nav-button icon-only ${longformBrowseMode === "flow" ? "active" : ""}`}
+              onClick={() => setLongformBrowseMode("flow")}
+              title="Flow"
             >
-              →
+              ≋
             </button>
+            {longformBrowseMode === "grid" ? (
+              <>
+                <button
+                  className="nav-button icon-only"
+                  onClick={() => onShelfPageChange(Math.max(0, shelfPage - 1))}
+                  disabled={shelfPage === 0}
+                >
+                  ←
+                </button>
+                <span>{String(shelfPage + 1).padStart(2, "0")} / {String(pageCount).padStart(2, "0")}</span>
+                <button
+                  className="nav-button icon-only"
+                  onClick={() => onShelfPageChange(Math.min(pageCount - 1, shelfPage + 1))}
+                  disabled={shelfPage >= pageCount - 1}
+                >
+                  →
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="nav-button icon-only"
+                  onClick={() => setFlowIndex((value) => Math.max(0, value - 1))}
+                  disabled={flowIndex === 0}
+                >
+                  ←
+                </button>
+                <span>{String(flowIndex + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}</span>
+                <button
+                  className="nav-button icon-only"
+                  onClick={() => setFlowIndex((value) => Math.min(items.length - 1, value + 1))}
+                  disabled={flowIndex >= items.length - 1}
+                >
+                  →
+                </button>
+              </>
+            )}
           </div>
         </div>
-        <div className="longform-card-stream">
-          {shelfItems.map((item) => (
-            <button
-              key={item.id}
-              className={`longform-reference-card ${activeId === item.id ? "active" : ""}`}
-              onClick={() => onSelect(item.id)}
-            >
-              <div
-                className="longform-reference-art"
-                style={{
-                  ["--longform-a" as string]: item.palette[0],
-                  ["--longform-b" as string]: item.palette[1],
-                  ["--longform-c" as string]: item.palette[2],
-                }}
+        {longformBrowseMode === "grid" ? (
+          <div className="longform-card-stream">
+            {shelfItems.map((item) => (
+              <button
+                key={item.id}
+                className={`longform-reference-card ${activeId === item.id ? "active" : ""}`}
+                onClick={() => onSelect(item.id)}
               >
-                <span className="longform-reference-glass" />
-              </div>
-              <div className="longform-reference-copy">
-                <span className="longform-reference-kicker">{item.category}</span>
-                <strong>{item.title}</strong>
-                <p>{item.summary}</p>
-              </div>
-            </button>
-          ))}
-        </div>
+                <div
+                  className="longform-reference-art"
+                  style={{
+                    ["--longform-a" as string]: item.palette[0],
+                    ["--longform-b" as string]: item.palette[1],
+                    ["--longform-c" as string]: item.palette[2],
+                  }}
+                >
+                  <span className="longform-reference-glass" />
+                </div>
+                <div className="longform-reference-copy">
+                  <span className="longform-reference-kicker">{item.category}</span>
+                  <strong>{item.title}</strong>
+                  <p>{item.summary}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="longform-flow-stage">
+            {items.map((item, index) => {
+              const offset = index - flowIndex;
+              const hidden = Math.abs(offset) > 3;
+              const depth = Math.abs(offset) * 120;
+              const scale = 1 - Math.min(Math.abs(offset) * 0.12, 0.36);
+              return (
+                <button
+                  key={item.id}
+                  className={`longform-flow-card ${offset === 0 ? "current" : ""}`}
+                  style={{
+                    opacity: hidden ? 0 : 1,
+                    transform: `translateX(${offset * 32}%) translateZ(${-depth}px) rotateY(${offset * -22}deg) scale(${scale})`,
+                    zIndex: 40 - Math.abs(offset),
+                    pointerEvents: hidden ? "none" : "auto",
+                  }}
+                  onClick={() => (offset === 0 ? onSelect(item.id) : setFlowIndex(index))}
+                >
+                  <div
+                    className="longform-reference-art"
+                    style={{
+                      ["--longform-a" as string]: item.palette[0],
+                      ["--longform-b" as string]: item.palette[1],
+                      ["--longform-c" as string]: item.palette[2],
+                    }}
+                  >
+                    <span className="longform-reference-glass" />
+                  </div>
+                  <div className="longform-reference-copy">
+                    <span className="longform-reference-kicker">{item.category}</span>
+                    <strong>{item.title}</strong>
+                    <p>{item.summary}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
     </section>
   ) : (
